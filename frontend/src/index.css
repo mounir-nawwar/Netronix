@@ -1,0 +1,350 @@
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Outfit:wght@100..900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Michroma&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+a.active hr{
+    display: block;
+}
+
+*{
+  font-family: Outfit;
+}
+
+.cinzel-regular {
+  font-family: "Cinzel", serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* Custom Scrollbar Styling - Visible everywhere except Hero */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+  display: block;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* For Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #333 transparent;
+}
+
+
+@media (max-width:640px) {
+  a.active{
+    background-color: black;
+    color: white;
+  }
+}
+
+/* Animations for Netronix site */
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes navbarFadeIn {
+  0%, 75% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes slideInFromLeft {
+  0%, 75% {
+    transform: translateX(-500px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-x: hidden; /* Prevent horizontal scrolling */
+}
+
+/* Newsletter Bar Styles */
+:root {
+  --page-padding: 1rem;
+  --page-width: 1200px;
+  --animation-duration: 300ms;
+  --animation-timing: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Newsletter Bar */
+.newsletter-bar {
+  top: 50vh;
+  transform: translateY(-50%);
+  width: 3.25rem;
+  margin-inline: var(--page-padding);
+  padding-block: 0.5rem;
+  backdrop-filter: blur(6px);
+  background-color: white;
+  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  transition: all var(--animation-duration) var(--animation-timing);
+}
+
+.newsletter-bar:hover {
+  transform: translateY(-50%) scale(1.02);
+}
+
+@supports (height: 100svh) {
+  .newsletter-bar {
+    top: 50svh;
+  }
+}
+
+.newsletter-bar__social ul {
+  padding-top: 0.25rem;
+  flex-direction: column;
+}
+
+.newsletter-bar__social ul li {
+  width: 2.5rem;
+  height: 2.5rem;
+}
+
+.newsletter-bar__social .social_platform {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  transition: all var(--animation-duration) var(--animation-timing);
+  will-change: transform;
+}
+
+.newsletter-bar__social .social_platform:hover {
+  color: inherit;
+}
+
+.newsletter-bar__button {
+  writing-mode: vertical-rl;
+  font-size: 0.625rem;
+  padding-inline: 1rem;
+  margin-block: 0.5rem;
+  color: rgb(0, 0, 0);
+  background-color: rgba(0, 0, 0, 0.045);
+  transition: all var(--animation-duration) var(--animation-timing);
+}
+
+.newsletter-bar__button:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.newsletter-bar__button:hover span {
+  animation: beat 0.6s infinite ease;
+}
+
+.newsletter-bar.left-0 .newsletter-bar__button {
+  transform: rotate(-180deg);
+}
+
+@keyframes beat {
+  0%, 100% { 
+    transform: scale(1); 
+  }
+  50% { 
+    transform: scale(1.2); 
+  }
+}
+
+/* Responsive Styles */
+@media screen and (min-width: 640px) {
+  .newsletter-bar {
+    margin-inline: 1.5rem;
+  }
+
+  .has-dropdown-menu .newsletter-bar {
+    z-index: 15;
+  }
+}
+
+@media screen and (max-width: 767px) {
+  .newsletter-bar.sm\:without-social {
+    padding-block: 0;
+    width: 2.5rem;
+  }
+
+  .newsletter-bar.sm\:without-social .newsletter-bar__button {
+    margin-block: 0;
+  }
+}
+
+/* Hover Effects */
+@media (hover: hover) {
+  .newsletter-bar {
+    transition: transform var(--animation-duration) var(--animation-timing),
+                box-shadow var(--animation-duration) var(--animation-timing);
+  }
+
+  .newsletter-bar:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .social_platform {
+    transform: translate3d(0, 0, 0);
+  }
+
+  .social_platform svg {
+    transition: transform var(--animation-duration) var(--animation-timing);
+  }
+
+  .social_platform:hover svg {
+    transform: scale(1.1);
+  }
+}
+
+/* Button Fill Animation */
+.fill-button {
+  position: relative;
+  z-index: 1;
+  overflow: hidden;
+  transition: color 0.5s ease;
+}
+
+.fill-button::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  width: 170%; /* Wider than the button */
+  height: 0;
+  padding-bottom: 170%; /* Creates circular/oval shape */
+  background-color: #6a5acd;
+  border-radius: 50%;
+  transition: transform 1.1s ease-out;
+  transform: translateX(-50%) translateY(100%); /* Start position centered and below */
+  z-index: -1;
+}
+
+.fill-button:hover::before {
+  transform: translateX(-50%) translateY(15%); /* Move up to fill the button */
+}
+
+/* For white to purple fill */
+.fill-button-white {
+  background-color: white;
+  color: #6a5acd;
+  border: 1px solid #6a5acd;
+}
+
+.fill-button-white:hover {
+  color: white;
+}
+
+/* For gray to purple fill (tab buttons) */
+.fill-button-gray {
+  background-color: #f9f9f9;
+  color: #333;
+}
+
+.fill-button-gray::before {
+  transform: translateX(-50%) translateY(120%); /* Position it further down to prevent any showing */
+}
+
+.fill-button-gray:hover {
+  color: white;
+}
+
+.fill-button-gray:hover::before {
+  transform: translateX(-50%) translateY(15%); /* Move up to fill the button */
+}
+
+/* For hero buttons - purple to black */
+.fill-button-hero {
+  background-color: #6a5acd;
+  color: white;
+  border: 1px solid #6a5acd;
+}
+
+.fill-button-hero::before {
+  background-color: black;
+  transform: translateX(-50%) translateY(110%); /* Start position further down */
+}
+
+.fill-button-hero:hover::before {
+  transform: translateX(-50%) translateY(15%); /* Move up to fill the button */
+}
+
+.fill-button-hero:hover {
+  color: white;
+  border-color: black;
+}
+
+/* For image comparison and add to cart - white to black */
+.fill-button-black-outline {
+  background-color: white;
+  color: black;
+  border: 1px solid black;
+}
+
+.fill-button-black-outline::before {
+  background-color: black;
+}
+
+.fill-button-black-outline:hover {
+  color: white;
+}
+
+/* For black buttons that fill with white */
+.fill-button-black-white {
+  background-color: black;
+  color: white;
+  border: 1px solid black;
+}
+
+.fill-button-black-white::before {
+  background-color: white;
+}
+
+.fill-button-black-white:hover {
+  color: black;
+  border-color: black;
+}
+
+/* For purple fill buttons in FeaturedProducts */
+.fill-button-purple {
+  background-color: white;
+  color: #6a5acd;
+  border: 1px solid #6a5acd;
+}
+
+.fill-button-purple::before {
+  background-color: #6a5acd;
+}
+
+.fill-button-purple:hover {
+  color: white;
+  border-color: #6a5acd;
+}
