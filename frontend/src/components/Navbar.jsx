@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { ShopContext } from '../context/ShopContext';
 import { IoPersonOutline } from "react-icons/io5";
@@ -6,16 +6,57 @@ import { BsCartDash } from "react-icons/bs";
 import { IoSearchOutline } from "react-icons/io5";
 import { CiMenuBurger } from "react-icons/ci";
 import { IoCloseOutline } from "react-icons/io5";
+import { FiUser, FiShoppingBag, FiLogOut, FiChevronDown } from "react-icons/fi";
 import axios from 'axios';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Navbar = ({ visible }) => {
     const [dropdownOpen, setDropdownOpen] = useState(false);
-    const [sidebarVisible, setSidebarVisible] = useState(false);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
     const { setShowSearch, getCartCount, navigate, token, setToken, setCartItems, backendUrl } = useContext(ShopContext);
     const [tags, setTags] = useState([]);
+    const dropdownRef = useRef(null);
+    const mobileMenuRef = useRef(null);
+    const profileDropdownRef = useRef(null);
     
     // Featured tags to display in navigation
     const featuredTags = ["Electronics", "Accessories", "Featured", "New Arrivals", "Best Sellers"];
+
+    // Close dropdowns when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setDropdownOpen(false);
+            }
+            if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target) && 
+                !event.target.closest('.menu-trigger')) {
+                setMobileMenuOpen(false);
+            }
+            if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target) && 
+                !event.target.closest('.profile-trigger')) {
+                setProfileDropdownOpen(false);
+            }
+        };
+        
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [dropdownRef, mobileMenuRef, profileDropdownRef]);
+
+    // Prevent body scroll when mobile menu is open
+    useEffect(() => {
+        if (mobileMenuOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = 'auto';
+        }
+        
+        return () => {
+            document.body.style.overflow = 'auto';
+        };
+    }, [mobileMenuOpen]);
 
     // Fetch all available tags
     const fetchTags = async () => {
@@ -40,40 +81,124 @@ const Navbar = ({ visible }) => {
         navigate("/login");
     }
 
+    // Animation variants for mobile menu
+    const menuVariants = {
+        hidden: { 
+            opacity: 0,
+            y: "-100%",
+            borderRadius: "0 0 30px 30px",
+        },
+        visible: { 
+            opacity: 1,
+            y: 0,
+            borderRadius: "0 0 30px 30px",
+            transition: { 
+                type: "spring", 
+                stiffness: 300, 
+                damping: 24,
+                mass: 0.9
+            }
+        },
+        exit: { 
+            opacity: 0,
+            y: "-100%",
+            transition: { 
+                duration: 0.3, 
+                ease: "easeInOut" 
+            }
+        }
+    };
+
+    // Animation variants for menu items
+    const listItemVariants = {
+        hidden: { opacity: 0, y: -10 },
+        visible: (i) => ({ 
+            opacity: 1, 
+            y: 0,
+            transition: { 
+                delay: i * 0.05,
+                duration: 0.3
+            }
+        })
+    };
+
+    // Profile dropdown animation variants
+    const profileDropdownVariants = {
+        hidden: { 
+            opacity: 0,
+            scale: 0.9,
+            y: -10,
+            transformOrigin: "top right"
+        },
+        visible: { 
+            opacity: 1,
+            scale: 1,
+            y: 0,
+            transition: { 
+                type: "spring",
+                stiffness: 400,
+                damping: 25
+            }
+        },
+        exit: { 
+            opacity: 0,
+            scale: 0.9,
+            y: -10,
+            transition: { 
+                duration: 0.2
+            }
+        }
+    };
+
+    // Blur backdrop
+    const backdropVariants = {
+        hidden: { opacity: 0 },
+        visible: { 
+            opacity: 1,
+            transition: { duration: 0.3 }
+        },
+        exit: { 
+            opacity: 0,
+            transition: { duration: 0.3 }
+        }
+    };
+
     return (
         <div 
-            className={`fixed top-0 left-0 right-0 flex justify-between items-center bg-white border border-gray-800 rounded-[20px] w-[80vw] h-[70px] mt-[1%] mx-auto shadow-md z-50 transition-all duration-300 ${visible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}
+            className={`fixed top-0 left-0 right-0 flex justify-between items-center bg-white border border-gray-800 rounded-[15px] sm:rounded-[20px] w-[95vw] sm:w-[90vw] md:w-[85vw] lg:w-[80vw] h-[60px] sm:h-[70px] mt-[2%] sm:mt-[1%] mx-auto shadow-md z-50 transition-all duration-300 ${visible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}
         >
-            <div className="flex justify-center items-center h-[70px] ml-[3%] rounded-[20px]">
+            {/* Logo */}
+            <div className="flex justify-center items-center h-full ml-3 sm:ml-[3%] rounded-[20px]">
                 <Link to="/">
                     <img 
                         src="https://cdn.prod.website-files.com/67ccd759c5839fca18ed2c8f/67ccde31189939f4c5cd0722_Netronix%20Logo%20black.png" 
                         alt="Netronix Logo" 
-                        className="w-[220px]"
+                        className="w-[140px] sm:w-[180px] md:w-[220px]"
                     />
                 </Link>
             </div>
 
-            <div className="flex justify-end items-center w-1/2 h-[70px]">
-                <div className="hidden sm:grid grid-cols-4 w-full">
+            {/* Desktop Navigation */}
+            <div className="flex justify-end items-center h-full">
+                <div className="hidden md:grid grid-cols-4 w-full">
                     <div className="flex justify-center items-center">
-                        <div className="relative">
+                        <div className="relative" ref={dropdownRef}>
                             <button 
                                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                                className="flex items-center text-gray-900 text-center text-[15px] font-michroma"
+                                className="flex items-center text-gray-900 text-center text-[14px] lg:text-[15px] font-michroma hover:text-gray-600 transition-colors"
                             >
                                 Products
-                                <span className="ml-2">
+                                <span className={`ml-2 transition-transform duration-300 ${dropdownOpen ? 'rotate-180' : ''}`}>
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
                                     </svg>
                                 </span>
                             </button>
                             {dropdownOpen && (
-                                <div className="absolute top-full left-0 bg-white min-w-[200px] z-50 mt-2 rounded-lg shadow-md py-2">
+                                <div className="absolute top-full left-0 bg-white min-w-[200px] z-50 mt-2 rounded-lg shadow-lg py-2 border border-gray-100 animate-fadeIn">
                                     <Link 
                                         to="/collections/all" 
-                                        className="block px-4 py-2 hover:bg-gray-100"
+                                        className="block px-4 py-2 hover:bg-gray-100 transition-colors"
                                         onClick={() => setDropdownOpen(false)}
                                     >
                                         All Products
@@ -83,7 +208,7 @@ const Navbar = ({ visible }) => {
                                         <Link 
                                             key={index} 
                                             to={`/collections/tag/${tag}`} 
-                                            className="block px-4 py-2 hover:bg-gray-100"
+                                            className="block px-4 py-2 hover:bg-gray-100 transition-colors"
                                             onClick={() => setDropdownOpen(false)}
                                         >
                                             {tag}
@@ -95,40 +220,98 @@ const Navbar = ({ visible }) => {
                     </div>
                     
                     <div className="flex justify-center items-center">
-                        <Link to="/about" className="text-gray-900 text-center text-[15px] font-michroma">About Us</Link>
+                        <Link to="/about" className="text-gray-900 text-center text-[14px] lg:text-[15px] font-michroma hover:text-gray-600 transition-colors">About Us</Link>
                     </div>
                     
                     <div className="flex justify-center items-center">
-                        <Link to="/contact" className="text-gray-900 text-center text-[15px] font-michroma">Contact Us</Link>
+                        <Link to="/contact" className="text-gray-900 text-center text-[14px] lg:text-[15px] font-michroma hover:text-gray-600 transition-colors">Contact Us</Link>
                     </div>
                     
-                    <div className="flex justify-end items-center mr-5 gap-4">
+                    <div className="flex justify-end items-center mr-5 gap-4 lg:gap-6">
                         {/* Search icon */}
                         <IoSearchOutline 
                             onClick={() => { navigate("/collections/all"); setShowSearch(true) }} 
-                            className="w-6 h-6 cursor-pointer text-black-700" 
+                            className="w-5 h-5 lg:w-6 lg:h-6 cursor-pointer text-gray-800 hover:text-black transition-colors" 
                         />
                     
-                        {/* User account icon with dropdown */}
-                        <div className="relative group">
-                            <IoPersonOutline 
-                                onClick={() => token ? null : navigate('/login')} 
-                                className="w-6 h-6 cursor-pointer text-black-700" 
-                            />
-                            {token && (
-                                <div className="group-hover:block hidden absolute right-0 pt-4 z-60">
-                                    <div className="flex flex-col gap-2 w-36 py-3 px-5 bg-slate-100 text-gray-500 rounded shadow-md">
-                                        <p className="cursor-pointer hover:text-black">My Profile</p>
-                                        <p onClick={()=> navigate('/orders')} className="cursor-pointer hover:text-black">Orders</p>
-                                        <p onClick={logout} className="cursor-pointer hover:text-black">Log Out</p>
-                                    </div>
-                                </div>
-                            )}
+                        {/* User account icon with improved dropdown */}
+                        <div className="relative" ref={profileDropdownRef}>
+                            <motion.button
+                                className="profile-trigger flex items-center space-x-1 focus:outline-none"
+                                onClick={() => token ? setProfileDropdownOpen(!profileDropdownOpen) : navigate('/login')}
+                                whileTap={{ scale: 0.95 }}
+                            >
+                                <IoPersonOutline className="w-5 h-5 lg:w-6 lg:h-6 text-gray-800 hover:text-black transition-colors" />
+                                {token && (
+                                    <FiChevronDown className={`w-4 h-4 text-gray-600 transition-transform duration-300 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
+                                )}
+                            </motion.button>
+                            
+                            <AnimatePresence>
+                                {token && profileDropdownOpen && (
+                                    <>
+                                        <motion.div
+                                            className="fixed inset-0 bg-black bg-opacity-10 z-40 hidden md:block"
+                                            variants={backdropVariants}
+                                            initial="hidden"
+                                            animate="visible"
+                                            exit="exit"
+                                            onClick={() => setProfileDropdownOpen(false)}
+                                            style={{ pointerEvents: 'none' }}
+                                        />
+                                        
+                                        <motion.div 
+                                            className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50"
+                                            variants={profileDropdownVariants}
+                                            initial="hidden"
+                                            animate="visible"
+                                            exit="exit"
+                                        >
+                                            <div className="py-3 border-b border-gray-100 bg-gray-50">
+                                                <p className="px-4 text-sm font-medium text-gray-800">Account</p>
+                                            </div>
+                                            
+                                            <div className="py-1">
+                                                <Link 
+                                                    to="/profile" 
+                                                    className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                                    onClick={() => setProfileDropdownOpen(false)}
+                                                >
+                                                    <FiUser className="w-4 h-4 mr-3 text-gray-500" />
+                                                    <span>My Profile</span>
+                                                </Link>
+                                                
+                                                <Link 
+                                                    to="/orders" 
+                                                    className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                                    onClick={() => setProfileDropdownOpen(false)}
+                                                >
+                                                    <FiShoppingBag className="w-4 h-4 mr-3 text-gray-500" />
+                                                    <span>My Orders</span>
+                                                </Link>
+                                            </div>
+                                            
+                                            <div className="py-1 border-t border-gray-100">
+                                                <button 
+                                                    className="flex w-full items-center px-4 py-3 text-sm text-red-500 hover:bg-gray-50 transition-colors"
+                                                    onClick={() => {
+                                                        logout();
+                                                        setProfileDropdownOpen(false);
+                                                    }}
+                                                >
+                                                    <FiLogOut className="w-4 h-4 mr-3" />
+                                                    <span>Sign Out</span>
+                                                </button>
+                                            </div>
+                                        </motion.div>
+                                    </>
+                                )}
+                            </AnimatePresence>
                         </div>
                         
                         {/* Cart icon with counter */}
                         <Link to='/cart' className='relative'>
-                            <BsCartDash className='w-6 h-6 cursor-pointer text-black-700' />
+                            <BsCartDash className='w-5 h-5 lg:w-6 lg:h-6 cursor-pointer text-gray-800 hover:text-black transition-colors' />
                             <p className='absolute right-[-5px] bottom-[-5px] w-4 text-center leading-4 bg-black text-white aspect-square rounded-full text-[8px]'>
                                 {getCartCount()}
                             </p>
@@ -136,69 +319,319 @@ const Navbar = ({ visible }) => {
                     </div>
                 </div>
                 
-                {/* Mobile menu icon */}
-                <div className="sm:hidden flex items-center mr-5">
-                    <CiMenuBurger 
-                        onClick={() => setSidebarVisible(true)} 
-                        className="w-6 h-6 cursor-pointer text-black-700" 
+                {/* Mobile Icons (Search, User, Cart, Menu) */}
+                <div className="md:hidden flex items-center gap-3 sm:gap-5 mr-3 sm:mr-5">
+                    <IoSearchOutline 
+                        onClick={() => { navigate("/collections/all"); setShowSearch(true) }} 
+                        className="w-5 h-5 sm:w-6 sm:h-6 cursor-pointer text-gray-800" 
                     />
+                    
+                    {/* Mobile Profile Icon with dropdown */}
+                    <div className="relative" ref={profileDropdownRef}>
+                        <motion.button 
+                            className="profile-trigger flex items-center"
+                            onClick={() => token ? setProfileDropdownOpen(!profileDropdownOpen) : navigate('/login')}
+                            whileTap={{ scale: 0.95 }}
+                        >
+                            <IoPersonOutline className="w-5 h-5 sm:w-6 sm:h-6 text-gray-800" />
+                        </motion.button>
+                        
+                        <AnimatePresence>
+                            {token && profileDropdownOpen && (
+                                <>
+                                    <motion.div
+                                        className="fixed inset-0 bg-black bg-opacity-25 z-40"
+                                        variants={backdropVariants}
+                                        initial="hidden"
+                                        animate="visible"
+                                        exit="exit"
+                                        onClick={() => setProfileDropdownOpen(false)}
+                                    />
+                                    
+                                    <motion.div 
+                                        className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden z-50"
+                                        variants={profileDropdownVariants}
+                                        initial="hidden"
+                                        animate="visible"
+                                        exit="exit"
+                                    >
+                                        <div className="py-3 border-b border-gray-100 bg-gray-50">
+                                            <p className="px-4 text-sm font-medium text-gray-800">Account</p>
+                                        </div>
+                                        
+                                        <div className="py-1">
+                                            <Link 
+                                                to="/profile" 
+                                                className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                                onClick={() => setProfileDropdownOpen(false)}
+                                            >
+                                                <FiUser className="w-4 h-4 mr-3 text-gray-500" />
+                                                <span>My Profile</span>
+                                            </Link>
+                                            
+                                            <Link 
+                                                to="/orders" 
+                                                className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                                onClick={() => setProfileDropdownOpen(false)}
+                                            >
+                                                <FiShoppingBag className="w-4 h-4 mr-3 text-gray-500" />
+                                                <span>My Orders</span>
+                                            </Link>
+                                        </div>
+                                        
+                                        <div className="py-1 border-t border-gray-100">
+                                            <button 
+                                                className="flex w-full items-center px-4 py-3 text-sm text-red-500 hover:bg-gray-50 transition-colors"
+                                                onClick={() => {
+                                                    logout();
+                                                    setProfileDropdownOpen(false);
+                                                }}
+                                            >
+                                                <FiLogOut className="w-4 h-4 mr-3" />
+                                                <span>Sign Out</span>
+                                            </button>
+                                        </div>
+                                    </motion.div>
+                                </>
+                            )}
+                        </AnimatePresence>
+                    </div>
+                    
+                    <Link to='/cart' className='relative'>
+                        <BsCartDash className='w-5 h-5 sm:w-6 sm:h-6 cursor-pointer text-gray-800' />
+                        <p className='absolute right-[-5px] bottom-[-5px] w-4 text-center leading-4 bg-black text-white aspect-square rounded-full text-[8px]'>
+                            {getCartCount()}
+                        </p>
+                    </Link>
+                    
+                    <motion.button
+                        className="menu-trigger relative z-50 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                        whileTap={{ scale: 0.9 }}
+                    >
+                        {mobileMenuOpen ? (
+                            <IoCloseOutline className="w-5 h-5 sm:w-6 sm:h-6 text-gray-800" />
+                        ) : (
+                            <CiMenuBurger className="w-5 h-5 sm:w-6 sm:h-6 text-gray-800" />
+                        )}
+                    </motion.button>
                 </div>
             </div>
 
-            {/* Sidebar menu for small screens */}
-            <div className={`fixed top-0 right-0 bottom-0 overflow-hidden bg-white transition-all duration-300 ${sidebarVisible ? 'w-full' : 'w-0'} z-60`}>
-                <div className='flex flex-col text-gray-600'>
-                    <div onClick={() => setSidebarVisible(false)} className='flex items-center gap-4 p-3 cursor-pointer'>
-                        <IoCloseOutline className='h-5 rotate-180' />
-                        <p>Back</p>
-                    </div>
-                    <Link onClick={() => setSidebarVisible(false)} className='py-2 pl-6 border font-michroma' to='/'>HOME</Link>
-                    <Link onClick={() => setSidebarVisible(false)} className='py-2 pl-6 border font-michroma' to='/collections/all'>ALL PRODUCTS</Link>
-                    
-                    {/* Featured tags in mobile menu */}
-                    {featuredTags.map((tag, index) => (
-                        <Link 
-                            key={index} 
-                            onClick={() => setSidebarVisible(false)} 
-                            className='py-2 pl-6 border font-michroma' 
-                            to={`/collections/tag/${tag}`}
-                        >
-                            {tag}
-                        </Link>
-                    ))}
-                    
-                    <Link onClick={() => setSidebarVisible(false)} className='py-2 pl-6 border font-michroma' to='/about'>ABOUT US</Link>
-                    <Link onClick={() => setSidebarVisible(false)} className='py-2 pl-6 border font-michroma' to='/contact'>CONTACT US</Link>
-                    
-                    <div className="flex justify-around items-center mt-4">
-                        <IoSearchOutline 
-                            onClick={() => { 
-                                navigate("/collections/all"); 
-                                setShowSearch(true);
-                                setSidebarVisible(false);
-                            }} 
-                            className="w-6 h-6 cursor-pointer text-black-700" 
+            {/* Animated Mobile Menu Dropdown */}
+            <AnimatePresence>
+                {mobileMenuOpen && (
+                    <>
+                        {/* Backdrop */}
+                        <motion.div
+                            className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-40"
+                            variants={backdropVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
+                            onClick={() => setMobileMenuOpen(false)}
                         />
-                        <IoPersonOutline 
-                            onClick={() => {
-                                token ? null : navigate('/login');
-                                setSidebarVisible(false);
-                            }} 
-                            className="w-6 h-6 cursor-pointer text-black-700" 
-                        />
-                        <Link 
-                            to='/cart' 
-                            className='relative'
-                            onClick={() => setSidebarVisible(false)}
+                        
+                        {/* Menu Container */}
+                        <motion.div 
+                            ref={mobileMenuRef}
+                            className="fixed top-0 left-0 right-0 bg-white shadow-xl z-50 origin-top w-[95vw] mx-auto mt-[calc(2%+60px)] sm:mt-[calc(1%+70px)] border border-gray-200"
+                            variants={menuVariants}
+                            initial="hidden"
+                            animate="visible"
+                            exit="exit"
                         >
-                            <BsCartDash className='w-6 h-6 cursor-pointer text-black-700' />
-                            <p className='absolute right-[-5px] bottom-[-5px] w-4 text-center leading-4 bg-black text-white aspect-square rounded-full text-[8px]'>
-                                {getCartCount()}
-                            </p>
-                        </Link>
-                    </div>
-                </div>
-            </div>
+                            <div className="overflow-y-auto max-h-[70vh] pb-6 px-2">
+                                {/* Menu Items */}
+                                <div className="grid grid-cols-1 gap-1 pt-6 px-4">
+                                    {/* Home link */}
+                                    <motion.div
+                                        custom={0}
+                                        variants={listItemVariants}
+                                        initial="hidden"
+                                        animate="visible"
+                                    >
+                                        <Link 
+                                            to="/" 
+                                            className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
+                                            onClick={() => setMobileMenuOpen(false)}
+                                        >
+                                            <span>HOME</span>
+                                            <motion.span 
+                                                initial={{ x: -5, opacity: 0 }}
+                                                animate={{ x: 0, opacity: 1 }}
+                                                transition={{ delay: 0.2 }}
+                                            >→</motion.span>
+                                        </Link>
+                                    </motion.div>
+                                    
+                                    {/* All Products link */}
+                                    <motion.div
+                                        custom={1}
+                                        variants={listItemVariants}
+                                        initial="hidden"
+                                        animate="visible"
+                                    >
+                                        <Link 
+                                            to="/collections/all" 
+                                            className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
+                                            onClick={() => setMobileMenuOpen(false)}
+                                        >
+                                            <span>ALL PRODUCTS</span>
+                                            <motion.span 
+                                                initial={{ x: -5, opacity: 0 }}
+                                                animate={{ x: 0, opacity: 1 }}
+                                                transition={{ delay: 0.25 }}
+                                            >→</motion.span>
+                                        </Link>
+                                    </motion.div>
+                                    
+                                    {/* Product categories */}
+                                    <div className="my-2 border-t border-gray-100"></div>
+                                    <h3 className="text-xs uppercase text-gray-400 font-semibold ml-3 mb-1">Categories</h3>
+                                    
+                                    {featuredTags.map((tag, index) => (
+                                        <motion.div
+                                            key={tag}
+                                            custom={index + 2}
+                                            variants={listItemVariants}
+                                            initial="hidden"
+                                            animate="visible"
+                                        >
+                                            <Link 
+                                                to={`/collections/tag/${tag}`} 
+                                                className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
+                                                onClick={() => setMobileMenuOpen(false)}
+                                            >
+                                                <span>{tag}</span>
+                                                <motion.span 
+                                                    initial={{ x: -5, opacity: 0 }}
+                                                    animate={{ x: 0, opacity: 1 }}
+                                                    transition={{ delay: 0.3 + (index * 0.05) }}
+                                                >→</motion.span>
+                                            </Link>
+                                        </motion.div>
+                                    ))}
+                                    
+                                    {/* About & Contact */}
+                                    <div className="my-2 border-t border-gray-100"></div>
+                                    <h3 className="text-xs uppercase text-gray-400 font-semibold ml-3 mb-1">Company</h3>
+                                    
+                                    <motion.div
+                                        custom={8}
+                                        variants={listItemVariants}
+                                        initial="hidden"
+                                        animate="visible"
+                                    >
+                                        <Link 
+                                            to="/about" 
+                                            className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
+                                            onClick={() => setMobileMenuOpen(false)}
+                                        >
+                                            <span>ABOUT US</span>
+                                            <motion.span 
+                                                initial={{ x: -5, opacity: 0 }}
+                                                animate={{ x: 0, opacity: 1 }}
+                                                transition={{ delay: 0.55 }}
+                                            >→</motion.span>
+                                        </Link>
+                                    </motion.div>
+                                    
+                                    <motion.div
+                                        custom={9}
+                                        variants={listItemVariants}
+                                        initial="hidden"
+                                        animate="visible"
+                                    >
+                                        <Link 
+                                            to="/contact" 
+                                            className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
+                                            onClick={() => setMobileMenuOpen(false)}
+                                        >
+                                            <span>CONTACT US</span>
+                                            <motion.span 
+                                                initial={{ x: -5, opacity: 0 }}
+                                                animate={{ x: 0, opacity: 1 }}
+                                                transition={{ delay: 0.6 }}
+                                            >→</motion.span>
+                                        </Link>
+                                    </motion.div>
+                                    
+                                    {/* User Account Section */}
+                                    {token && (
+                                        <>
+                                            <div className="my-2 border-t border-gray-100"></div>
+                                            <h3 className="text-xs uppercase text-gray-400 font-semibold ml-3 mb-1">Account</h3>
+                                            
+                                            <motion.div
+                                                custom={10}
+                                                variants={listItemVariants}
+                                                initial="hidden"
+                                                animate="visible"
+                                            >
+                                                <Link 
+                                                    to="/profile" 
+                                                    className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
+                                                    onClick={() => setMobileMenuOpen(false)}
+                                                >
+                                                    <span>MY PROFILE</span>
+                                                    <motion.span 
+                                                        initial={{ x: -5, opacity: 0 }}
+                                                        animate={{ x: 0, opacity: 1 }}
+                                                        transition={{ delay: 0.65 }}
+                                                    >→</motion.span>
+                                                </Link>
+                                            </motion.div>
+                                            
+                                            <motion.div
+                                                custom={11}
+                                                variants={listItemVariants}
+                                                initial="hidden"
+                                                animate="visible"
+                                            >
+                                                <Link 
+                                                    to="/orders" 
+                                                    className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
+                                                    onClick={() => setMobileMenuOpen(false)}
+                                                >
+                                                    <span>ORDERS</span>
+                                                    <motion.span 
+                                                        initial={{ x: -5, opacity: 0 }}
+                                                        animate={{ x: 0, opacity: 1 }}
+                                                        transition={{ delay: 0.7 }}
+                                                    >→</motion.span>
+                                                </Link>
+                                            </motion.div>
+                                            
+                                            <motion.div
+                                                custom={12}
+                                                variants={listItemVariants}
+                                                initial="hidden"
+                                                animate="visible"
+                                            >
+                                                <button 
+                                                    onClick={() => {
+                                                        logout();
+                                                        setMobileMenuOpen(false);
+                                                    }}
+                                                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
+                                                >
+                                                    <span>LOG OUT</span>
+                                                    <motion.span 
+                                                        initial={{ x: -5, opacity: 0 }}
+                                                        animate={{ x: 0, opacity: 1 }}
+                                                        transition={{ delay: 0.75 }}
+                                                    >→</motion.span>
+                                                </button>
+                                            </motion.div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                        </motion.div>
+                    </>
+                )}
+            </AnimatePresence>
         </div>
     )
 }

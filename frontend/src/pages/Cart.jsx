@@ -1,9 +1,9 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { ShopContext } from '../context/ShopContext';
-import Title from '../components/Title';
-import { FaTrashCan } from "react-icons/fa6";
-import CartTotal from '../components/CartTotal';
 import { toast } from 'react-toastify';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FiShoppingCart, FiTrash2, FiMinus, FiPlus, FiAlertCircle, FiArrowRight, FiChevronLeft } from 'react-icons/fi';
+import CartTotal from '../components/CartTotal';
 
 const Cart = () => {
 
@@ -11,8 +11,11 @@ const Cart = () => {
 
   const [cartData, setCartData] = useState([]);
   const [inventoryWarnings, setInventoryWarnings] = useState({});
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
+    setIsLoading(true);
+    
     if (products.length > 0) {
       const tempData = [];
       const warnings = {};
@@ -45,7 +48,9 @@ const Cart = () => {
       }
       setCartData(tempData);
       setInventoryWarnings(warnings);
-    };
+    }
+    
+    setTimeout(() => setIsLoading(false), 300); // Add a small delay for smoother transitions
   }, [cartItems, products]);
 
   // Check if a specific item has inventory warning
@@ -73,83 +78,259 @@ const Cart = () => {
     }
   };
 
+  // Animation variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: "spring",
+        stiffness: 300,
+        damping: 24
+      }
+    },
+    exit: {
+      opacity: 0,
+      x: -20,
+      transition: {
+        duration: 0.2
+      }
+    }
+  };
+
   return (
-    <div className='border-t pt-14 px-4 sm:px-[5vw] md:px-[7vw] lg:px-[9vw]'>
-
-      <div className='text-2xl mb-3'>
-        <Title text1={'YOUR'} text2={'CART'} />
-      </div>
-
-      <div>
-        {
-          cartData.map((item, index) => {
-
-            const productData = products.find((product) => product._id === item._id);
-            const hasWarning = hasInventoryWarning(item._id, item.variantKey);
-            const availableInventory = getAvailableInventory(item._id, item.variantKey);
-            const variantDisplay = getVariantDisplayName(productData, item.variantKey);
-
-            return (
-              <div key={index} className='py-4 border-t border-b text-gray-700 grid grid-cols-[4fr_0.5fr_0.5fr] sm:grid-cols-[4fr_2fr_2fr] items-center gap-4'>
-                <div className='flex items-start gap-6'>
-                  <img className='w-16 sm:w-20' src={productData.image[0]} alt="" />
-                  <div>
-                    <p className='text-xs sm:text-lg font-medium'>{productData.name}</p>
-                    <div className='flex items-center gap-5 mt-2'>
-                      <p>{currency}{productData.price}</p>
-                      <p className='px-2 sm:px-3 sm:py-1 border-bg bg-slate-50'>{variantDisplay}</p>
-                    </div>
-                    {hasWarning && (
-                      <p className='text-red-500 text-xs mt-1'>
-                        Only {availableInventory} items available. Quantity adjusted.
-                      </p>
-                    )}
-                    {availableInventory === 0 && (
-                      <p className='text-red-500 text-xs mt-1'>
-                        Out of stock. Please remove this item.
-                      </p>
-                    )}
-                  </div>
-                </div>
-                <input 
-                  onChange={(e) => {
-                    const value = e.target.value;
-                    if (value === '' || value === '0') return;
-                    handleQuantityChange(item._id, item.variantKey, Number(value));
-                  }} 
-                  className='border max-w-10 sm:max-w-20 px-1 sm:px-2 py-1' 
-                  type="number" 
-                  min={1} 
-                  max={availableInventory}
-                  value={item.quantity} 
-                />
-                <FaTrashCan onClick={() => updateQuantity(item._id, item.variantKey, 0)} className='w-4 mr-4 sm:w-5 cursor-pointer text-black-700' />
-              </div>
-            )
-          })
-        }
-      </div>
-
-      <div className='flex justify-end my-20'>
-        <div className='w-full sm:w-[450px]'>
-          <CartTotal />
-          <div className='w-full text-end'>
-            <button 
-              onClick={() => {
-                // Check if any items have inventory warnings before proceeding
-                if (Object.keys(inventoryWarnings).length > 0) {
-                  toast.error('Please resolve inventory issues before checkout');
-                  return;
-                }
-                navigate('/placeorder');
-              }} 
-              className='bg-black text-white text-sm my-8 px-8 py-3'
-            >
-              PROCEED TO CHECKOUT
-            </button>
-          </div>
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 px-4 sm:px-6 lg:px-8 py-12 pt-[80px] md:pt-[100px]">
+      <motion.div 
+        className="max-w-5xl mx-auto"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="flex items-center mb-6">
+          <button 
+            onClick={() => navigate(-1)}
+            className="p-2 mr-3 rounded-full hover:bg-gray-100 transition-colors text-[#6a5acd]"
+          >
+            <FiChevronLeft className="w-5 h-5" />
+          </button>
+          <motion.h1 
+            className="text-3xl font-bold text-gray-900"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
+            Shopping Cart
+          </motion.h1>
         </div>
-      </div>
+
+        {isLoading ? (
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a5acd]"></div>
+          </div>
+        ) : cartData.length === 0 ? (
+          <motion.div 
+            className="bg-white rounded-xl shadow-md p-10 text-center"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <FiShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">Your cart is empty</h2>
+            <p className="text-gray-600 mb-6">Add items to get started</p>
+            <button 
+              onClick={() => navigate('/collections/all')} 
+              className="px-6 py-3 rounded-lg text-white bg-[#6a5acd] hover:bg-[#5a4cbb] transition-colors fill-button fill-button-hero"
+            >
+              Start Shopping
+            </button>
+          </motion.div>
+        ) : (
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* Cart Items */}
+            <motion.div 
+              className="lg:w-2/3"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              <AnimatePresence>
+                {cartData.map((item, index) => {
+                  const productData = products.find((product) => product._id === item._id);
+                  const hasWarning = hasInventoryWarning(item._id, item.variantKey);
+                  const availableInventory = getAvailableInventory(item._id, item.variantKey);
+                  const variantDisplay = getVariantDisplayName(productData, item.variantKey);
+                  
+                  if (!productData) return null;
+                  
+                  return (
+                    <motion.div 
+                      key={`${item._id}-${item.variantKey}`}
+                      className="bg-white rounded-xl shadow-sm mb-4 overflow-hidden transition-all hover:shadow-md"
+                      variants={itemVariants}
+                      exit="exit"
+                    >
+                      <div className="p-4 sm:p-6">
+                        <div className="flex flex-col sm:flex-row gap-4">
+                          {/* Product Image */}
+                          <div className="relative w-full sm:w-24 h-40 sm:h-24 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
+                            {productData.image && Array.isArray(productData.image) && productData.image[0] ? (
+                              <img 
+                                className="w-full h-full object-cover" 
+                                src={productData.image[0]} 
+                                alt={productData.name || 'Product'} 
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                <FiShoppingCart className="w-10 h-10 text-gray-400" />
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Product Details */}
+                          <div className="flex-grow">
+                            <div className="flex justify-between items-start">
+                              <h3 className="text-lg font-semibold text-gray-900">{productData.name || 'Product'}</h3>
+                              <button 
+                                onClick={() => updateQuantity(item._id, item.variantKey, 0)}
+                                className="p-1 text-gray-400 hover:text-[#6a5acd] transition-colors"
+                                aria-label="Remove item"
+                              >
+                                <FiTrash2 className="w-5 h-5" />
+                              </button>
+                            </div>
+                            
+                            <div className="mt-1 text-sm text-gray-500">
+                              Size: {variantDisplay || 'One Size'}
+                            </div>
+                            
+                            <div className="mt-2 text-lg font-medium text-[#6a5acd]">
+                              {currency}{productData.price || 0}
+                            </div>
+                            
+                            <div className="mt-4 flex justify-between items-center">
+                              <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
+                                <button 
+                                  onClick={() => handleQuantityChange(item._id, item.variantKey, Math.max(1, item.quantity - 1))}
+                                  className="px-3 py-1 hover:bg-gray-100 transition-colors"
+                                  disabled={item.quantity <= 1}
+                                >
+                                  <FiMinus className={`w-4 h-4 ${item.quantity <= 1 ? 'text-gray-300' : 'text-[#6a5acd]'}`} />
+                                </button>
+                                <span className="px-3 py-1 min-w-[40px] text-center">{item.quantity}</span>
+                                <button 
+                                  onClick={() => handleQuantityChange(item._id, item.variantKey, item.quantity + 1)}
+                                  className="px-3 py-1 hover:bg-gray-100 transition-colors"
+                                  disabled={item.quantity >= availableInventory}
+                                >
+                                  <FiPlus className={`w-4 h-4 ${item.quantity >= availableInventory ? 'text-gray-300' : 'text-[#6a5acd]'}`} />
+                                </button>
+                              </div>
+                              
+                              <div className="text-lg font-semibold text-[#6a5acd]">
+                                {currency}{(productData.price * item.quantity).toFixed(2)}
+                              </div>
+                            </div>
+                            
+                            {/* Inventory Warning */}
+                            {hasWarning && (
+                              <motion.div 
+                                className="mt-3 p-2 bg-red-50 border border-red-100 rounded-md flex items-start gap-2"
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                transition={{ duration: 0.3 }}
+                              >
+                                <FiAlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                                <div className="text-sm text-red-600">
+                                  Only {availableInventory} item(s) in stock. 
+                                  Please adjust your quantity.
+                                </div>
+                              </motion.div>
+                            )}
+                            
+                            {availableInventory === 0 && (
+                              <motion.div 
+                                className="mt-3 p-2 bg-red-50 border border-red-100 rounded-md flex items-start gap-2"
+                                initial={{ opacity: 0, height: 0 }}
+                                animate={{ opacity: 1, height: 'auto' }}
+                                transition={{ duration: 0.3 }}
+                              >
+                                <FiAlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                                <div className="text-sm text-red-600">
+                                  Out of stock. Please remove this item.
+                                </div>
+                              </motion.div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
+            </motion.div>
+            
+            {/* Cart Summary */}
+            <motion.div 
+              className="lg:w-1/3"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.5 }}
+            >
+              <div className="bg-white rounded-xl shadow-md p-6">
+                <h2 className="text-xl font-bold text-gray-900 mb-6">Order Summary</h2>
+                
+                <CartTotal />
+                
+                <button 
+                  onClick={() => {
+                    // Check if any items have inventory warnings before proceeding
+                    if (Object.keys(inventoryWarnings).length > 0) {
+                      toast.error('Please resolve inventory issues before checkout');
+                      return;
+                    }
+                    navigate('/placeorder');
+                  }}
+                  disabled={Object.keys(inventoryWarnings).length > 0}
+                  className={`mt-6 w-full flex justify-center items-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-colors 
+                    ${Object.keys(inventoryWarnings).length > 0 
+                      ? 'bg-gray-400 cursor-not-allowed' 
+                      : 'bg-[#6a5acd] hover:bg-[#5a4cbb] fill-button'
+                    }`}
+                >
+                  Proceed to Checkout
+                  <FiArrowRight className="w-4 h-4" />
+                </button>
+                
+                {Object.keys(inventoryWarnings).length > 0 && (
+                  <p className="mt-3 text-sm text-red-500 text-center">
+                    Please resolve inventory issues before checkout
+                  </p>
+                )}
+                
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <button 
+                    onClick={() => navigate('/collections/all')}
+                    className="w-full text-center text-[#6a5acd] hover:text-[#5a4cbb] transition-colors text-sm underline"
+                  >
+                    Continue Shopping
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </motion.div>
     </div>
   )
 }

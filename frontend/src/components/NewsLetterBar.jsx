@@ -131,10 +131,3 @@ const NewsLetterBar = ({
 };
 
 export default NewsLetterBar; 
-
-
-
-
-
-
-

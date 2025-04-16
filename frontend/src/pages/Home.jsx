@@ -12,7 +12,7 @@ import Testimonials from '../components/Testimonials'
 
 const Home = () => {
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen max-w-[100vw] overflow-x-hidden">
       <Hero/>
       <div className="slider-container w-full">
         <Slider/>
