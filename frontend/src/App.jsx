@@ -15,6 +15,7 @@ import Contact from './pages/Contact'
 import ShopContextProvider from './context/ShopContext'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
+import ChatBotWidget from './components/Chatbot/ChatBotWidget'
 
 export const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000'
 
@@ -57,6 +58,7 @@ function App() {
           <Route path='/about' element={<About />} />
           <Route path='/contact' element={<Contact />} />
         </Routes>
+        <ChatBotWidget/>
         <Footer />
       </ShopContextProvider>
     </div>

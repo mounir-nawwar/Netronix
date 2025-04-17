@@ -13,6 +13,9 @@ export default {
         'marquee-left': 'marquee-left 25s linear infinite',
         'marquee-right': 'marquee-right 25s linear infinite',
       },
+      colors:{
+        statepurp: '#6a5acd',
+      },
       keyframes: {
         'marquee-left': {
           '0%': { transform: 'translateX(0)' },
