@@ -4,6 +4,141 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiShoppingBag, FiFilter, FiChevronDown, FiX, FiGrid, FiList, FiSliders } from 'react-icons/fi';
 
+// Import product images (you'll need to add these to your assets)
+import laptopCategory from '../assets/category_images/Laptops category.png';
+import pcCategory from '../assets/category_images/pc pic 2.png';
+import macbookCategory from '../assets/category_images/m4 pro macbook.png';
+import headphonesCategory from '../assets/category_images/Headphones.jpg';
+import earphonesCategory from '../assets/category_images/Earphones.jpg';
+import speakersCategory from '../assets/category_images/Speakers.jpg';
+import accessoriesCategory from '../assets/category_images/Accessories.jpg';
+import gamingCategory from '../assets/category_images/Gaming.jpg';
+
+const ProductCard = ({ product }) => {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const imageContainerRef = useRef(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [touchStart, setTouchStart] = useState(0);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  const handleMouseMove = (e) => {
+    if (isMobile) return;
+    
+    const { left, width } = imageContainerRef.current.getBoundingClientRect();
+    const x = e.clientX - left;
+    const section = width / 3;
+    
+    if (x < section) {
+      setCurrentImageIndex(0);
+    } else if (x < section * 2) {
+      setCurrentImageIndex(1);
+    } else {
+      setCurrentImageIndex(2);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setCurrentImageIndex(0);
+  };
+
+  const handleTouchStart = (e) => {
+    setTouchStart(e.touches[0].clientX);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!touchStart) return;
+
+    const currentTouch = e.touches[0].clientX;
+    const diff = touchStart - currentTouch;
+
+    if (Math.abs(diff) > 5) { // Add some threshold to prevent accidental swipes
+      if (diff > 0) {
+        // Swipe left
+        setCurrentImageIndex(prev => (prev + 1) % 3);
+      } else {
+        // Swipe right
+        setCurrentImageIndex(prev => (prev - 1 + 3) % 3);
+      }
+      setTouchStart(null);
+    }
+  };
+
+  // Get product images
+  const productImages = product.image && Array.isArray(product.image) && product.image.length > 0 
+    ? [product.image[0], product.image[0], product.image[0]] // Use duplicates if only one image is available
+    : [laptopCategory, laptopCategory, laptopCategory]; // Fallback to default image
+
+  const handleProductClick = () => {
+    navigate(`/product/${product._id}`);
+  };
+
+  return (
+    <motion.div 
+      className="product-card bg-[#f9f9f9] rounded-2xl overflow-hidden cursor-pointer group relative flex flex-col min-w-[120px] md:min-w-0"
+      whileHover={{ y: -5 }}
+      transition={{ duration: 0.3 }}
+      onClick={handleProductClick}
+    >
+      <div 
+        ref={imageContainerRef}
+        className="relative aspect-square overflow-hidden bg-[#f9f9f9]"
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+      >
+        <img
+          src={productImages[currentImageIndex]}
+          alt={product.name || "Product"}
+          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+          loading="lazy"
+        />
+      </div>
+
+      {/* Image navigation dots */}
+      <div className="flex justify-center gap-1 py-1 md:py-2">
+        {productImages.map((_, index) => (
+          <button
+            key={index}
+            className={`w-1 h-1 md:w-1.5 md:h-1.5 rounded-full transition-all ${
+              currentImageIndex === index 
+                ? 'bg-black' 
+                : 'bg-gray-300'
+            }`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setCurrentImageIndex(index);
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="px-3 md:px-4 pb-3 md:pb-4">
+        <div className="flex justify-between items-start mb-0.5 md:mb-1">
+          <p className="text-[9px] md:text-sm text-gray-600 font-michroma">{product.vendor || product.brand || "Brand"}</p>
+          <div className="flex items-center">
+            <span className="text-[#6a5acd] text-xs md:text-base">★</span>
+            <span className="text-[9px] md:text-sm ml-0.5 md:ml-1">{product.rating || "4.5"}</span>
+          </div>
+        </div>
+        <h3 className="text-xs md:text-lg font-michroma text-gray-900 mb-1 md:mb-2 relative group-hover:after:w-full after:w-0 after:h-[2px] after:bg-[#6a5acd] after:absolute after:left-0 after:bottom-0 after:transition-all after:duration-300 truncate">
+          {product.name || "Product Name"}
+        </h3>
+        <p className="text-sm md:text-lg font-michroma text-[#6a5acd] mb-2 md:mb-3">${product.price || "0.00"}</p>
+      </div>
+    </motion.div>
+  );
+};
+
 const Collections = () => {
   const { type } = useParams();
   const navigate = useNavigate();
@@ -28,7 +163,7 @@ const Collections = () => {
   const trackRef = useRef(null);
 
   // Listen for resize events
-  useEffect(() => {
+    useEffect(() => {
     const handleResize = () => {
       setIsDesktop(window.innerWidth >= 1024);
     };
@@ -40,7 +175,7 @@ const Collections = () => {
   }, []);
 
   // Keep filters always visible on desktop
-  useEffect(() => {
+    useEffect(() => {
     if (isDesktop) {
       setShowFilters(true);
     }
@@ -120,17 +255,17 @@ const Collections = () => {
           break;
         case 'price-high':
           filtered.sort((a, b) => (b?.price || 0) - (a?.price || 0));
-          break;
+                break;
         case 'newest':
           filtered.sort((a, b) => {
             const dateA = a?.createdAt ? new Date(a.createdAt) : new Date(0);
             const dateB = b?.createdAt ? new Date(b.createdAt) : new Date(0);
             return dateB - dateA;
           });
-          break;
-        default:
-          break;
-      }
+                break;
+            default:
+                break;
+        }
 
       setFilteredProducts(filtered);
       setTimeout(() => setIsLoading(false), 300); // Simulate loading for smoother transitions
@@ -179,7 +314,7 @@ const Collections = () => {
     
     if (selectedCategories.includes(category)) {
       setSelectedCategories(selectedCategories.filter(c => c !== category));
-    } else {
+        } else {
       setSelectedCategories([...selectedCategories, category]);
     }
   };
@@ -190,7 +325,7 @@ const Collections = () => {
     setSortBy('newest');
   };
 
-  return (
+    return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 px-4 sm:px-6 lg:px-8 py-12 pt-[80px] md:pt-[100px]">
       <motion.div 
         className="max-w-7xl mx-auto"
@@ -324,8 +459,8 @@ const Collections = () => {
                         ref={trackRef}
                         className="absolute h-full bg-[#6a5acd] rounded-md"
                       />
-                    </div>
-                    
+                </div>
+                
                     <div className="relative mt-2">
                       <input
                         type="range"
@@ -346,7 +481,7 @@ const Collections = () => {
                           [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-white
                           [&::-moz-range-thumb]:mt-0 [&::-moz-range-thumb]:shadow-md"
                       />
-                      <input
+                            <input 
                         type="range"
                         min={0}
                         max={1000}
@@ -370,7 +505,7 @@ const Collections = () => {
                     <div className="flex justify-between mt-6">
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                        <input 
+                            <input 
                           type="number" 
                           min={0} 
                           max={priceRange[1]} 
@@ -382,7 +517,7 @@ const Collections = () => {
                       <span className="text-gray-500 self-center">to</span>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
-                        <input 
+                            <input 
                           type="number" 
                           min={priceRange[0]} 
                           max={1000} 
@@ -392,16 +527,16 @@ const Collections = () => {
                         />
                       </div>
                     </div>
-                  </div>
-                  
+                </div>
+                
                   {/* Category filter */}
                   <div>
                     <h3 className="font-medium mb-4">Categories</h3>
                     <div className="flex flex-col gap-2">
                       {categories.map(category => (
                         <div key={category} className="flex items-center">
-                          <input
-                            type="checkbox"
+                                    <input 
+                                        type="checkbox" 
                             id={`category-${category}`}
                             checked={selectedCategories.includes(category)}
                             onChange={() => toggleCategory(category)}
@@ -416,7 +551,7 @@ const Collections = () => {
                         </div>
                       ))}
                     </div>
-                  </div>
+            </div>
                 </div>
               </motion.div>
             )}
@@ -438,7 +573,7 @@ const Collections = () => {
                 <FiShoppingBag className="w-16 h-16 text-[#6a5acd] mx-auto mb-4" />
                 <h2 className="text-xl font-semibold text-gray-800 mb-2">No products found</h2>
                 <p className="text-gray-600 mb-6">Try adjusting your filters or browse all collections</p>
-                <button 
+                                <button 
                   onClick={() => {
                     navigate('/collections/all');
                     clearFilters();
@@ -446,7 +581,7 @@ const Collections = () => {
                   className="fill-button px-6 py-3 bg-white border border-[#6a5acd] text-[#6a5acd] rounded-lg hover:bg-[#6a5acd] hover:text-white transition-colors"
                 >
                   View All Products
-                </button>
+                                </button>
               </motion.div>
             ) : (
               <motion.div 
@@ -462,64 +597,58 @@ const Collections = () => {
                   <motion.div 
                     key={product._id} 
                     variants={itemVariants}
-                    className={`bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:shadow-md ${
-                      viewType === 'list' ? 'flex' : ''
-                    }`}
                   >
-                    {/* Product image */}
-                    <div 
-                      className={`relative ${viewType === 'list' ? 'w-40 h-40 flex-shrink-0' : 'aspect-square'} overflow-hidden bg-gray-100`}
-                      onClick={() => navigate(`/product/${product._id}`)}
-                    >
-                      {product.image && Array.isArray(product.image) && product.image[0] ? (
-                        <img 
-                          src={product.image[0]} 
-                          alt={product.name || 'Product image'} 
-                          className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer" 
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <FiShoppingBag className="w-10 h-10 text-[#6a5acd]" />
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Product info */}
-                    <div className="p-4">
-                      <h3 
-                        className="text-lg font-medium text-gray-900 hover:text-[#6a5acd] cursor-pointer"
-                        onClick={() => navigate(`/product/${product._id}`)}
-                      >
-                        {product.name || 'Product name'}
-                      </h3>
-                      
-                      <div className="mt-2 flex items-center justify-between">
-                        <p className="text-lg font-semibold">${product.price || 0}</p>
-                        
-                        <button 
-                          onClick={() => handleAddToCart(product)}
-                          className="fill-button p-2 rounded-full bg-gray-100 hover:bg-[#6a5acd] hover:text-white transition-colors"
-                          aria-label={`Add ${product.name} to cart`}
+                    {viewType === 'grid' ? (
+                      <ProductCard product={product} />
+                    ) : (
+                      <div className="flex bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:shadow-md">
+                        {/* Product image */}
+                        <div 
+                          className="w-40 h-40 flex-shrink-0 overflow-hidden bg-gray-100"
+                          onClick={() => navigate(`/product/${product._id}`)}
                         >
-                          <FiShoppingBag className="w-5 h-5" />
-                        </button>
-                      </div>
-                      
-                      {viewType === 'list' && (
-                        <p className="mt-3 text-sm text-gray-600 line-clamp-2">
-                          {product.desc || 'No description available.'}
-                        </p>
-                      )}
+                          {product.image && Array.isArray(product.image) && product.image[0] ? (
+                            <img 
+                              src={product.image[0]} 
+                              alt={product.name || 'Product image'} 
+                              className="w-full h-full object-cover hover:scale-105 transition-transform cursor-pointer" 
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <FiShoppingBag className="w-10 h-10 text-[#6a5acd]" />
+                            </div>
+                          )}
+                            </div>
+                        
+                        {/* Product info */}
+                        <div className="p-4 flex-1">
+                          <h3 
+                            className="text-lg font-medium text-gray-900 hover:text-[#6a5acd] cursor-pointer"
+                            onClick={() => navigate(`/product/${product._id}`)}
+                          >
+                            {product.name || 'Product name'}
+                          </h3>
+                          
+                          <div className="mt-2">
+                            <p className="text-lg font-semibold">${product.price || 0}</p>
+                            {product.brand && <p className="text-sm text-gray-600">{product.brand}</p>}
+                </div>
+                
+                          <p className="mt-3 text-sm text-gray-600 line-clamp-2">
+                            {product.description || 'No description available.'}
+                          </p>
+                </div>
                     </div>
+                    )}
                   </motion.div>
                 ))}
               </motion.div>
-            )}
-          </div>
+                )}
+            </div>
         </div>
       </motion.div>
-    </div>
-  );
+        </div>
+    );
 };
 
 export default Collections;

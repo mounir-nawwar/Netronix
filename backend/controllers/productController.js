@@ -5,7 +5,7 @@ import productModel from '../models/productModel.js';
 const addProduct = async(req,res) =>{
     try {
         
-        const {name, description, price, variants, bestSeller, inventory, tags} = req.body;
+        const {name, description, price, variants, bestSeller, inventory, tags, brand} = req.body;
 
         const image1 = req.files.image1 && req.files.image1[0];
         const image2 = req.files.image2 && req.files.image2[0];
@@ -36,6 +36,7 @@ const addProduct = async(req,res) =>{
             name,
             description,
             price: Number(price),
+            brand: brand || "", // Add brand with fallback to empty string
             bestSeller: bestSeller === 'true',
             variants: parsedVariants,
             inventory: parsedInventory,

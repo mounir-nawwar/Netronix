@@ -9,6 +9,7 @@ const productSchema = new mongoose.Schema({
     name: {type: String, required: true},
     description: {type: String, required: true},
     price: {type: Number, required: true},
+    brand: {type: String, default: ""},
     image: {type: Array, required: true},
     variants: {type: [variantOptionSchema], default: []},
     inventory: {type: Object, required: true, default: {}}, // Store quantity for each variant combination
