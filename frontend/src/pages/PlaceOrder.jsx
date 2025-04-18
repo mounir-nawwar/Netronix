@@ -62,7 +62,9 @@ const PlaceOrder = () => {
         address: formData,
         items: orderItems,
         amount: getCartAmount() + delivery_fee,
-        paymentMethod: method.toUpperCase()
+        paymentMethod: method.toUpperCase(),
+        subtotal: getCartAmount(),
+        delivery_fee: delivery_fee
       }
 
       console.log('Submitting order with data:', orderData);

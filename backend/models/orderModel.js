@@ -9,6 +9,8 @@ const orderSchema = new mongoose.Schema({
     paymentMethod: { type: String, required: true },
     payment: { type: Boolean, required: true, default: false },
     date: { type: Date, required: true, default: Date.now },
+    subtotal: { type: Number, default: 0 },
+    delivery_fee: { type: Number, default: 0 }
 });
 
 const orderModel = mongoose.models.Order || mongoose.model('order', orderSchema);

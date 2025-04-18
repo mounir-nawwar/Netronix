@@ -2,179 +2,77 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { backendUrl, currency } from '../App';
 import { toast } from 'react-toastify';
-import { 
-  FiPackage, 
-  FiTruck, 
-  FiRefreshCw, 
-  FiUser, 
-  FiCalendar, 
-  FiCreditCard, 
-  FiMapPin,
-  FiFilter,
-  FiInfo,
-  FiChevronDown,
-  FiChevronUp,
-  FiShoppingBag
-} from 'react-icons/fi';
+import { FiPackage, FiInfo, FiMapPin, FiPhone, FiCalendar, FiCreditCard, FiTag, FiUser, FiSearch, FiChevronDown, FiChevronRight } from 'react-icons/fi';
 
 const Orders = ({ token }) => {
   const [orderData, setOrderData] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [expandedOrder, setExpandedOrder] = useState(null);
   const [filterStatus, setFilterStatus] = useState('All');
-  const [expandedOrderId, setExpandedOrderId] = useState(null);
-  const [productDetails, setProductDetails] = useState({});
 
-  // Fetch all orders
   const fetchAllOrders = async () => {
     if (!token) return null;
-    setIsLoading(true);
 
+    setLoading(true);
     try {
       const response = await axios.post(backendUrl + '/api/order/list', {}, { headers: { token } });
       if (response.data.success) {
-        const orders = response.data.orders.reverse();
-        setOrderData(orders);
-        
-        // Extract all product IDs from orders
-        const productIds = new Set();
-        orders.forEach(order => {
-          if (order.items && Array.isArray(order.items)) {
-            order.items.forEach(item => {
-              if (item.productId) {
-                productIds.add(item.productId);
-              }
-            });
-          }
-        });
-        
-        if (productIds.size > 0) {
-          await fetchProductDetails(Array.from(productIds));
-        }
+        setOrderData(response.data.orders.reverse());
       } else {
-        toast.error(response.data.message || 'Failed to fetch orders');
+        toast.error(response.data.message);
       }
     } catch (error) {
-      console.error('Error fetching orders:', error);
-      toast.error(error.message || 'An error occurred while fetching orders');
+      console.log(error);
+      toast.error(error.message);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  // Fetch details for all products
-  const fetchProductDetails = async (productIds) => {
-    if (!productIds || productIds.length === 0) return;
-    
-    try {
-      const details = {};
-      
-      // Fetch each product's details
-      for (const id of productIds) {
-        try {
-          const response = await axios.get(`${backendUrl}/api/product/${id}`);
-          if (response.data.success && response.data.product) {
-            details[id] = response.data.product;
-          } else {
-            console.warn(`No product data found for ID: ${id}`);
-          }
-        } catch (err) {
-          console.error(`Error fetching product ${id}:`, err);
-        }
-      }
-      
-      setProductDetails(details);
-    } catch (error) {
-      console.error('Error fetching product details:', error);
-    }
-  };
-
-  // Update order status
-  const updateOrderStatus = async (orderId, status) => {
+  const statusHandler = async (event, orderId) => {
     try {
       const response = await axios.post(
-        backendUrl + '/api/order/status', 
-        { orderId, status }, 
+        backendUrl + '/api/order/status',
+        { orderId, status: event.target.value },
         { headers: { token } }
       );
-      
       if (response.data.success) {
         await fetchAllOrders();
         toast.success('Order status updated successfully');
-      } else {
-        toast.error(response.data.message || 'Failed to update order status');
       }
     } catch (error) {
-      console.error('Error updating order status:', error);
-      toast.error(error.message || 'An error occurred while updating order status');
+      console.log(error);
+      toast.error(error.message);
     }
   };
 
-  // Get product info by item
-  const getProductInfo = (item) => {
-    // If we have product details for this item
-    if (item.productId && productDetails[item.productId]) {
-      const product = productDetails[item.productId];
-      return {
-        id: item.productId,
-        name: product.name || 'Product',
-        price: product.price || item.price || 0,
-        image: product.image || [],
-        brand: product.brand || '',
-        variants: product.variants || []
-      };
-    }
-    
-    // Fallback if no product details found
-    return {
-      id: item.productId || '',
-      name: item.name || 'Product',
-      price: item.price || 0,
-      image: item.image || [],
-      brand: item.brand || '',
-      variants: item.variants || []
-    };
-  };
+  useEffect(() => {
+    fetchAllOrders();
+  }, [token]);
 
-  // Calculate item total price
-  const calculateItemTotal = (item) => {
-    const quantity = item.quantity || 1;
-    const price = item.price || 
-      (item.productId && productDetails[item.productId] ? 
-        productDetails[item.productId].price : 0);
-    
-    return price * quantity;
-  };
+  // Filter orders based on search term and status filter
+  const filteredOrders = orderData.filter((order) => {
+    // Filter by search term
+    const searchMatch =
+      searchTerm === '' ||
+      order._id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (order.address.firstName + ' ' + order.address.lastName)
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      order.items.some((item) => 
+        item.name && item.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
 
-  // Calculate order subtotal
-  const calculateSubtotal = (items) => {
-    if (!items || !Array.isArray(items)) return 0;
-    
-    return items.reduce((total, item) => {
-      return total + calculateItemTotal(item);
-    }, 0);
-  };
+    // Filter by status
+    const statusMatch = filterStatus === 'All' || order.status === filterStatus;
 
-  // Get status icon
-  const getStatusIcon = (status) => {
-    switch(status) {
-      case 'Order Placed':
-        return <FiShoppingBag className="w-4 h-4" />;
-      case 'Packing':
-        return <FiPackage className="w-4 h-4" />;
-      case 'Shipped':
-        return <FiTruck className="w-4 h-4" />;
-      case 'Out for Delivery':
-        return <FiTruck className="w-4 h-4" />;
-      case 'Delivered':
-        return <FiRefreshCw className="w-4 h-4" />;
-      default:
-        return <FiShoppingBag className="w-4 h-4" />;
-    }
-  };
+    return searchMatch && statusMatch;
+  });
 
-  // Get status color
+  // Determine status color class
   const getStatusColor = (status) => {
-    switch(status) {
+    switch (status) {
       case 'Order Placed':
         return 'bg-blue-100 text-blue-800';
       case 'Packing':
@@ -190,360 +88,228 @@ const Orders = ({ token }) => {
     }
   };
 
-  // Filter orders by status
-  const getFilteredOrders = () => {
-    if (filterStatus === 'All') return orderData;
-    return orderData.filter(order => order.status === filterStatus);
-  };
-
-  // Toggle order details expand/collapse
-  const toggleOrderDetails = (orderId) => {
-    setExpandedOrderId(expandedOrderId === orderId ? null : orderId);
-  };
-
   // Format date
   const formatDate = (dateString) => {
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('en-US', options);
+    return new Date(dateString).toLocaleDateString(undefined, options);
   };
-
-  // Get image URL from product
-  const getProductImage = (productInfo) => {
-    if (!productInfo.image) return null;
-    
-    if (Array.isArray(productInfo.image) && productInfo.image.length > 0) {
-      return productInfo.image[0];
-    }
-    
-    if (typeof productInfo.image === 'string') {
-      return productInfo.image;
-    }
-    
-    return null;
-  };
-
-  // Load orders on component mount
-  useEffect(() => {
-    if (token) {
-      fetchAllOrders();
-    }
-  }, [token]);
 
   return (
-    <div className="font-michroma pb-10">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">Orders</h1>
-        
-        <div className="flex items-center gap-2">
-          <button
-            onClick={fetchAllOrders}
-            className="flex items-center gap-1 px-4 py-2 bg-[#6a5acd] text-white rounded-md hover:bg-[#5a4cbb] transition-colors"
+    <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <h1 className="text-2xl font-semibold text-gray-800">Orders Management</h1>
+        <div className="mt-4 md:mt-0 w-full md:w-auto flex flex-col sm:flex-row gap-3">
+          {/* Search field */}
+          <div className="relative w-full sm:w-64">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <FiSearch className="w-4 h-4 text-gray-500" />
+            </div>
+            <input
+              type="text"
+              className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block w-full pl-10 p-2.5"
+              placeholder="Search orders..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          
+          {/* Status filter */}
+          <select
+            className="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg block p-2.5"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
           >
-            <FiRefreshCw className="w-4 h-4" />
-            <span>Refresh</span>
-          </button>
+            <option value="All">All Statuses</option>
+            <option value="Order Placed">Order Placed</option>
+            <option value="Packing">Packing</option>
+            <option value="Shipped">Shipped</option>
+            <option value="Out for Delivery">Out for Delivery</option>
+            <option value="Delivered">Delivered</option>
+          </select>
         </div>
       </div>
 
-      {/* Status filters */}
-      <div className="mb-6 overflow-x-auto">
-        <div className="flex items-center gap-2 pb-2">
-          <FiFilter className="text-gray-500" />
-          <span className="text-sm font-medium text-gray-700">Filter by Status:</span>
-        </div>
-        <div className="flex space-x-2">
-          {['All', 'Order Placed', 'Packing', 'Shipped', 'Out for Delivery', 'Delivered'].map((status) => (
-            <button
-              key={status}
-              onClick={() => setFilterStatus(status)}
-              className={`px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors ${
-                filterStatus === status
-                  ? 'bg-[#6a5acd] text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Loading state */}
-      {isLoading ? (
+      {loading ? (
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a5acd]"></div>
         </div>
-      ) : getFilteredOrders().length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-          <FiInfo className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500">No orders found</p>
+      ) : filteredOrders.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-64 text-gray-500">
+          <FiPackage className="w-12 h-12 mb-3" />
+          <p className="text-xl">No orders found</p>
+          <p className="text-sm mt-2">Try changing your search or filter criteria</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6">
-          {/* Orders list */}
-          {getFilteredOrders().map((order, index) => (
-            <div key={index} className="bg-white rounded-lg shadow-sm overflow-hidden">
-              {/* Order header */}
-              <div className="p-5 border-b border-gray-100">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
-                  <div className="flex items-center">
-                    <div className="bg-[#f5f3ff] p-2.5 rounded-md mr-3">
-                      <FiPackage className="text-[#6a5acd] w-5 h-5" />
+        <div className="overflow-x-auto">
+          <div className="grid gap-4">
+            {filteredOrders.map((order) => (
+              <div
+                key={order._id}
+                className="border border-gray-200 rounded-lg overflow-hidden bg-white transition-all hover:border-[#6a5acd] hover:shadow-md"
+              >
+                {/* Order Header */}
+                <div 
+                  className="px-6 py-4 bg-gray-50 flex flex-col md:flex-row md:items-center justify-between cursor-pointer"
+                  onClick={() => setExpandedOrder(expandedOrder === order._id ? null : order._id)}
+                >
+                  <div className="flex flex-col mb-3 md:mb-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-[#6a5acd]">#{order._id}</span>
+                      <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(order.status)}`}>
+                        {order.status}
+                      </span>
                     </div>
-                    <div>
-                      <h3 className="font-medium text-gray-800">Order #{order._id.substring(0, 8)}</h3>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
-                        <FiCalendar className="w-3.5 h-3.5" />
-                        <span>{formatDate(order.date)}</span>
-                      </div>
-                    </div>
+                    <span className="text-sm text-gray-600 mt-1">
+                      {formatDate(order.date)} · {currency}{order.amount}
+                    </span>
                   </div>
                   
                   <div className="flex items-center">
-                    <span className={`px-3 py-1 rounded-full text-xs flex items-center gap-1 ${getStatusColor(order.status)}`}>
-                      {getStatusIcon(order.status)}
-                      {order.status}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Customer, shipping and payment info */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Customer Info */}
-                  <div className="bg-gray-50 rounded-md p-3">
-                    <h4 className="text-xs text-gray-500 flex items-center gap-1 mb-2">
-                      <FiUser className="w-3 h-3" /> Customer Details
-                    </h4>
-                    <p className="font-medium text-sm">{order.address.firstName} {order.address.lastName}</p>
-                    <p className="text-sm text-gray-600">{order.address.phone}</p>
-                  </div>
-
-                  {/* Shipping Info */}
-                  <div className="bg-gray-50 rounded-md p-3">
-                    <h4 className="text-xs text-gray-500 flex items-center gap-1 mb-2">
-                      <FiMapPin className="w-3 h-3" /> Shipping Address
-                    </h4>
-                    <p className="text-sm text-gray-600">
-                      {order.address.street}, {order.address.state}, {order.address.country}, {order.address.zipcode}
-                    </p>
-                  </div>
-
-                  {/* Payment Info */}
-                  <div className="bg-gray-50 rounded-md p-3">
-                    <h4 className="text-xs text-gray-500 flex items-center gap-1 mb-2">
-                      <FiCreditCard className="w-3 h-3" /> Payment Details
-                    </h4>
-                    <p className="text-sm flex justify-between">
-                      <span>Method:</span> 
-                      <span className="font-medium">{order.paymentMethod}</span>
-                    </p>
-                    <p className="text-sm flex justify-between">
-                      <span>Amount:</span> 
-                      <span className="font-medium text-[#6a5acd]">{currency} {order.amount}</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Order items section */}
-              <div className="p-5">
-                <div className="flex justify-between items-center mb-3">
-                  <h4 className="font-medium text-sm">Order Items ({order.items.length})</h4>
-                  <button 
-                    onClick={() => toggleOrderDetails(order._id)}
-                    className="flex items-center gap-1 text-xs text-[#6a5acd] hover:underline focus:outline-none"
-                  >
-                    {expandedOrderId === order._id ? (
-                      <>
-                        <FiChevronUp className="w-4 h-4" />
-                        <span>Hide Details</span>
-                      </>
+                    <span className="text-sm text-gray-600 mr-3">{order.address.firstName} {order.address.lastName}</span>
+                    {expandedOrder === order._id ? (
+                      <FiChevronDown className="text-gray-500" />
                     ) : (
-                      <>
-                        <FiChevronDown className="w-4 h-4" />
-                        <span>Show Details</span>
-                      </>
+                      <FiChevronRight className="text-gray-500" />
                     )}
-                  </button>
-                </div>
-                
-                {/* Order items summary (always visible) */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mb-4 p-4 bg-gray-50 rounded-md">
-                  <div className="flex -space-x-2">
-                    {order.items.slice(0, 3).map((item, i) => {
-                      const productInfo = getProductInfo(item);
-                      const imageUrl = getProductImage(productInfo);
-                      
-                      return (
-                        <div key={i} className="w-10 h-10 rounded-full border-2 border-white overflow-hidden">
-                          {imageUrl ? (
-                            <img 
-                              src={imageUrl} 
-                              alt={productInfo.name} 
-                              className="w-full h-full object-cover"
-                              onError={(e) => {
-                                e.target.onerror = null;
-                                e.target.src = '';
-                                e.target.parentNode.innerHTML = `<div class="w-full h-full bg-gray-200 flex items-center justify-center"><svg class="w-4 h-4 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg></div>`;
-                              }}
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gray-200 flex items-center justify-center text-xs">
-                              <FiPackage className="w-4 h-4 text-gray-400" />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                    {order.items.length > 3 && (
-                      <div className="w-10 h-10 rounded-full bg-[#f5f3ff] border-2 border-white flex items-center justify-center text-xs font-medium text-[#6a5acd]">
-                        +{order.items.length - 3}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 flex-grow justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{order.items.length} {order.items.length === 1 ? 'item' : 'items'}</p>
-                      <p className="text-xs text-gray-500">Ordered on {formatDate(order.date)}</p>
-                    </div>
-                    <p className="text-sm font-medium">Total: {currency} {order.amount}</p>
                   </div>
                 </div>
                 
-                {/* Expanded order details */}
-                {expandedOrderId === order._id && (
-                  <div className="mt-3 mb-4">
-                    <div className="bg-gray-50 rounded-md overflow-hidden">
-                      {/* Header */}
-                      <div className="grid grid-cols-12 gap-2 p-3 bg-gray-100 text-xs font-medium text-gray-600">
-                        <div className="col-span-5">Product</div>
-                        <div className="col-span-3">Variant</div>
-                        <div className="col-span-1 text-center">Qty</div>
-                        <div className="col-span-3 text-right">Price</div>
-                      </div>
-                      
-                      {/* Items */}
-                      {order.items.map((item, itemIndex) => {
-                        const productInfo = getProductInfo(item);
-                        const imageUrl = getProductImage(productInfo);
+                {/* Order Details (expanded view) */}
+                {expandedOrder === order._id && (
+                  <div className="p-6 border-t border-gray-200">
+                    <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6">
+                      {/* Order Items */}
+                      <div className="order-2 lg:order-1">
+                        <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                          <FiPackage className="mr-2" /> Order Items
+                        </h3>
                         
-                        return (
-                          <div 
-                            key={itemIndex} 
-                            className={`grid grid-cols-12 gap-3 p-4 items-center ${
-                              itemIndex !== order.items.length - 1 ? 'border-b border-gray-100' : ''
-                            }`}
-                          >
-                            {/* Product with Image and Title */}
-                            <div className="col-span-5 flex items-center gap-3">
-                              <div className="flex-shrink-0 w-14 h-14 bg-white rounded-md border border-gray-200 overflow-hidden">
-                                {imageUrl ? (
+                        <div className="space-y-4 mt-4">
+                          {order.items.map((item, idx) => (
+                            <div key={idx} className="flex border border-gray-100 rounded-lg p-4 hover:bg-gray-50">
+                              {/* Product Image */}
+                              <div className="w-20 h-20 rounded-md overflow-hidden bg-gray-100 flex-shrink-0">
+                                {item.image ? (
                                   <img 
-                                    src={imageUrl} 
-                                    alt={productInfo.name} 
+                                    src={item.image} 
+                                    alt={item.name || 'Product image'} 
                                     className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      e.target.onerror = null;
-                                      e.target.src = '';
-                                      e.target.parentNode.innerHTML = `<div class="w-full h-full flex items-center justify-center"><svg class="w-5 h-5 text-gray-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg></div>`;
-                                    }}
                                   />
                                 ) : (
-                                  <div className="w-full h-full flex items-center justify-center">
-                                    <FiPackage className="w-5 h-5 text-gray-300" />
+                                  <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                    <FiPackage className="text-gray-400 w-8 h-8" />
                                   </div>
                                 )}
                               </div>
-                              <div>
-                                <p className="font-medium text-sm">{productInfo.name}</p>
-                                {productInfo.brand && <p className="text-xs text-gray-500">{productInfo.brand}</p>}
+                              
+                              {/* Product Info */}
+                              <div className="ml-4 flex-grow">
+                                <h4 className="font-medium text-gray-900">{item.name || 'Unknown Product'}</h4>
+                                {item.brand && <p className="text-sm text-gray-500">{item.brand}</p>}
+                                <div className="flex items-center mt-2 text-sm text-gray-700">
+                                  <div className="flex-grow">
+                                    <p>
+                                      Size: <span className="font-medium">{item.size}</span>
+                                    </p>
+                                    <p className="mt-1">
+                                      Quantity: <span className="font-medium">{item.quantity}</span>
+                                    </p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="text-[#6a5acd] font-medium">
+                                      {currency}{item.price ? (item.price * item.quantity).toFixed(2) : 'N/A'}
+                                    </p>
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                            
-                            {/* Variant */}
-                            <div className="col-span-3">
-                              {item.variant ? (
-                                <div className="flex flex-col space-y-1">
-                                  {Object.entries(item.variant).map(([key, value], i) => (
-                                    <div key={i} className="flex items-center space-x-1">
-                                      <span className="text-xs text-gray-500 capitalize">{key}:</span>
-                                      <span className="text-xs font-medium bg-[#f5f3ff] text-[#6a5acd] px-1.5 py-0.5 rounded">{value}</span>
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : item.size ? (
-                                <div className="inline-flex items-center px-2 py-1 bg-[#f5f3ff] rounded-md">
-                                  <span className="text-xs text-[#6a5acd] font-medium">{item.size}</span>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-gray-500">-</span>
-                              )}
+                          ))}
+                        </div>
+                        
+                        {/* Order Summary */}
+                        <div className="mt-6 border-t border-gray-200 pt-4">
+                          <div className="flex justify-between text-sm mb-2">
+                            <span className="text-gray-600">Subtotal</span>
+                            <span className="font-medium">{currency}{order.subtotal || (order.amount - order.delivery_fee) || 0}</span>
+                          </div>
+                          <div className="flex justify-between text-sm mb-2">
+                            <span className="text-gray-600">Shipping</span>
+                            <span className="font-medium">{currency}{order.delivery_fee || 0}</span>
+                          </div>
+                          <div className="flex justify-between text-base font-medium mt-3 pt-3 border-t border-gray-100">
+                            <span>Total</span>
+                            <span className="text-[#6a5acd]">{currency}{order.amount}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Customer and Order Information */}
+                      <div className="order-1 lg:order-2">
+                        <div className="bg-gray-50 rounded-lg p-5">
+                          {/* Customer Information */}
+                          <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                            <FiUser className="mr-2" /> Customer Information
+                          </h3>
+                          <p className="text-gray-800 font-medium">
+                            {order.address.firstName} {order.address.lastName}
+                          </p>
+                          <p className="text-gray-600 text-sm mt-1">{order.address.email}</p>
+                          <p className="text-gray-600 text-sm mt-1 flex items-center">
+                            <FiPhone className="w-4 h-4 mr-1" /> {order.address.phone}
+                          </p>
+                          
+                          {/* Shipping Address */}
+                          <h3 className="font-medium text-gray-900 mt-5 mb-3 flex items-center">
+                            <FiMapPin className="mr-2" /> Shipping Address
+                          </h3>
+                          <p className="text-gray-600 text-sm">
+                            {order.address.street}<br />
+                            {order.address.city}, {order.address.state} {order.address.zipcode}<br />
+                            {order.address.country}
+                          </p>
+                          
+                          {/* Order Information */}
+                          <h3 className="font-medium text-gray-900 mt-5 mb-3 flex items-center">
+                            <FiInfo className="mr-2" /> Payment Information
+                          </h3>
+                          <div className="grid grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <p className="text-gray-500">Method</p>
+                              <p className="font-medium">{order.paymentMethod}</p>
                             </div>
-                            
-                            {/* Quantity */}
-                            <div className="col-span-1 text-center">
-                              <div className="inline-flex items-center justify-center w-8 h-8 bg-[#f5f3ff] border border-[#e9e3ff] rounded-md">
-                                <span className="text-sm font-medium text-[#6a5acd]">{item.quantity || 1}</span>
-                              </div>
+                            <div>
+                              <p className="text-gray-500">Status</p>
+                              <p className="font-medium">{order.payment ? "Paid" : "Unpaid"}</p>
                             </div>
-                            
-                            {/* Price */}
-                            <div className="col-span-3 text-right">
-                              <p className="font-medium text-sm text-gray-800">
-                                {currency} {calculateItemTotal(item).toFixed(2)}
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                {currency} {(item.price || productInfo.price).toFixed(2)} each
-                              </p>
+                            <div className="mt-2">
+                              <p className="text-gray-500">Date</p>
+                              <p className="font-medium">{formatDate(order.date)}</p>
                             </div>
                           </div>
-                        );
-                      })}
-                      
-                      {/* Order Summary */}
-                      <div className="p-4 bg-white border-t border-gray-200">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600">Subtotal:</span>
-                          <span className="font-medium">
-                            {currency} {calculateSubtotal(order.items).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm mt-1">
-                          <span className="text-gray-600">Shipping:</span>
-                          <span className="font-medium">
-                            {currency} 3.00
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm font-bold mt-2 pt-2 border-t border-gray-100">
-                          <span>Total:</span>
-                          <span className="text-[#6a5acd]">
-                            {currency} {(calculateSubtotal(order.items) + 3).toFixed(2)}
-                          </span>
+                          
+                          {/* Order Status */}
+                          <h3 className="font-medium text-gray-900 mt-5 mb-3 flex items-center">
+                            <FiTag className="mr-2" /> Order Status
+                          </h3>
+                          <select
+                            value={order.status}
+                            onChange={(event) => statusHandler(event, order._id)}
+                            className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-[#6a5acd] focus:border-[#6a5acd]"
+                          >
+                            <option value="Order Placed">Order Placed</option>
+                            <option value="Packing">Packing</option>
+                            <option value="Shipped">Shipped</option>
+                            <option value="Out for Delivery">Out for Delivery</option>
+                            <option value="Delivered">Delivered</option>
+                          </select>
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
-
-                {/* Status update */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pt-3 border-t border-gray-100">
-                  <p className="text-sm font-medium">Update Status:</p>
-                  <select 
-                    value={order.status} 
-                    onChange={(e) => updateOrderStatus(order._id, e.target.value)} 
-                    className='px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#6a5acd] focus:border-transparent'
-                  >
-                    <option value="Order Placed">Order Placed</option>
-                    <option value="Packing">Packing</option>
-                    <option value="Shipped">Shipped</option>
-                    <option value="Out for Delivery">Out for Delivery</option>
-                    <option value="Delivered">Delivered</option>
-                  </select>
-                </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
     </div>
