@@ -7,8 +7,10 @@ const ChatBotWidget = () => {
   const [isOpen,setIsOpen] = useState(false)
   return (
     <>
-      <ChatButton onClick={() => setIsOpen(!isOpen)}  />
-      <ChatInterface/>
+      {isOpen ? 
+        <ChatInterface onClose={()=> setIsOpen(false)}/>
+        : <ChatButton onClick={() => setIsOpen(!isOpen)} />
+      }
     </>
   )
 }
