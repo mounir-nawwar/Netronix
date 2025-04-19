@@ -29,6 +29,8 @@ const Add = ({ token }) => {
   const suggestedTags = [
     // Main Product Categories
     'Laptops', 'Desktops', 'Monitors', 'Components', 'Peripherals',
+    // Specific Product Categories
+    'MacBooks', 'Gaming PCs', 'Headphones', 'Earphones', 'Speakers',
     // Components
     'CPU', 'GPU', 'Motherboard', 'RAM', 'Storage', 'PSU', 'Cooling',
     // Peripherals

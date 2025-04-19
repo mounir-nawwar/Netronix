@@ -1,5 +1,6 @@
 import React from 'react'
 import Hero from '../components/Hero'
+import ScrollingText from '../components/ScrollingText'
 import Slider from '../components/Slider'
 import LogoMarquee from '../components/LogoMarquee'
 import FeaturedProducts from '../components/FeaturedProducts'
@@ -25,6 +26,7 @@ const Home = () => {
       <ComparisonSection/>
       <HeroVideo/>
       <FeaturedProduct/>
+      <ScrollingText text="Premium tech · Exceptional performance" />
       <ShopTheLook/>
       <Testimonials />
     </div>

@@ -13,6 +13,7 @@ import NewsLetterBar from './components/NewsLetterBar'
 import Orders from './pages/Orders'
 import About from './pages/About'
 import Contact from './pages/Contact'
+import Wishlist from './pages/Wishlist'
 import ShopContextProvider from './context/ShopContext'
 import { ToastContainer } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -41,29 +42,38 @@ function App() {
   }, [location.pathname])
 
   return (
-    <div>
-      <ShopContextProvider>
+    <ShopContextProvider>
+      <div className='bg-white'>
         <Navbar visible={visible} />
-        <NewsLetterBar />
-        <ToastContainer />
         <Routes>
           <Route path='/' element={<Home />} />
-          <Route path='/collections/:category' element={<Collections />} />
-          <Route path='/collections/tag/:tag' element={<Collections />} />
-          <Route path='/collections/:category/:subCategory' element={<Collections />} />
+          <Route path='/collections/*' element={<Collections />} />
           <Route path='/products' element={<AllProducts />} />
           <Route path='/product/:productId' element={<Product />} />
           <Route path='/cart' element={<Cart />} />
+          <Route path='/login' element={<LogIn />} />
           <Route path='/placeorder' element={<PlaceOrder />} />
           <Route path='/orders' element={<Orders />} />
-          <Route path='/login' element={<LogIn/>} />
+          <Route path='/wishlist' element={<Wishlist />} />
           <Route path='/about' element={<About />} />
           <Route path='/contact' element={<Contact />} />
         </Routes>
-        <ChatBotWidget/>
+        <NewsLetterBar />
         <Footer />
-      </ShopContextProvider>
-    </div>
+        <ChatBotWidget />
+        <ToastContainer
+          position="bottom-right"
+          autoClose={3000}
+          newestOnTop
+          closeOnClick
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+          closeButton={false}
+        />
+      </div>
+    </ShopContextProvider>
   )
 }
 

@@ -6,7 +6,7 @@ import { BsCartDash } from "react-icons/bs";
 import { IoSearchOutline } from "react-icons/io5";
 import { CiMenuBurger } from "react-icons/ci";
 import { IoCloseOutline } from "react-icons/io5";
-import { FiUser, FiShoppingBag, FiLogOut, FiChevronDown } from "react-icons/fi";
+import { FiUser, FiShoppingBag, FiLogOut, FiChevronDown, FiHeart } from "react-icons/fi";
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -294,14 +294,6 @@ const Navbar = ({ visible }) => {
                                             </div>
                                             
                                             <div className="py-1">
-                                                <Link 
-                                                    to="/profile" 
-                                                    className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                                    onClick={() => setProfileDropdownOpen(false)}
-                                                >
-                                                    <FiUser className="w-4 h-4 mr-3 text-gray-500" />
-                                                    <span>My Profile</span>
-                                                </Link>
                                                 
                                                 <Link 
                                                     to="/orders" 
@@ -310,6 +302,15 @@ const Navbar = ({ visible }) => {
                                                 >
                                                     <FiShoppingBag className="w-4 h-4 mr-3 text-gray-500" />
                                                     <span>My Orders</span>
+                                                </Link>
+
+                                                <Link 
+                                                    to="/wishlist" 
+                                                    className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                                    onClick={() => setProfileDropdownOpen(false)}
+                                                >
+                                                    <FiHeart className="w-4 h-4 mr-3 text-gray-500" />
+                                                    <span>My Wishlist</span>
                                                 </Link>
                                             </div>
                                             
@@ -382,14 +383,6 @@ const Navbar = ({ visible }) => {
                                         </div>
                                         
                                         <div className="py-1">
-                                            <Link 
-                                                to="/profile" 
-                                                className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                                onClick={() => setProfileDropdownOpen(false)}
-                                            >
-                                                <FiUser className="w-4 h-4 mr-3 text-gray-500" />
-                                                <span>My Profile</span>
-                                            </Link>
                                             
                                             <Link 
                                                 to="/orders" 
@@ -398,6 +391,15 @@ const Navbar = ({ visible }) => {
                                             >
                                                 <FiShoppingBag className="w-4 h-4 mr-3 text-gray-500" />
                                                 <span>My Orders</span>
+                                            </Link>
+
+                                            <Link 
+                                                to="/wishlist" 
+                                                className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
+                                                onClick={() => setProfileDropdownOpen(false)}
+                                            >
+                                                <FiHeart className="w-4 h-4 mr-3 text-gray-500" />
+                                                <span>My Wishlist</span>
                                             </Link>
                                         </div>
                                         
@@ -637,7 +639,7 @@ const Navbar = ({ visible }) => {
                                                         handleNavigation("/orders");
                                                     }}
                                                 >
-                                                    <span>ORDERS</span>
+                                                    <span>MY ORDERS</span>
                                                     <motion.span 
                                                         initial={{ x: -5, opacity: 0 }}
                                                         animate={{ x: 0, opacity: 1 }}
@@ -648,6 +650,29 @@ const Navbar = ({ visible }) => {
                                             
                                             <motion.div
                                                 custom={12}
+                                                variants={listItemVariants}
+                                                initial="hidden"
+                                                animate="visible"
+                                            >
+                                                <Link 
+                                                    to="/wishlist" 
+                                                    className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        handleNavigation("/wishlist");
+                                                    }}
+                                                >
+                                                    <span>MY WISHLIST</span>
+                                                    <motion.span 
+                                                        initial={{ x: -5, opacity: 0 }}
+                                                        animate={{ x: 0, opacity: 1 }}
+                                                        transition={{ delay: 0.75 }}
+                                                    >→</motion.span>
+                                                </Link>
+                                            </motion.div>
+                                            
+                                            <motion.div
+                                                custom={13}
                                                 variants={listItemVariants}
                                                 initial="hidden"
                                                 animate="visible"
@@ -664,7 +689,7 @@ const Navbar = ({ visible }) => {
                                                     <motion.span 
                                                         initial={{ x: -5, opacity: 0 }}
                                                         animate={{ x: 0, opacity: 1 }}
-                                                        transition={{ delay: 0.75 }}
+                                                        transition={{ delay: 0.8 }}
                                                     >→</motion.span>
                                                 </button>
                                             </motion.div>

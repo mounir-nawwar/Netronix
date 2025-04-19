@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import laptopCategory from '../assets/category_images/Laptops category.png';
 import pcCategory from '../assets/category_images/pc pic 2.png';
 import macbookCategory from '../assets/category_images/m4 pro macbook.png';
@@ -7,52 +8,70 @@ import earphonesCategory from '../assets/category_images/Earphones.jpg';
 import speakersCategory from '../assets/category_images/Speakers.jpg';
 import accessoriesCategory from '../assets/category_images/Accessories.jpg';
 import gamingCategory from '../assets/category_images/Gaming.jpg';
+
 const Slider = () => {
     const [active, setActive] = useState(2);
     const sliderRef = useRef(null);
+    const navigate = useNavigate();
 
     const sliderItems = [
         {
             image: laptopCategory,
             title: "Laptops",
-            subtitle: "Powerful performance on the go"
+            subtitle: "Powerful performance on the go",
+            tag: "Laptops"
         },
         {
             image: pcCategory,
             title: "Gaming PCs",
-            subtitle: "Ultimate gaming experience"
+            subtitle: "Ultimate gaming experience",
+            tag: "Gaming PCs"
         },
         {
             image: macbookCategory,
             title: "MacBooks",
-            subtitle: "Premium Apple laptops"
+            subtitle: "Premium Apple laptops",
+            tag: "MacBooks"
         },
         {
             image: headphonesCategory,
             title: "Headphones",
-            subtitle: "Immersive audio experience"
+            subtitle: "Immersive audio experience",
+            tag: "Headphones"
         },
         {
             image: earphonesCategory,
             title: "Earphones",
-            subtitle: "Portable sound solutions"
+            subtitle: "Portable sound solutions",
+            tag: "Earphones"
         },
         {
             image: speakersCategory,
             title: "Speakers",
-            subtitle: "Room-filling premium sound"
+            subtitle: "Room-filling premium sound",
+            tag: "Speakers"
         },
         {
             image: accessoriesCategory,
             title: "Accessories",
-            subtitle: "Essential tech add-ons"
+            subtitle: "Essential tech add-ons",
+            tag: "Accessories"
         },
         {
             image: gamingCategory,
             title: "Gaming",
-            subtitle: "Level up your gaming setup"
+            subtitle: "Level up your gaming setup",
+            tag: "Gaming"
         }
     ];
+
+    const handleCardClick = (tag) => {
+        // Ensure body scroll is restored
+        document.body.style.overflow = 'auto';
+        
+        // Navigate to products page with tag filter
+        navigate(`/products?tag=${tag}`);
+    };
 
     const loadShow = () => {
         if (!sliderRef.current) return;
@@ -80,7 +99,7 @@ const Slider = () => {
                 if (index === active) {
                     // Active card for mobile
                     item.style.transform = 'translateX(0)';
-                    item.style.zIndex = '1';
+                    item.style.zIndex = '5';
                     item.style.filter = 'none';
                     item.style.opacity = '1';
                 } else if (index > active) {
@@ -90,7 +109,7 @@ const Slider = () => {
                     const scale = 1 - 0.15 * position;
 
                     item.style.transform = `translateX(${xOffset}px) scale(${scale}) perspective(16px) rotateY(-1deg)`;
-                    item.style.zIndex = `-${position}`;
+                    item.style.zIndex = `${4 - position}`;
                     item.style.filter = position === 1 ? 'blur(1px)' : position === 2 ? 'blur(3px)' : 'blur(5px)';
                     item.style.opacity = position > 2 ? '0' : position === 2 ? '0.4' : '0.6';
                 } else {
@@ -100,7 +119,7 @@ const Slider = () => {
                     const scale = 1 - 0.15 * position;
 
                     item.style.transform = `translateX(${xOffset}px) scale(${scale}) perspective(16px) rotateY(1deg)`;
-                    item.style.zIndex = `-${position}`;
+                    item.style.zIndex = `${4 - position}`;
                     item.style.filter = position === 1 ? 'blur(1px)' : position === 2 ? 'blur(3px)' : 'blur(5px)';
                     item.style.opacity = position > 2 ? '0' : position === 2 ? '0.4' : '0.6';
                 }
@@ -108,12 +127,12 @@ const Slider = () => {
                 // Desktop version remains unchanged
                 if (index === active) {
                     item.style.transform = `translateX(${CENTER_LEFT}px)`;
-                    item.style.zIndex = '1';
+                    item.style.zIndex = '5';
                     item.style.filter = 'none';
                     item.style.opacity = '1';
                 } else if (index === active + 1) {
                     item.style.transform = `translateX(${CENTER_RIGHT}px)`;
-                    item.style.zIndex = '1';
+                    item.style.zIndex = '5';
                     item.style.filter = 'none';
                     item.style.opacity = '1';
                 } else if (index > active + 1) {
@@ -122,7 +141,7 @@ const Slider = () => {
                     const scale = 1 - 0.2 * position;
 
                     item.style.transform = `translateX(${xOffset}px) scale(${scale}) perspective(16px) rotateY(-1deg)`;
-                    item.style.zIndex = `-${position}`;
+                    item.style.zIndex = `${4 - position}`;
                     item.style.filter = position === 1 ? 'blur(1px)' : position === 2 ? 'blur(3px)' : 'blur(5px)';
                     item.style.opacity = position > 2 ? '0' : position === 2 ? '0.4' : '0.6';
                 } else {
@@ -131,7 +150,7 @@ const Slider = () => {
                     const scale = 1 - 0.2 * position;
 
                     item.style.transform = `translateX(${xOffset}px) scale(${scale}) perspective(16px) rotateY(1deg)`;
-                    item.style.zIndex = `-${position}`;
+                    item.style.zIndex = `${4 - position}`;
                     item.style.filter = position === 1 ? 'blur(1px)' : position === 2 ? 'blur(3px)' : 'blur(5px)';
                     item.style.opacity = position > 2 ? '0' : position === 2 ? '0.4' : '0.6';
                 }
@@ -179,8 +198,9 @@ const Slider = () => {
                         <div
                             key={index}
                             className="slider-item absolute transition-all duration-500 group cursor-pointer"
+                            onClick={() => handleCardClick(item.tag)}
                         >
-                            <a href="#" className="media-card__link flex flex-col w-full h-full relative">
+                            <div className="media-card__link flex flex-col w-full h-full relative">
                                 {/* Card Container with Background */}
                                 <div className="absolute inset-0 bg-[#f9f9f9] rounded-2xl overflow-hidden">
                                     {/* Media Container */}
@@ -223,13 +243,13 @@ const Slider = () => {
                                         </svg>
                                     </div>
                                 </div>
-                            </a>
+                            </div>
                         </div>
                     ))}
 
                     <button
                         onClick={handlePrev}
-                        className="absolute top-[45%] left-[5%] text-[#6a5acd] bg-[#f9f9f9] rounded-full p-3 z-10 hover:scale-110 transition-transform flex items-center justify-center shadow-md"
+                        className="absolute top-[45%] left-[5%] text-[#6a5acd] bg-[#f9f9f9] rounded-full p-3 z-20 hover:scale-110 transition-transform flex items-center justify-center shadow-md"
                         aria-label="Previous slide"
                     >
                         <svg
@@ -249,7 +269,7 @@ const Slider = () => {
                     </button>
                     <button
                         onClick={handleNext}
-                        className="absolute top-[45%] right-[5%] text-[#6a5acd] bg-[#f9f9f9] rounded-full p-3 z-10 hover:scale-110 transition-transform flex items-center justify-center shadow-md"
+                        className="absolute top-[45%] right-[5%] text-[#6a5acd] bg-[#f9f9f9] rounded-full p-3 z-20 hover:scale-110 transition-transform flex items-center justify-center shadow-md"
                         aria-label="Next slide"
                     >
                         <svg

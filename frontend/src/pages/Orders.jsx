@@ -32,7 +32,8 @@ const Orders = () => {
               payment: order.payment,
               paymentMethod: order.paymentMethod,
               date: order.date,
-              orderId: order._id
+              orderId: order._id,
+              orderNumber: order.orderNumber || order._id
             };
             
             allOrdersItem.push(enrichedItem);
@@ -53,6 +54,11 @@ const Orders = () => {
   useEffect(() => {
     loadOrderData();
   }, [products]) // Add products as a dependency to reload when products are loaded
+
+  // Add a function to display order number or ID
+  const getOrderDisplay = (item) => {
+    return item.orderNumber ? `#${item.orderNumber}` : `#${item.orderId}`;
+  };
 
   // Status indicator helper
   const getStatusIcon = (status) => {
@@ -81,7 +87,7 @@ const Orders = () => {
       case 'Shipped':
         return 'bg-purple-500';
       case 'Out for Delivery':
-        return 'bg-orange-500';
+        return 'bg-indigo-500';
       case 'Delivered':
         return 'bg-green-500';
       default:
@@ -193,6 +199,9 @@ const Orders = () => {
                     <div className="flex-grow">
                       <h3 className="text-lg font-semibold text-gray-900 mb-1">{item.name || 'Product'}</h3>
                       <div className="flex flex-wrap gap-3 text-sm text-gray-600 mb-2">
+                        <span className="inline-flex items-center bg-gray-100 rounded-full px-3 py-1">
+                          Order {getOrderDisplay(item)}
+                        </span>
                         <span className="inline-flex items-center bg-gray-100 rounded-full px-3 py-1">
                           {currency}{item.price || 0}
                         </span>

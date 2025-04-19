@@ -154,7 +154,7 @@ import { FiPackage, FiInfo, FiMapPin, FiPhone, FiCalendar, FiCreditCard, FiTag, 
                 >
                   <div className="flex flex-col mb-3 md:mb-0">
                     <div className="flex items-center gap-2">
-                      <span className="font-medium text-[#6a5acd]">#{order._id}</span>
+                      <span className="font-medium text-[#6a5acd]">#{order.orderNumber || order._id}</span>
                       <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(order.status)}`}>
                         {order.status}
                       </span>
@@ -191,7 +191,7 @@ import { FiPackage, FiInfo, FiMapPin, FiPhone, FiCalendar, FiCreditCard, FiTag, 
                               <div className="w-20 h-20 rounded-md overflow-hidden bg-gray-100 flex-shrink-0">
                                 {item.image ? (
                                   <img 
-                                    src={item.image} 
+                                    src={Array.isArray(item.image) ? item.image[0] : item.image} 
                                     alt={item.name || 'Product image'} 
                                     className="w-full h-full object-cover"
                                   />

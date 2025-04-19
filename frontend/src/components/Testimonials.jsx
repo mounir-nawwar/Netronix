@@ -4,51 +4,51 @@ import { motion } from 'framer-motion';
 const testimonials = [
     {
         id: 1,
-        text: "Lorem ipsum dolor sit amet, consectetur adipiscing elit.",
-        author: "@jennifer.a",
-        avatar: "https://i.pravatar.cc/100?img=1"
+        text: "Netronix has the best selection of gaming laptops in Beirut. Their delivery was faster than expected, and the setup service was excellent!",
+        author: "@ziad.khoury",
+        avatar: "https://i.pravatar.cc/100?img=11"
     },
     {
         id: 2,
-        text: "I just love how these people build this system!",
-        author: "@jamescron",
-        avatar: "https://i.pravatar.cc/100?img=2"
-    },
-    {
-        id: 3,
-        text: "A must have UI kit for building my landing pages.",
-        author: "@camerondi",
-        avatar: "https://i.pravatar.cc/100?img=3"
-    },
-    {
-        id: 4,
-        text: "The best development experience I've had in years.",
-        author: "@alexborm",
-        avatar: "https://i.pravatar.cc/100?img=4"
-    },
-    {
-        id: 5,
-        text: "Incredible attention to detail in every component.",
-        author: "@martina",
+        text: "I've been buying all my tech from Netronix for a year now. Their customer service and product quality are unmatched in Lebanon.",
+        author: "@maya.haddad",
         avatar: "https://i.pravatar.cc/100?img=5"
     },
     {
+        id: 3,
+        text: "Finding quality computer parts in Beirut used to be a challenge until I discovered Netronix. Their components are authentic and reasonably priced.",
+        author: "@karim.nassar",
+        avatar: "https://i.pravatar.cc/100?img=13"
+    },
+    {
+        id: 4,
+        text: "Bought my custom gaming PC from Netronix last month. Amazing build quality and the performance exceeds expectations. Worth every LBP!",
+        author: "@farah.ibrahim",
+        avatar: "https://i.pravatar.cc/100?img=9"
+    },
+    {
+        id: 5,
+        text: "As a graphic designer in Jounieh, I need reliable equipment. Netronix's monitors and peripherals have never let me down.",
+        author: "@georges.abboud",
+        avatar: "https://i.pravatar.cc/100?img=12"
+    },
+    {
         id: 6,
-        text: "The support team is very responsive and helpful!",
-        author: "@christin.ja",
+        text: "The technical support team at Netronix saved my business when our server crashed. They had us back up and running the same day!",
+        author: "@nour.dagher",
         avatar: "https://i.pravatar.cc/100?img=6"
     },
     {
         id: 7,
-        text: "This UI kit saved me countless hours of development.",
-        author: "@michael.dev",
-        avatar: "https://i.pravatar.cc/100?img=7"
+        text: "My university recommended Netronix for student laptops, and they even gave us a special discount. Great service for students in Lebanon!",
+        author: "@rami.khalil",
+        avatar: "https://i.pravatar.cc/100?img=15"
     },
     {
         id: 8,
-        text: "Perfect balance of flexibility and structure.",
-        author: "@sarah.designer",
-        avatar: "https://i.pravatar.cc/100?img=8"
+        text: "After comparing prices across Beirut, Netronix consistently offers the most competitive rates for authentic Apple products. Very satisfied!",
+        author: "@layla.aoun",
+        avatar: "https://i.pravatar.cc/100?img=10"
     }
 ];
 

@@ -14,6 +14,7 @@ const ShopContextProvider = (props) => {
     const [cartItems, setCartItems] = useState({});
     const [products, setProducts] = useState([]);
     const [token, setToken] = useState('')
+    const [wishlist, setWishlist] = useState([]);
     const navigate = useNavigate();
 
     const addToCart = async (itemId, variantKey, quantity = 1) => {
@@ -59,6 +60,54 @@ const ShopContextProvider = (props) => {
             cartData[itemId][variantKey] = quantity;
         }
         setCartItems(cartData);
+        
+        // Get the selected variant options to display in the toast
+        const variantOptions = variantKey.split('-');
+        const variantDisplay = product.variants && product.variants.length > 0 
+            ? product.variants.map((variant, index) => 
+                `${variant.name}: ${variantOptions[index]}`
+              ).join(', ')
+            : 'Default';
+
+        // Show styled toast notification
+        toast.success(
+            <div className="flex items-center">
+                <div className="flex-shrink-0 w-10 h-10 mr-2 bg-gray-100 rounded-md overflow-hidden">
+                    {product.image && Array.isArray(product.image) && product.image[0] ? (
+                        <img 
+                            src={product.image[0]} 
+                            alt={product.name} 
+                            className="w-full h-full object-cover"
+                        />
+                    ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
+                            </svg>
+                        </div>
+                    )}
+                </div>
+                <div>
+                    <p className="font-michroma text-sm text-[#6a5acd]">{product.name}</p>
+                    <p className="text-xs text-gray-700">Added to cart • {quantity} × {variantDisplay}</p>
+                </div>
+            </div>,
+            {
+                position: "bottom-right",
+                autoClose: 3000,
+                hideProgressBar: false,
+                closeOnClick: true,
+                pauseOnHover: true,
+                draggable: true,
+                progress: undefined,
+                style: { 
+                    background: "#ffffff",
+                    color: "#000000",
+                    borderLeft: "4px solid #6a5acd",
+                    fontFamily: "Outfit, sans-serif"
+                },
+            }
+        );
         
         if (token) {
             try {
@@ -180,6 +229,113 @@ const ShopContextProvider = (props) => {
         }
     }
 
+    // Wishlist functions
+    const addToWishlist = async (productId) => {
+        if (!token) {
+            toast.error('Please log in to save items');
+            navigate('/login');
+            return;
+        }
+
+        try {
+            const response = await axios.post(
+                `${backendUrl}/api/user/wishlist/add`, 
+                { productId }, 
+                { headers: { token } }
+            );
+            
+            if (response.data.success) {
+                // Update local wishlist state
+                if (!wishlist.includes(productId)) {
+                    setWishlist([...wishlist, productId]);
+                }
+                
+                // Show toast notification
+                const product = products.find(p => p._id === productId);
+                if (product) {
+                    toast.success(
+                        <div className="flex items-center">
+                            <div className="flex-shrink-0 w-10 h-10 mr-2 bg-gray-100 rounded-md overflow-hidden">
+                                {product.image && Array.isArray(product.image) && product.image[0] ? (
+                                    <img 
+                                        src={product.image[0]} 
+                                        alt={product.name} 
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                                        </svg>
+                                    </div>
+                                )}
+                            </div>
+                            <div>
+                                <p className="font-michroma text-sm text-[#6a5acd]">{product.name}</p>
+                                <p className="text-xs text-gray-700">Saved to wishlist</p>
+                            </div>
+                        </div>
+                    );
+                }
+            } else {
+                toast.error(response.data.message);
+            }
+        } catch (error) {
+            console.log(error);
+            toast.error(error.message);
+        }
+    };
+
+    const removeFromWishlist = async (productId) => {
+        if (!token) return;
+
+        try {
+            const response = await axios.post(
+                `${backendUrl}/api/user/wishlist/remove`, 
+                { productId }, 
+                { headers: { token } }
+            );
+            
+            if (response.data.success) {
+                // Update local wishlist state
+                setWishlist(wishlist.filter(id => id !== productId));
+                
+                // Show toast notification
+                toast.info('Item removed from wishlist');
+            } else {
+                toast.error(response.data.message);
+            }
+        } catch (error) {
+            console.log(error);
+            toast.error(error.message);
+        }
+    };
+
+    const getWishlist = async () => {
+        if (!token) return;
+
+        try {
+            const response = await axios.post(
+                `${backendUrl}/api/user/wishlist/get`, 
+                {}, 
+                { headers: { token } }
+            );
+            
+            if (response.data.success) {
+                setWishlist(response.data.wishlist);
+            } else {
+                toast.error(response.data.message);
+            }
+        } catch (error) {
+            console.log(error);
+            toast.error(error.message);
+        }
+    };
+
+    const isInWishlist = (productId) => {
+        return wishlist.includes(productId);
+    };
+
     useEffect(() => {
         getProductsData()
     }, [])
@@ -191,6 +347,13 @@ const ShopContextProvider = (props) => {
         }
     }, [])
 
+    // Load wishlist when token is available
+    useEffect(() => {
+        if (token) {
+            getWishlist();
+        }
+    }, [token]);
+
     const value = {
         products, currency, delivery_fee,
         search, setSearch, showSearch, setShowSearch,
@@ -198,7 +361,9 @@ const ShopContextProvider = (props) => {
         getCartCount, updateQuantity,
         getCartAmount, navigate, backendUrl,
         setToken, token, getVariantDisplayName,
-        getProductsByTag
+        getProductsByTag,
+        // Wishlist
+        wishlist, addToWishlist, removeFromWishlist, isInWishlist
     }
 
     return (

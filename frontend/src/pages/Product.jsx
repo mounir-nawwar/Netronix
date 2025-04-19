@@ -9,7 +9,7 @@ import { FiMinus, FiPlus, FiShoppingBag, FiHeart, FiInfo, FiArrowLeft, FiShield,
 const Product = () => {
 
   const { productId } = useParams();
-  const { products, currency, addToCart, navigate } = useContext(ShopContext);
+  const { products, currency, addToCart, navigate, addToWishlist, removeFromWishlist, isInWishlist } = useContext(ShopContext);
   const [productData, setProductData] = useState(false);
   const [image, setImage] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -130,6 +130,17 @@ const Product = () => {
 
     // Add to cart with the selected quantity (not in a loop anymore)
     addToCart(productData._id, getVariantKey(), quantity);
+  };
+
+  // Handle save/unsave for wishlist
+  const handleWishlistToggle = () => {
+    if (!productData) return;
+    
+    if (isInWishlist(productData._id)) {
+      removeFromWishlist(productData._id);
+    } else {
+      addToWishlist(productData._id);
+    }
   };
 
   // Animation variants
@@ -356,10 +367,8 @@ const Product = () => {
             
             {/* Action Buttons */}
             <motion.div 
-              className="flex flex-col sm:flex-row gap-3 mb-8"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.9 }}
+              className="flex gap-4 mb-6"
+              variants={fadeIn}
             >
               <button 
                 onClick={handleAddToCart}
@@ -380,9 +389,20 @@ const Product = () => {
                 </span>
               </button>
               
-              <button className="py-3 px-6 rounded-md border border-[#6a5acd] text-[#6a5acd] hover:text-white flex items-center justify-center gap-2 transition-colors fill-button fill-button-purple">
-                <FiHeart className="w-5 h-5" />
-                <span className="font-michroma">SAVE</span>
+              <button 
+                onClick={handleWishlistToggle}
+                className={`py-3 px-6 rounded-md border flex items-center justify-center gap-2 transition-colors fill-button fill-button-purple ${
+                  isInWishlist(productData._id) 
+                    ? 'bg-[#6a5acd] text-white border-[#6a5acd]' 
+                    : 'border-[#6a5acd] text-[#6a5acd]'
+                }`}
+              >
+                <FiHeart 
+                  className={`w-5 h-5 ${isInWishlist(productData._id) ? 'fill-white' : ''}`} 
+                />
+                <span className="font-michroma">
+                  {isInWishlist(productData._id) ? 'SAVED' : 'SAVE'}
+                </span>
               </button>
             </motion.div>
             

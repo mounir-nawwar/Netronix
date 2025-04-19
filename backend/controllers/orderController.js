@@ -58,14 +58,21 @@ const placeOrder = async (req, res) => {
             }
         }
 
+        // Find the highest current order number
+        const lastOrder = await orderModel.findOne().sort('-orderNumber');
+        const nextOrderNumber = lastOrder ? lastOrder.orderNumber + 1 : 1000;
+
         const orderData = {
             userId,
+            orderNumber: nextOrderNumber,
             items,
             amount,
             address,
             paymentMethod: req.body.paymentMethod || 'COD',
             payment: false,
             date: new Date(),
+            subtotal: req.body.subtotal || 0,
+            delivery_fee: req.body.delivery_fee || 0
         }
 
         const newOrder = new orderModel(orderData);
@@ -94,12 +101,46 @@ const placeOrder = async (req, res) => {
 //All Orders data for Admin
 const allOrders = async (req, res) => {
     try {
-
         const orders = await orderModel.find({});
+        
+        // Enrich orders with product details
+        const enrichedOrders = await Promise.all(orders.map(async (order) => {
+            // Convert to plain object so we can modify it
+            const orderObj = order.toObject();
+            
+            // Enrich each item with product details
+            const enrichedItems = await Promise.all(orderObj.items.map(async (item) => {
+                try {
+                    // Find product details
+                    const product = await productModel.findById(item.productId);
+                    
+                    if (product) {
+                        // Return item with product details
+                        return {
+                            ...item,
+                            name: product.name,
+                            price: product.price,
+                            image: Array.isArray(product.image) ? product.image[0] : product.image,
+                            brand: product.brand
+                        };
+                    }
+                    
+                    return item; // Return original item if product not found
+                } catch (err) {
+                    console.log(`Error fetching product ${item.productId}:`, err);
+                    return item; // Return original item on error
+                }
+            }));
+            
+            // Replace items with enriched items
+            orderObj.items = enrichedItems;
+            return orderObj;
+        }));
+        
         res.json({
             success: true,
-            orders
-        })
+            orders: enrichedOrders
+        });
 
     } catch (error) {
         console.log(error);
@@ -107,11 +148,8 @@ const allOrders = async (req, res) => {
             success: false,
             message: 'Order Fetching Failed',
             error: error.message
-        })
+        });
     }
-
-
-
 }
 
 // User Order Data for Frontend
@@ -139,7 +177,7 @@ const userOrders = async (req, res) => {
                             ...item,
                             name: product.name,
                             price: product.price,
-                            image: product.image,
+                            image: Array.isArray(product.image) ? product.image[0] : product.image,
                             category: product.category,
                             subCategory: product.subCategory
                         };

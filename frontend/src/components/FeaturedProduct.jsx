@@ -191,7 +191,7 @@ const FeaturedProduct = () => {
     }
 
     return (
-        <section className="py-8 sm:py-12 md:py-16 px-4 sm:px-6 lg:px-8">
+        <section className="py-6 sm:py-8 md:py-16 px-4 sm:px-6 lg:px-8">
             <style jsx>{`
                 @keyframes spin {
                     0% {
@@ -275,7 +275,7 @@ const FeaturedProduct = () => {
                                                 fill="none"
                                             />
                                         </defs>
-                                        <text className="font-michroma text-[9px] sm:text-[13px] fill-black uppercase">
+                                        <text className="font-michroma text-[9px] sm:text-[13px] fill-[#6a5acd] uppercase">
                                             <textPath href="#circle" startOffset="0%" lengthAdjust="spacing" textLength="260">
                                                 F E A T U R E D • P R O D U C T • 
                                             </textPath>

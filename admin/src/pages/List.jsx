@@ -152,7 +152,9 @@ const List = ({ token }) => {
                 
                 <div>
                   <p className="font-medium">{item.name}</p>
-                  <p className="text-sm text-gray-500 truncate">{item.description}</p>
+                  <p className="text-sm text-gray-500 max-w-xs overflow-hidden text-ellipsis whitespace-nowrap">
+                    {item.description}
+                  </p>
                 </div>
                 
                 <div className="flex flex-wrap gap-1">

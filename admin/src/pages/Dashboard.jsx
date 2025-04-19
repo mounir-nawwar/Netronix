@@ -164,7 +164,7 @@ const Dashboard = ({ token }) => {
       .sort((a, b) => new Date(b.date) - new Date(a.date))
       .slice(0, 5)
       .map(order => ({
-        id: order._id,
+        id: order.orderNumber || order._id,
         customer: `${order.address.firstName} ${order.address.lastName}`,
         date: new Date(order.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         amount: order.amount,

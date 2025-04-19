@@ -31,7 +31,7 @@ const ShopTheLook = () => {
     const products = [
         {
             id: 0,
-            name: 'Sonic Silhouette',
+            name: 'Monitor',
             brand: 'RESONANCE',
             price: 'LE1,027,013',
             rating: 5.0,
@@ -40,30 +40,30 @@ const ShopTheLook = () => {
         },
         {
             id: 1,
-            name: 'Acoustic Subwoofer',
+            name: 'Mac',
             brand: 'RESONANCE',
             price: 'LE389,999',
             rating: 4.8,
             image: productImage,
-            position: { top: '50%', left: '15%' }
+            position: { top: '50%', left: '25%' }
         },
         {
             id: 2,
-            name: 'Premium Headphones',
+            name: 'Headphones',
             brand: 'AUDIOTREK',
             price: 'LE299,999',
             rating: 4.9,
             image: headphonesImage,
-            position: { top: '65%', left: '70%' }
+            position: { top: '45%', left: '70%' }
         },
         {
             id: 3,
-            name: 'Ultra Laptop',
+            name: 'Keyboard',
             brand: 'NEXTECH',
             price: 'LE799,999',
             rating: 4.7,
             image: laptopImage,
-            position: { top: '25%', left: '80%' }
+            position: { top: '70%', left: '41%' }
         }
     ];
 

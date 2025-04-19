@@ -1,11 +1,23 @@
 import React from 'react';
-import { FaFacebookF, FaTwitter, FaInstagram, FaYoutube } from 'react-icons/fa';
+import { Link, useNavigate } from 'react-router-dom';
+import { FaFacebookF, FaInstagram, FaYoutube, FaXTwitter } from 'react-icons/fa6';
 import { HiArrowRight } from 'react-icons/hi';
 import BusinessFeatures from './BusinessFeatures';
 import wishLogo from '../assets/all/whishLogo.png';
 import codLogo from '../assets/all/cash-on-delivery.svg';
 
 const Footer = () => {
+    const navigate = useNavigate();
+
+    // Handler for navigation to maintain consistent behavior
+    const handleNavigation = (path) => {
+        // Ensure body scroll is restored
+        document.body.style.overflow = 'auto';
+        
+        // Navigate to the path
+        navigate(path);
+    };
+
     return (
         <>
             <BusinessFeatures />
@@ -17,15 +29,47 @@ const Footer = () => {
                             <div className="mb-6 sm:mb-0">
                                 <h2 className="text-lg md:text-xl font-michroma mb-4 sm:mb-6 md:mb-8">Collections</h2>
                                 <ul className="space-y-2 sm:space-y-3 mb-6 sm:mb-8 md:mb-12">
-                                    <li><a href="#" className="text-sm md:text-base hover:text-gray-300 transition-colors">Headphones</a></li>
-                                    <li><a href="#" className="text-sm md:text-base hover:text-gray-300 transition-colors">Earphones</a></li>
-                                    <li><a href="#" className="text-sm md:text-base hover:text-gray-300 transition-colors">Speakers</a></li>
-                                    <li><a href="#" className="text-sm md:text-base hover:text-gray-300 transition-colors">Accessories</a></li>
+                                    <li>
+                                        <Link 
+                                            to="/products?tag=Headphones" 
+                                            onClick={(e) => { e.preventDefault(); handleNavigation('/products?tag=Headphones'); }} 
+                                            className="text-sm md:text-base hover:text-gray-300 transition-colors"
+                                        >
+                                            Headphones
+                                        </Link>
+                                    </li>
+                                    <li>
+                                        <Link 
+                                            to="/products?tag=Earphones" 
+                                            onClick={(e) => { e.preventDefault(); handleNavigation('/products?tag=Earphones'); }} 
+                                            className="text-sm md:text-base hover:text-gray-300 transition-colors"
+                                        >
+                                            Earphones
+                                        </Link>
+                                    </li>
+                                    <li>
+                                        <Link 
+                                            to="/products?tag=Speakers" 
+                                            onClick={(e) => { e.preventDefault(); handleNavigation('/products?tag=Speakers'); }} 
+                                            className="text-sm md:text-base hover:text-gray-300 transition-colors"
+                                        >
+                                            Speakers
+                                        </Link>
+                                    </li>
+                                    <li>
+                                        <Link 
+                                            to="/products?tag=Accessories" 
+                                            onClick={(e) => { e.preventDefault(); handleNavigation('/products?tag=Accessories'); }} 
+                                            className="text-sm md:text-base hover:text-gray-300 transition-colors"
+                                        >
+                                            Accessories
+                                        </Link>
+                                    </li>
                                 </ul>
 
                                 <div className="space-y-2">
-                                    <a href="tel:+21(0)98765432" className="block text-base md:text-xl hover:text-gray-300 transition-colors">+961 81 995 653</a>
-                                    <a href="mailto:hello@domain.com" className="block text-base md:text-xl hover:text-gray-300 transition-colors underline">support@netronix.com</a>
+                                    <a href="tel:+96181995653" className="block text-base md:text-xl hover:text-gray-300 transition-colors">+961 81 995 653</a>
+                                    <a href="mailto:support@netronix.com" className="block text-base md:text-xl hover:text-gray-300 transition-colors underline">support@netronix.com</a>
                                 </div>
                             </div>
 
@@ -33,10 +77,42 @@ const Footer = () => {
                             <div className="sm:pl-4 md:pl-6 mb-6 sm:mb-0 sm:border-l sm:border-gray-700">
                                 <h2 className="text-lg md:text-xl font-michroma mb-4 sm:mb-6 md:mb-8">Information</h2>
                                 <ul className="space-y-2 sm:space-y-3">
-                                    <li><a href="#" className="text-sm md:text-base hover:text-gray-300 transition-colors">Our Story</a></li>
-                                    <li><a href="#" className="text-sm md:text-base hover:text-gray-300 transition-colors">Our Journal</a></li>
-                                    <li><a href="#" className="text-sm md:text-base hover:text-gray-300 transition-colors">FAQs</a></li>
-                                    <li><a href="#" className="text-sm md:text-base hover:text-gray-300 transition-colors">Contact Us</a></li>
+                                    <li>
+                                        <Link 
+                                            to="/about" 
+                                            onClick={(e) => { e.preventDefault(); handleNavigation('/about'); }} 
+                                            className="text-sm md:text-base hover:text-gray-300 transition-colors"
+                                        >
+                                            Our Story
+                                        </Link>
+                                    </li>
+                                    <li>
+                                        <Link 
+                                            to="/products" 
+                                            onClick={(e) => { e.preventDefault(); handleNavigation('/products'); }} 
+                                            className="text-sm md:text-base hover:text-gray-300 transition-colors"
+                                        >
+                                            Our Products
+                                        </Link>
+                                    </li>
+                                    <li>
+                                        <Link 
+                                            to="/about" 
+                                            onClick={(e) => { e.preventDefault(); handleNavigation('/about'); }} 
+                                            className="text-sm md:text-base hover:text-gray-300 transition-colors"
+                                        >
+                                            FAQs
+                                        </Link>
+                                    </li>
+                                    <li>
+                                        <Link 
+                                            to="/contact" 
+                                            onClick={(e) => { e.preventDefault(); handleNavigation('/contact'); }} 
+                                            className="text-sm md:text-base hover:text-gray-300 transition-colors"
+                                        >
+                                            Contact Us
+                                        </Link>
+                                    </li>
                                 </ul>
                             </div>
 
@@ -65,10 +141,18 @@ const Footer = () => {
                                 </div>
 
                                 <div className="flex gap-6">
-                                    <a href="#" className="text-lg hover:text-gray-300 transition-colors"><FaFacebookF /></a>
-                                    <a href="#" className="text-lg hover:text-gray-300 transition-colors"><FaTwitter /></a>
-                                    <a href="#" className="text-lg hover:text-gray-300 transition-colors"><FaInstagram /></a>
-                                    <a href="#" className="text-lg hover:text-gray-300 transition-colors"><FaYoutube /></a>
+                                    <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="text-lg hover:text-gray-300 transition-colors flex items-center justify-center w-10 h-10 rounded-full  hover:bg-[#6a5acd]">
+                                        <FaFacebookF />
+                                    </a>
+                                    <a href="https://x.com" target="_blank" rel="noopener noreferrer" aria-label="X" className="text-lg hover:text-gray-300 transition-colors flex items-center justify-center w-10 h-10 rounded-full hover:bg-[#6a5acd]">
+                                        <FaXTwitter />
+                                    </a>
+                                    <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="text-lg hover:text-gray-300 transition-colors flex items-center justify-center w-10 h-10 rounded-full  hover:bg-[#6a5acd]">
+                                        <FaInstagram />
+                                    </a>
+                                    <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="text-lg hover:text-gray-300 transition-colors flex items-center justify-center w-10 h-10 rounded-full hover:bg-[#6a5acd]">
+                                        <FaYoutube />
+                                    </a>
                                 </div>
                             </div>
                         </div>
@@ -77,12 +161,12 @@ const Footer = () => {
                     <div className="mt-3 px-4 sm:px-8 md:px-16 lg:px-32 py-4 sm:py-3 bg-gradient-to-r from-black to-[#1C1C1C]">
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 items-center">
                             <div className="text-xs sm:text-sm text-gray-400 text-center sm:text-left order-3 sm:order-1">
-                                © 2025 Netronix <a href="#" className="underline hover:text-white">Powered by Basically Coders</a>
+                                © 2025 Netronix <Link to="/" className="underline hover:text-white">Powered by Basically Coders</Link>
                             </div>
 
                             <div className="flex justify-center gap-4 sm:gap-6 order-2">
-                                <button className="text-xs sm:text-sm text-gray-400 hover:text-white">English</button>
-                                <button className="text-xs sm:text-sm text-gray-400 hover:text-white">Lebanon (LBP ل.ل)</button>
+                                <button className="text-xs sm:text-sm text-gray-400 hover:text-white px-2 py-1 ">English</button>
+                                <button className="text-xs sm:text-sm text-gray-400 hover:text-white px-2 py-1 ">Lebanon (LBP ل.ل)</button>
                             </div>
 
                             <div className="flex justify-center sm:justify-end items-center gap-4 sm:gap-6 mb-4 sm:mb-0 order-1 sm:order-3">

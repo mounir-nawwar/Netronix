@@ -1,11 +1,22 @@
 import React from 'react';
 import ImageComparison from './ImageComparison';
+import { useNavigate } from 'react-router-dom';
 
 // Import your comparison images
 import beforeImage from '../assets/comparison/before.png';
 import afterImage from '../assets/comparison/after.png';
 
 const ComparisonSection = () => {
+    const navigate = useNavigate();
+
+    const handleButtonClick = () => {
+        // Ensure body scroll is restored
+        document.body.style.overflow = 'auto';
+        
+        // Navigate to products page with MacBooks tag filter
+        navigate('/products?tag=MacBooks');
+    };
+
     return (
         <section className="bg-black">
             <div className='pt-8 md:pt-16 pb-12 md:pb-20 px-4 rounded-t-3xl w-full h-full bg-white'>
@@ -23,7 +34,10 @@ const ComparisonSection = () => {
                                 Experience next-generation performance with a design that matches your style. Choose between the sleek sophistication of silver or the bold presence of black.
                             </p>
                             <div className="flex justify-center lg:justify-start">
-                                <button className="mt-3 md:mt-5 px-4 md:px-6 py-2 md:py-3 bg-white text-black border border-black rounded-[3px] font-michroma text-xs md:text-sm fill-button fill-button-black-outline max-w-[200px]">
+                                <button 
+                                    onClick={handleButtonClick}
+                                    className="mt-3 md:mt-5 px-4 md:px-6 py-2 md:py-3 bg-white text-black border border-black rounded-[3px] font-michroma text-xs md:text-sm fill-button fill-button-black-outline max-w-[200px]"
+                                >
                                     Check it out
                                 </button>
                             </div>
