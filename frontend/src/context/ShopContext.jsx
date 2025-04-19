@@ -16,7 +16,7 @@ const ShopContextProvider = (props) => {
     const [token, setToken] = useState('')
     const navigate = useNavigate();
 
-    const addToCart = async (itemId, variantKey) => {
+    const addToCart = async (itemId, variantKey, quantity = 1) => {
         if (!variantKey) {
             toast.error('Select Product Options')
             return;
@@ -38,9 +38,9 @@ const ShopContextProvider = (props) => {
         // Get current quantity in cart
         const currentQuantityInCart = cartItems[itemId] && cartItems[itemId][variantKey] ? cartItems[itemId][variantKey] : 0;
         
-        // Check if adding one more would exceed available inventory
-        if (currentQuantityInCart + 1 > product.inventory[variantKey]) {
-            toast.error(`Cannot add more. Only ${product.inventory[variantKey]} items available for this variant`);
+        // Check if adding the requested quantity would exceed available inventory
+        if (currentQuantityInCart + quantity > product.inventory[variantKey]) {
+            toast.error(`Cannot add ${quantity} items. Only ${product.inventory[variantKey] - currentQuantityInCart} more available for this variant`);
             return;
         }
 
@@ -48,22 +48,21 @@ const ShopContextProvider = (props) => {
 
         if (cartData[itemId]) {
             if (cartData[itemId][variantKey]) {
-                cartData[itemId][variantKey] += 1;
+                cartData[itemId][variantKey] += quantity;
             }
             else {
-                cartData[itemId][variantKey] = 1;
+                cartData[itemId][variantKey] = quantity;
             }
         }
         else {
             cartData[itemId] = {};
-            cartData[itemId][variantKey] = 1;
+            cartData[itemId][variantKey] = quantity;
         }
         setCartItems(cartData);
-        toast.success('Added to cart');
-
+        
         if (token) {
             try {
-                await axios.post(backendUrl + '/api/cart/add', { itemId, variantKey }, { headers: { token } })
+                await axios.post(backendUrl + '/api/cart/add', { itemId, variantKey, quantity }, { headers: { token } })
             } catch (error) {
                 console.log(error);
                 toast.error(error.message)

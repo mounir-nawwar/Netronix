@@ -11,13 +11,9 @@ const List = ({ token }) => {
   const fetchList = async () => {
     try {
       const response = await axios.get(backendUrl + '/api/product/list');
-      console.log("API Response:", response.data);
 
       if (response.data.success) {
-        console.log("Products Array:", response.data.products);
         setList(response.data.products);
-        console.log("list:",list);
-        
       } else {
         toast.error(response.data.message);
       }
@@ -27,7 +23,6 @@ const List = ({ token }) => {
     }
   };
 
-
   const removeProduct = async (id) => {
     try {
       const response = await axios.post(
@@ -35,7 +30,6 @@ const List = ({ token }) => {
         { id },
         { headers: { token } }
       );
-      console.log("Remove API Response:", response.data);
 
       if (response.data.success) {
         toast.success(response.data.message);
@@ -69,26 +63,36 @@ const List = ({ token }) => {
   const updateInventory = async () => {
     try {
       // Update inventory for each variant combination
-      const updatePromises = Object.keys(inventoryEdit).map(variantKey => 
-        axios.post(
-          backendUrl + '/api/product/update-inventory',
+      for (const variantKey of Object.keys(inventoryEdit)) {
+        const quantity = inventoryEdit[variantKey] || 0;
+        
+        const response = await axios.post(
+          `${backendUrl}/api/product/update-inventory`,
           {
             productId: selectedProduct._id,
             variantKey,
-            quantity: inventoryEdit[variantKey] || 0
+            quantity
           },
-          { headers: { token } }
-        )
-      );
-      
-      await Promise.all(updatePromises);
+          { 
+            headers: { 
+              'token': token,
+              'Content-Type': 'application/json'
+            } 
+          }
+        );
+        
+        if (!response.data.success) {
+          toast.error(`Error updating ${variantKey}: ${response.data.message}`);
+          return;
+        }
+      }
       
       toast.success('Inventory updated successfully');
       closeInventoryModal();
-      fetchList(); // Refresh list after updating inventory
+      await fetchList(); // Refresh list after updating inventory
     } catch (error) {
-      console.log("Update Inventory Error:", error);
-      toast.error(error.message);
+      console.error("Update Inventory Error:", error);
+      toast.error("Failed to update inventory. Please try again.");
     }
   };
 
@@ -109,13 +113,8 @@ const List = ({ token }) => {
   };
 
   useEffect(() => {
-    console.log("useEffect ran, fetching list...");
     fetchList();
   }, []);
-
-  useEffect(() => {
-    console.log("Updated list state:", list);
-  }, [list]);
 
   return (
     <div className="font-michroma">

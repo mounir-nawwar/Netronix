@@ -132,8 +132,6 @@ const Product = () => {
     for (let i = 0; i < quantity; i++) {
       addToCart(productData._id, getVariantKey());
     }
-    
-    toast.success(`Added ${quantity} item${quantity > 1 ? 's' : ''} to cart`);
   };
 
   // Animation variants

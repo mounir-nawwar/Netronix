@@ -1,45 +1,168 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { ShopContext } from '../context/ShopContext';
+import axios from 'axios';
+import { toast } from 'react-toastify';
+import { FiShoppingBag } from 'react-icons/fi';
 import earphones from '../assets/category_images/Earphones.jpg';
 import gaming from '../assets/category_images/Gaming.jpg';
 import laptops from '../assets/category_images/Laptops category.png';
 import pc from '../assets/category_images/pc pic 2.png';
 
 const FeaturedProduct = () => {
+    const { backendUrl, addToCart } = useContext(ShopContext);
     const [currentImage, setCurrentImage] = useState(0);
-    const [selectedColor, setSelectedColor] = useState('Gold Tone');
+    const [loading, setLoading] = useState(true);
     const [quantity, setQuantity] = useState(1);
-
-    const product = {
-        name: "Flow Harmony",
-        brand: "SonicPulse",
-        price: "£91,199,000.00",
-        rating: 5,
-        reviews: 2,
-        description: "Experience a harmonious blend of premium sound quality and ergonomic design that allows for all-day comfortable listening.",
-        colors: [
-            { name: 'Gold Tone', image: earphones },
-            { name: 'Shadow Black', image: gaming },
-            { name: 'Crimson Red', image: laptops },
-            { name: 'Ocean Blue', image: pc },
-            { name: 'Steel Grey', image: earphones }
-        ],
-        images: [
-            earphones,
-            gaming,
-            laptops,
-            pc
-        ],
-        inStock: true,
-        stockCount: 12
-    };
-
+    
+    // State for product data
+    const [product, setProduct] = useState(null);
+    const productId = "680262846be92b2511550a66"; // Razer Cobra Mouse ID
+    
+    // For variant selection
+    const [selectedVariants, setSelectedVariants] = useState({});
+    
+    useEffect(() => {
+        const fetchProduct = async () => {
+            try {
+                setLoading(true);
+                // Try the list endpoint instead of single product endpoint
+                const response = await axios.get(`${backendUrl}/api/product/list`);
+                
+                if (response.data.success) {
+                    // Find the product with matching ID from the list
+                    const foundProduct = response.data.products.find(p => p._id === productId);
+                    
+                    if (foundProduct) {
+                        setProduct(foundProduct);
+                        
+                        // Initialize selected variants
+                        if (foundProduct.variants && foundProduct.variants.length > 0) {
+                            const initialVariants = {};
+                            foundProduct.variants.forEach(variant => {
+                                if (variant.options && variant.options.length > 0) {
+                                    initialVariants[variant.name] = variant.options[0]; // Select first option by default
+                                }
+                            });
+                            setSelectedVariants(initialVariants);
+                        }
+                    } else {
+                        // If product not found in the list, show error
+                        toast.error("Product not found");
+                        // Fallback to a mock product for display
+                        setProduct({
+                            name: "Razer Cobra Mouse",
+                            brand: "Razer",
+                            price: 79.99,
+                            desc: "Advanced gaming mouse with precision optical sensor and customizable RGB lighting.",
+                            image: [gaming],
+                            variants: [
+                                {
+                                    name: "Color",
+                                    options: ["Black", "White"]
+                                }
+                            ]
+                        });
+                        setSelectedVariants({ Color: "Black" });
+                    }
+                } else {
+                    toast.error("Failed to fetch products");
+                    // Use a fallback product
+                    setProduct({
+                        name: "Razer Cobra Mouse",
+                        brand: "Razer",
+                        price: 79.99,
+                        desc: "Advanced gaming mouse with precision optical sensor and customizable RGB lighting.",
+                        image: [gaming],
+                        variants: [
+                            {
+                                name: "Color",
+                                options: ["Black", "White"]
+                            }
+                        ]
+                    });
+                    setSelectedVariants({ Color: "Black" });
+                }
+                setLoading(false);
+            } catch (error) {
+                console.error("Error fetching product:", error);
+                toast.error("Error loading product");
+                // Use fallback product on error
+                setProduct({
+                    name: "Razer Cobra Mouse",
+                    brand: "Razer",
+                    price: 79.99,
+                    desc: "Advanced gaming mouse with precision optical sensor and customizable RGB lighting.",
+                    image: [gaming],
+                    variants: [
+                        {
+                            name: "Color",
+                            options: ["Black", "White"]
+                        }
+                    ]
+                });
+                setSelectedVariants({ Color: "Black" });
+                setLoading(false);
+            }
+        };
+        
+        fetchProduct();
+    }, [backendUrl]);
+    
     const handleQuantityChange = (change) => {
         const newQuantity = quantity + change;
         if (newQuantity >= 1) {
             setQuantity(newQuantity);
         }
     };
+    
+    const handleVariantChange = (variantName, option) => {
+        setSelectedVariants(prev => ({
+            ...prev,
+            [variantName]: option
+        }));
+    };
+    
+    // Generate variant key for cart
+    const getVariantKey = () => {
+        if (!product || !product.variants) return '';
+        
+        return product.variants
+            .map(variant => selectedVariants[variant.name])
+            .filter(option => option) // Filter out empty values
+            .join('-');
+    };
+    
+    const handleAddToCart = () => {
+        const variantKey = getVariantKey();
+        if (variantKey) {
+            // Add items all at once instead of in a loop to avoid multiple notifications
+            addToCart(productId, variantKey, quantity);
+        } else {
+            toast.error('Please select all options');
+        }
+    };
+    
+    // Get description from various possible field names
+    const getDescription = () => {
+        if (!product) return '';
+        
+        // Check various possible field names for description
+        return product.desc || product.description || product.details || '';
+    };
+    
+    if (loading) {
+        return (
+            <div className="py-16 flex justify-center items-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#6a5acd]"></div>
+            </div>
+        );
+    }
+    
+    if (!product) {
+        return null;
+    }
 
     return (
         <section className="py-8 sm:py-12 md:py-16 px-4 sm:px-6 lg:px-8">
@@ -145,7 +268,7 @@ const FeaturedProduct = () => {
                         <div className="hidden sm:block">
                             {/* Thumbnails for non-mobile */}
                             <div className="thumbnail-container h-full flex flex-col gap-4">
-                                {product.images.map((image, index) => (
+                                {product.image && product.image.map((img, index) => (
                                     <button
                                         key={index}
                                         onClick={() => setCurrentImage(index)}
@@ -154,7 +277,7 @@ const FeaturedProduct = () => {
                                         }`}
                                     >
                                         <img
-                                            src={image}
+                                            src={img}
                                             alt={`${product.name} view ${index + 1}`}
                                             className="w-full h-full object-cover"
                                         />
@@ -165,17 +288,18 @@ const FeaturedProduct = () => {
 
                         {/* Main Image */}
                         <div className="flex-1">
-                            <div className="aspect-square overflow-hidden rounded-lg bg-gray-100">
+                            <div className="flex justify-center">
                                 <img
-                                    src={product.images[currentImage]}
+                                    src={product.image && product.image[currentImage]}
                                     alt={product.name}
-                                    className="w-full h-full object-cover"
+                                    className="rounded-lg"
+                                    style={{ width: "auto", height: "auto", maxHeight: "500px" }}
                                 />
                             </div>
                             
                             {/* Mobile Thumbnails (horizontal scroll) */}
                             <div className="mt-6 flex sm:hidden gap-4 overflow-x-auto pb-4 px-1">
-                                {product.images.map((image, index) => (
+                                {product.image && product.image.map((img, index) => (
                                     <button
                                         key={index}
                                         onClick={() => setCurrentImage(index)}
@@ -185,7 +309,7 @@ const FeaturedProduct = () => {
                                         style={{ margin: '2px' }}
                                     >
                                         <img
-                                            src={image}
+                                            src={img}
                                             alt={`${product.name} view ${index + 1}`}
                                             className="w-full h-full object-cover"
                                         />
@@ -205,7 +329,7 @@ const FeaturedProduct = () => {
                                     {[...Array(5)].map((_, i) => (
                                         <svg
                                             key={i}
-                                            className={`w-3 h-3 sm:w-4 sm:h-4 ${i < product.rating ? 'text-yellow-400' : 'text-gray-200'}`}
+                                            className={`w-3 h-3 sm:w-4 sm:h-4 ${i < 5 ? 'text-yellow-400' : 'text-gray-200'}`}
                                             fill="currentColor"
                                             viewBox="0 0 20 20"
                                         >
@@ -213,81 +337,119 @@ const FeaturedProduct = () => {
                                         </svg>
                                     ))}
                                 </div>
-                                <span className="text-xs sm:text-sm text-gray-500">{product.reviews} reviews</span>
+                                <span className="text-xs sm:text-sm text-gray-500">5.0 (18 reviews)</span>
                             </div>
                         </div>
 
+                        {/* Variant selection */}
+                        {product.variants && product.variants.map((variant) => (
+                            <div key={variant.name} className="mb-4 sm:mb-8">
+                                <h3 className="font-michroma text-xs sm:text-sm text-gray-900">{variant.name}</h3>
+                                <div className="mt-2 sm:mt-4 flex flex-wrap gap-2 sm:gap-3">
+                                    {variant.options.map((option) => (
+                                        <button
+                                            key={option}
+                                            onClick={() => handleVariantChange(variant.name, option)}
+                                            className={`px-3 py-1 text-xs sm:text-sm rounded-full border ${
+                                                selectedVariants[variant.name] === option
+                                                    ? 'bg-[#6a5acd] text-white border-[#6a5acd]'
+                                                    : 'border-gray-300 hover:border-[#6a5acd]'
+                                            }`}
+                                        >
+                                            {option}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+
                         <div className="mb-4 sm:mb-8">
-                            <h3 className="font-michroma text-xs sm:text-sm text-gray-900">Color</h3>
-                            <div className="mt-2 sm:mt-4 flex flex-wrap gap-2 sm:gap-3">
-                                {product.colors.map((color) => (
-                                    <button
-                                        key={color.name}
-                                        onClick={() => setSelectedColor(color.name)}
-                                        className={`relative w-12 h-12 sm:w-16 sm:h-16 rounded-lg ${
-                                            selectedColor === color.name
-                                                ? 'ring-2 ring-black'
-                                                : 'ring-1 ring-gray-200'
-                                        }`}
+                            <p className="text-base sm:text-lg font-michroma text-gray-900">${product.price}</p>
+                            
+                            {/* Truncated product description with clamp for 3 lines max */}
+                            <div className="mt-2 sm:mt-4">
+                                <p className="text-xs sm:text-sm md:text-base text-gray-500 overflow-hidden line-clamp-3">
+                                    {getDescription()}
+                                </p>
+                                {getDescription().length > 150 && (
+                                    <Link 
+                                        to={`/product/${productId}`}
+                                        className="text-xs sm:text-sm text-[#6a5acd] hover:text-[#5a4cbb] hover:underline font-medium inline-flex items-center mt-1"
                                     >
-                                        <img
-                                            src={color.image}
-                                            alt={color.name}
-                                            className="w-full h-full object-cover rounded-lg"
-                                        />
-                                    </button>
-                                ))}
+                                        View Details
+                                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                                        </svg>
+                                    </Link>
+                                )}
                             </div>
-                        </div>
-
-                        <div className="mb-4 sm:mb-8">
-                            <p className="text-base sm:text-lg font-michroma text-gray-900">{product.price}</p>
-                            <p className="mt-2 sm:mt-4 text-xs sm:text-sm md:text-base text-gray-500">{product.description}</p>
                         </div>
 
                         <div className="mb-4 sm:mb-8">
                             <div className="flex items-center justify-between">
                                 <h3 className="font-michroma text-xs sm:text-sm text-gray-900">Quantity</h3>
-                                <div className="flex items-center border border-gray-200 rounded-md">
-                                    <button
+                                <div 
+                                    className="w-24 sm:w-32 flex justify-between items-center border border-gray-300 rounded-full px-3 py-1 bg-white"
+                                >
+                                    <button 
+                                        className="text-gray-500 focus:outline-none w-6 h-6 flex items-center justify-center"
                                         onClick={() => handleQuantityChange(-1)}
-                                        className="px-3 sm:px-4 py-1 sm:py-2 text-gray-600 hover:text-gray-700"
+                                        type="button"
+                                        aria-label="Decrease quantity"
                                     >
-                                        -
+                                        <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                                        </svg>
                                     </button>
-                                    <span className="px-3 sm:px-4 py-1 sm:py-2 text-sm sm:text-base text-gray-900">{quantity}</span>
-                                    <button
+                                    <span className="text-xs sm:text-sm font-medium">{quantity}</span>
+                                    <button 
+                                        className="text-gray-500 focus:outline-none w-6 h-6 flex items-center justify-center"
                                         onClick={() => handleQuantityChange(1)}
-                                        className="px-3 sm:px-4 py-1 sm:py-2 text-gray-600 hover:text-gray-700"
+                                        type="button"
+                                        aria-label="Increase quantity"
                                     >
-                                        +
+                                        <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
                                     </button>
                                 </div>
                             </div>
                         </div>
 
-                        {product.inStock ? (
-                            <div className="text-xs sm:text-sm text-green-600 mb-3 sm:mb-4">
-                                Hurry, only {product.stockCount} items left in stock!
-                            </div>
-                        ) : (
-                            <div className="text-xs sm:text-sm text-red-600 mb-3 sm:mb-4">Out of stock</div>
-                        )}
+                        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                            <button 
+                                onClick={handleAddToCart}
+                                className="fill-button fill-button-purple w-full py-3 sm:py-4 px-6 sm:px-8 rounded-full font-michroma text-xs sm:text-sm flex items-center justify-center gap-2 group"
+                            >
+                                <FiShoppingBag className="w-4 h-4 transform group-hover:translate-y-[-2px] transition-transform" />
+                                Add to Cart
+                            </button>
+                            <Link 
+                                to={`/product/${productId}`}
+                                className="w-full py-3 sm:py-4 px-6 sm:px-8 rounded-full bg-gray-100 hover:bg-gray-200 transition text-xs sm:text-sm text-gray-900 font-michroma text-center"
+                            >
+                                View Details
+                            </Link>
+                        </div>
 
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className="w-full bg-black text-white border border-black font-michroma py-3 sm:py-4 rounded-md text-sm sm:text-base transition-colors fill-button fill-button-black-white"
-                        >
-                            Add to cart
-                        </motion.button>
-
-                        <div className="mt-3 sm:mt-4 text-xs sm:text-sm text-gray-500">
-                            <div className="flex items-center gap-1 sm:gap-2">
-                                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <div className="mt-6 sm:mt-8 grid grid-cols-3 gap-4">
+                            <div className="flex flex-col items-center border border-gray-200 rounded-lg p-3 sm:p-4">
+                                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
                                 </svg>
-                                <span>Usually ready in 24 hours</span>
+                                <span className="text-[10px] sm:text-xs text-center text-gray-700 font-michroma">Free Shipping</span>
+                            </div>
+                            <div className="flex flex-col items-center border border-gray-200 rounded-lg p-3 sm:p-4">
+                                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                                <span className="text-[10px] sm:text-xs text-center text-gray-700 font-michroma">2 Year Warranty</span>
+                            </div>
+                            <div className="flex flex-col items-center border border-gray-200 rounded-lg p-3 sm:p-4">
+                                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                <span className="text-[10px] sm:text-xs text-center text-gray-700 font-michroma">30-Day Returns</span>
                             </div>
                         </div>
                     </div>

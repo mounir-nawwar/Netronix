@@ -66,8 +66,6 @@ const placeOrder = async (req, res) => {
             paymentMethod: req.body.paymentMethod || 'COD',
             payment: false,
             date: new Date(),
-            subtotal: req.body.subtotal || (amount - (req.body.delivery_fee || 0)),
-            delivery_fee: req.body.delivery_fee || 0
         }
 
         const newOrder = new orderModel(orderData);
@@ -96,54 +94,24 @@ const placeOrder = async (req, res) => {
 //All Orders data for Admin
 const allOrders = async (req, res) => {
     try {
-        const orders = await orderModel.find({});
 
-        // Enrich orders with product details
-        const enrichedOrders = await Promise.all(orders.map(async (order) => {
-            // Convert to plain object so we can modify it
-            const orderObj = order.toObject();
- 
-            // Enrich each item with product details
-            const enrichedItems = await Promise.all(orderObj.items.map(async (item) => {
-                try {
-                    // Find product details
-                    const product = await productModel.findById(item.productId);
-                    
-                    if (product) {
-                        // Return item with product details
-                        return {
-                            ...item,
-                            name: product.name,
-                            price: product.price,
-                            image: product.image && product.image.length > 0 ? product.image[0] : null,
-                            brand: product.brand
-                        };
-                    }
-                    
-                    return item; // Return original item if product not found
-                } catch (err) {
-                    console.log(`Error fetching product ${item.productId}:`, err);
-                    return item; // Return original item on error
-                }
-            }));
-            
-            // Replace items with enriched items
-            orderObj.items = enrichedItems;
-            return orderObj;
-        }));
-        
+        const orders = await orderModel.find({});
         res.json({
             success: true,
-            orders: enrichedOrders
-        });
+            orders
+        })
+
     } catch (error) {
         console.log(error);
         res.json({
             success: false,
             message: 'Order Fetching Failed',
             error: error.message
-        });
+        })
     }
+
+
+
 }
 
 // User Order Data for Frontend

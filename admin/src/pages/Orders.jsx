@@ -1,54 +1,54 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { backendUrl, currency } from '../App';
-import { toast } from 'react-toastify';
+ import axios from 'axios';
+ import { backendUrl, currency } from '../App';
+ import { toast } from 'react-toastify';
 import { FiPackage, FiInfo, FiMapPin, FiPhone, FiCalendar, FiCreditCard, FiTag, FiUser, FiSearch, FiChevronDown, FiChevronRight } from 'react-icons/fi';
-
-const Orders = ({ token }) => {
-  const [orderData, setOrderData] = useState([]);
+ 
+ const Orders = ({ token }) => {
+   const [orderData, setOrderData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [filterStatus, setFilterStatus] = useState('All');
-
-  const fetchAllOrders = async () => {
-    if (!token) return null;
-
+ 
+   const fetchAllOrders = async () => {
+     if (!token) return null;
+ 
     setLoading(true);
-    try {
+     try {
       const response = await axios.post(backendUrl + '/api/order/list', {}, { headers: { token } });
-      if (response.data.success) {
-        setOrderData(response.data.orders.reverse());
-      } else {
-        toast.error(response.data.message);
-      }
-    } catch (error) {
-      console.log(error);
-      toast.error(error.message);
+       if (response.data.success) {
+         setOrderData(response.data.orders.reverse());
+       } else {
+         toast.error(response.data.message);
+       }
+     } catch (error) {
+       console.log(error);
+       toast.error(error.message);
     } finally {
       setLoading(false);
-    }
+     }
   };
-
-  const statusHandler = async (event, orderId) => {
-    try {
+ 
+   const statusHandler = async (event, orderId) => {
+     try {
       const response = await axios.post(
         backendUrl + '/api/order/status',
         { orderId, status: event.target.value },
         { headers: { token } }
       );
-      if (response.data.success) {
-        await fetchAllOrders();
+       if (response.data.success) {
+         await fetchAllOrders();
         toast.success('Order status updated successfully');
-      }
-    } catch (error) {
-      console.log(error);
-      toast.error(error.message);
-    }
+       }
+     } catch (error) {
+       console.log(error);
+       toast.error(error.message);
+     }
   };
-
-  useEffect(() => {
-    fetchAllOrders();
+ 
+   useEffect(() => {
+     fetchAllOrders();
   }, [token]);
 
   // Filter orders based on search term and status filter
@@ -93,8 +93,8 @@ const Orders = ({ token }) => {
     const options = { year: 'numeric', month: 'short', day: 'numeric' };
     return new Date(dateString).toLocaleDateString(undefined, options);
   };
-
-  return (
+ 
+   return (
     <div className="bg-white rounded-lg shadow-sm p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <h1 className="text-2xl font-semibold text-gray-800">Orders Management</h1>
@@ -241,7 +241,7 @@ const Orders = ({ token }) => {
                             <span className="text-[#6a5acd]">{currency}{order.amount}</span>
                           </div>
                         </div>
-                      </div>
+                 </div>
                       
                       {/* Customer and Order Information */}
                       <div className="order-1 lg:order-2">
@@ -273,11 +273,11 @@ const Orders = ({ token }) => {
                             <FiInfo className="mr-2" /> Payment Information
                           </h3>
                           <div className="grid grid-cols-2 gap-2 text-sm">
-                            <div>
+                 <div>
                               <p className="text-gray-500">Method</p>
                               <p className="font-medium">{order.paymentMethod}</p>
-                            </div>
-                            <div>
+               </div>
+               <div>
                               <p className="text-gray-500">Status</p>
                               <p className="font-medium">{order.payment ? "Paid" : "Unpaid"}</p>
                             </div>
@@ -285,7 +285,7 @@ const Orders = ({ token }) => {
                               <p className="text-gray-500">Date</p>
                               <p className="font-medium">{formatDate(order.date)}</p>
                             </div>
-                          </div>
+               </div>
                           
                           {/* Order Status */}
                           <h3 className="font-medium text-gray-900 mt-5 mb-3 flex items-center">
@@ -296,24 +296,24 @@ const Orders = ({ token }) => {
                             onChange={(event) => statusHandler(event, order._id)}
                             className="bg-white border border-gray-300 text-gray-900 text-sm rounded-lg block w-full p-2.5 focus:ring-[#6a5acd] focus:border-[#6a5acd]"
                           >
-                            <option value="Order Placed">Order Placed</option>
-                            <option value="Packing">Packing</option>
-                            <option value="Shipped">Shipped</option>
-                            <option value="Out for Delivery">Out for Delivery</option>
-                            <option value="Delivered">Delivered</option>
-                          </select>
-                        </div>
+                 <option value="Order Placed">Order Placed</option>
+                 <option value="Packing">Packing</option>
+                 <option value="Shipped">Shipped</option>
+                 <option value="Out for Delivery">Out for Delivery</option>
+                 <option value="Delivered">Delivered</option>
+               </select>
+             </div>
                       </div>
                     </div>
                   </div>
                 )}
               </div>
             ))}
-          </div>
-        </div>
+       </div>
+     </div>
       )}
     </div>
   );
 };
-
+ 
 export default Orders;

@@ -1,5 +1,6 @@
 import {v2 as cloudinary} from 'cloudinary';
 import productModel from '../models/productModel.js';
+import mongoose from 'mongoose';
 
 // Function for adding Products
 const addProduct = async(req,res) =>{
@@ -109,23 +110,50 @@ const updateInventory = async(req, res) => {
     try {
         const { productId, variantKey, quantity } = req.body;
         
-        const product = await productModel.findById(productId);
-        if (!product) {
+        if (!productId || !variantKey) {
+            return res.json({ success: false, message: "Missing productId or variantKey" });
+        }
+
+        // Use direct MongoDB update for more reliable updates
+        const parsedQuantity = parseInt(quantity) || 0;
+        
+        // Build the update document
+        const updateDoc = { 
+            $set: { [`inventory.${variantKey}`]: parsedQuantity } 
+        };
+        
+        // Get direct access to the MongoDB collection
+        const collection = productModel.collection;
+        
+        // Perform a direct update to the database
+        const result = await collection.updateOne(
+            { _id: new mongoose.Types.ObjectId(productId) },
+            updateDoc
+        );
+        
+        if (result.matchedCount === 0) {
             return res.json({ success: false, message: "Product not found" });
         }
         
-        // Update inventory for the specific variant combination
-        if (!product.inventory) {
-            product.inventory = {};
+        // Fetch the updated product to return in response
+        const updatedProduct = await productModel.findById(productId).lean();
+        
+        if (!updatedProduct) {
+            return res.json({ success: false, message: "Product not found after update" });
         }
         
-        product.inventory[variantKey] = parseInt(quantity);
-        await product.save();
-        
-        res.json({ success: true, message: "Inventory updated successfully" });
+        res.json({ 
+            success: true, 
+            message: "Inventory updated successfully",
+            product: {
+                _id: updatedProduct._id,
+                name: updatedProduct.name,
+                inventory: updatedProduct.inventory
+            }
+        });
     } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
+        console.error('Error updating inventory:', error);
+        res.json({ success: false, message: error.message || "Error updating inventory" });
     }
 }
 
@@ -134,7 +162,13 @@ const checkInventory = async(req, res) => {
     try {
         const { productId } = req.body;
         
-        const product = await productModel.findById(productId);
+        if (!productId) {
+            return res.json({ success: false, message: "Missing productId parameter" });
+        }
+        
+        // Get fresh data directly from database with no cache
+        const product = await productModel.findById(productId).lean();
+        
         if (!product) {
             return res.json({ success: false, message: "Product not found" });
         }
@@ -148,8 +182,8 @@ const checkInventory = async(req, res) => {
             }
         });
     } catch (error) {
-        console.log(error);
-        res.json({ success: false, message: error.message });
+        console.error('Error checking inventory:', error);
+        res.json({ success: false, message: error.message || "Error checking inventory" });
     }
 }
 
