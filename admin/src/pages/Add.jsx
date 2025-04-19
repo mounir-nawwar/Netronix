@@ -25,8 +25,23 @@ const Add = ({ token }) => {
   // New state for tags
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState('');
-  // Predefined tag categories
-  const suggestedTags = ['Electronics', 'Accessories', 'Featured', 'New Arrivals', 'Best Sellers', 'Clearance', 'Mobile', 'Computers', 'Audio', 'Wearables'];
+  // Predefined tag categories for computer store
+  const suggestedTags = [
+    // Main Product Categories
+    'Laptops', 'Desktops', 'Monitors', 'Components', 'Peripherals',
+    // Components
+    'CPU', 'GPU', 'Motherboard', 'RAM', 'Storage', 'PSU', 'Cooling',
+    // Peripherals
+    'Keyboard', 'Mouse', 'Headset', 'Webcam', 'Speaker', 
+    // Networking
+    'Networking', 'Router', 'Switch', 'Adapter', 
+    // Accessories
+    'Accessories', 'Cable', 'Charger', 'Case', 
+    // General categories
+    'Gaming', 'Office', 'Home', 'Student', 'Professional',
+    // Marketing categories
+    'New Arrivals', 'Best Sellers', 'Clearance', 'Featured'
+  ];
 
   // Loading state
   const [isSubmitting, setIsSubmitting] = useState(false);

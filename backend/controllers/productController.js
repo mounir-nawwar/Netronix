@@ -114,32 +114,20 @@ const updateInventory = async(req, res) => {
             return res.json({ success: false, message: "Missing productId or variantKey" });
         }
 
-        // Use direct MongoDB update for more reliable updates
+        // Validate and parse the quantity
         const parsedQuantity = parseInt(quantity) || 0;
         
-        // Build the update document
-        const updateDoc = { 
-            $set: { [`inventory.${variantKey}`]: parsedQuantity } 
-        };
+        // Use mongoose findOneAndUpdate for proper update
+        const updateQuery = { [`inventory.${variantKey}`]: parsedQuantity };
         
-        // Get direct access to the MongoDB collection
-        const collection = productModel.collection;
-        
-        // Perform a direct update to the database
-        const result = await collection.updateOne(
-            { _id: new mongoose.Types.ObjectId(productId) },
-            updateDoc
+        const updatedProduct = await productModel.findByIdAndUpdate(
+            productId,
+            { $set: updateQuery },
+            { new: true } // Return the updated document
         );
         
-        if (result.matchedCount === 0) {
-            return res.json({ success: false, message: "Product not found" });
-        }
-        
-        // Fetch the updated product to return in response
-        const updatedProduct = await productModel.findById(productId).lean();
-        
         if (!updatedProduct) {
-            return res.json({ success: false, message: "Product not found after update" });
+            return res.json({ success: false, message: "Product not found" });
         }
         
         res.json({ 

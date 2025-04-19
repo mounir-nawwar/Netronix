@@ -21,7 +21,7 @@ const Navbar = ({ visible }) => {
     const profileDropdownRef = useRef(null);
     
     // Featured tags to display in navigation
-    const featuredTags = ["Electronics", "Accessories", "Featured", "New Arrivals", "Best Sellers"];
+    const featuredTags = ["Laptops", "Desktops", "Components", "Peripherals", "Accessories", "Gaming"];
 
     // Close dropdowns when clicking outside
     useEffect(() => {
@@ -80,6 +80,22 @@ const Navbar = ({ visible }) => {
         setCartItems({})
         navigate("/login");
     }
+
+    // Handle navigation and ensure proper cleanup
+    const handleNavigation = (path, closeMenu = true) => {
+        // Close appropriate menus
+        if (closeMenu) {
+            setDropdownOpen(false);
+            setMobileMenuOpen(false);
+            setProfileDropdownOpen(false);
+        }
+        
+        // Ensure body scroll is restored
+        document.body.style.overflow = 'auto';
+        
+        // Navigate to the path
+        navigate(path);
+    };
 
     // Animation variants for mobile menu
     const menuVariants = {
@@ -197,9 +213,12 @@ const Navbar = ({ visible }) => {
                             {dropdownOpen && (
                                 <div className="absolute top-full left-0 bg-white min-w-[200px] z-50 mt-2 rounded-lg shadow-lg py-2 border border-gray-100 animate-fadeIn">
                                     <Link 
-                                        to="/collections/all" 
+                                        to="/products" 
                                         className="block px-4 py-2 hover:bg-gray-100 transition-colors"
-                                        onClick={() => setDropdownOpen(false)}
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            handleNavigation("/products");
+                                        }}
                                     >
                                         All Products
                                     </Link>
@@ -207,9 +226,12 @@ const Navbar = ({ visible }) => {
                                     {featuredTags.map((tag, index) => (
                                         <Link 
                                             key={index} 
-                                            to={`/collections/tag/${tag}`} 
+                                            to={`/products?tag=${tag}`} 
                                             className="block px-4 py-2 hover:bg-gray-100 transition-colors"
-                                            onClick={() => setDropdownOpen(false)}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                handleNavigation(`/products?tag=${tag}`);
+                                            }}
                                         >
                                             {tag}
                                         </Link>
@@ -230,7 +252,7 @@ const Navbar = ({ visible }) => {
                     <div className="flex justify-end items-center mr-5 gap-4 lg:gap-6">
                         {/* Search icon */}
                         <IoSearchOutline 
-                            onClick={() => { navigate("/collections/all"); setShowSearch(true) }} 
+                            onClick={() => { navigate("/products"); setShowSearch(true) }} 
                             className="w-5 h-5 lg:w-6 lg:h-6 cursor-pointer text-gray-800 hover:text-black transition-colors" 
                         />
                     
@@ -322,7 +344,7 @@ const Navbar = ({ visible }) => {
                 {/* Mobile Icons (Search, User, Cart, Menu) */}
                 <div className="md:hidden flex items-center gap-3 sm:gap-5 mr-3 sm:mr-5">
                     <IoSearchOutline 
-                        onClick={() => { navigate("/collections/all"); setShowSearch(true) }} 
+                        onClick={() => { navigate("/products"); setShowSearch(true) }} 
                         className="w-5 h-5 sm:w-6 sm:h-6 cursor-pointer text-gray-800" 
                     />
                     
@@ -454,7 +476,10 @@ const Navbar = ({ visible }) => {
                                         <Link 
                                             to="/" 
                                             className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
-                                            onClick={() => setMobileMenuOpen(false)}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                handleNavigation("/");
+                                            }}
                                         >
                                             <span>HOME</span>
                                             <motion.span 
@@ -473,9 +498,12 @@ const Navbar = ({ visible }) => {
                                         animate="visible"
                                     >
                                         <Link 
-                                            to="/collections/all" 
+                                            to="/products" 
                                             className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
-                                            onClick={() => setMobileMenuOpen(false)}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                handleNavigation("/products");
+                                            }}
                                         >
                                             <span>ALL PRODUCTS</span>
                                             <motion.span 
@@ -499,9 +527,12 @@ const Navbar = ({ visible }) => {
                                             animate="visible"
                                         >
                                             <Link 
-                                                to={`/collections/tag/${tag}`} 
+                                                to={`/products?tag=${tag}`} 
                                                 className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
-                                                onClick={() => setMobileMenuOpen(false)}
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    handleNavigation(`/products?tag=${tag}`);
+                                                }}
                                             >
                                                 <span>{tag}</span>
                                                 <motion.span 
@@ -526,7 +557,10 @@ const Navbar = ({ visible }) => {
                                         <Link 
                                             to="/about" 
                                             className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
-                                            onClick={() => setMobileMenuOpen(false)}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                handleNavigation("/about");
+                                            }}
                                         >
                                             <span>ABOUT US</span>
                                             <motion.span 
@@ -546,7 +580,10 @@ const Navbar = ({ visible }) => {
                                         <Link 
                                             to="/contact" 
                                             className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
-                                            onClick={() => setMobileMenuOpen(false)}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                handleNavigation("/contact");
+                                            }}
                                         >
                                             <span>CONTACT US</span>
                                             <motion.span 
@@ -572,7 +609,10 @@ const Navbar = ({ visible }) => {
                                                 <Link 
                                                     to="/profile" 
                                                     className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
-                                                    onClick={() => setMobileMenuOpen(false)}
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        handleNavigation("/profile");
+                                                    }}
                                                 >
                                                     <span>MY PROFILE</span>
                                                     <motion.span 
@@ -592,7 +632,10 @@ const Navbar = ({ visible }) => {
                                                 <Link 
                                                     to="/orders" 
                                                     className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
-                                                    onClick={() => setMobileMenuOpen(false)}
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        handleNavigation("/orders");
+                                                    }}
                                                 >
                                                     <span>ORDERS</span>
                                                     <motion.span 
@@ -610,9 +653,10 @@ const Navbar = ({ visible }) => {
                                                 animate="visible"
                                             >
                                                 <button 
-                                                    onClick={() => {
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
                                                         logout();
-                                                        setMobileMenuOpen(false);
+                                                        handleNavigation("/login");
                                                     }}
                                                     className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
                                                 >

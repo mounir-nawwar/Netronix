@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { Routes, Route, useLocation } from 'react-router-dom'
 import Home from './pages/Home'
 import Collections from './pages/Collections'
+import AllProducts from './pages/AllProducts'
 import Product from './pages/Product'
 import Cart from './pages/Cart'
 import PlaceOrder from './pages/PlaceOrder'
@@ -50,6 +51,7 @@ function App() {
           <Route path='/collections/:category' element={<Collections />} />
           <Route path='/collections/tag/:tag' element={<Collections />} />
           <Route path='/collections/:category/:subCategory' element={<Collections />} />
+          <Route path='/products' element={<AllProducts />} />
           <Route path='/product/:productId' element={<Product />} />
           <Route path='/cart' element={<Cart />} />
           <Route path='/placeorder' element={<PlaceOrder />} />

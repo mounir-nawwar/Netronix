@@ -128,10 +128,8 @@ const Product = () => {
       return;
     }
 
-    // Add to cart multiple times based on quantity
-    for (let i = 0; i < quantity; i++) {
-      addToCart(productData._id, getVariantKey());
-    }
+    // Add to cart with the selected quantity (not in a loop anymore)
+    addToCart(productData._id, getVariantKey(), quantity);
   };
 
   // Animation variants

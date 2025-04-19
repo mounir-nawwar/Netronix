@@ -110,11 +110,30 @@ const FeaturedProduct = () => {
         fetchProduct();
     }, [backendUrl]);
     
+    // Calculate available stock for selected variant
+    const getAvailableQuantity = () => {
+        if (!product || !product.inventory) return 0;
+        
+        const variantKey = getVariantKey();
+        if (!variantKey || !product.inventory[variantKey]) return 0;
+        
+        return product.inventory[variantKey];
+    };
+    
     const handleQuantityChange = (change) => {
         const newQuantity = quantity + change;
-        if (newQuantity >= 1) {
-            setQuantity(newQuantity);
+        const availableStock = getAvailableQuantity();
+        
+        // Don't allow quantity below 1
+        if (newQuantity < 1) return;
+        
+        // Don't allow quantity above available stock
+        if (availableStock > 0 && newQuantity > availableStock) {
+            toast.warning(`Only ${availableStock} items available`);
+            return;
         }
+        
+        setQuantity(newQuantity);
     };
     
     const handleVariantChange = (variantName, option) => {
@@ -137,7 +156,14 @@ const FeaturedProduct = () => {
     const handleAddToCart = () => {
         const variantKey = getVariantKey();
         if (variantKey) {
-            // Add items all at once instead of in a loop to avoid multiple notifications
+            // Check available stock
+            const availableStock = getAvailableQuantity();
+            if (availableStock < quantity) {
+                toast.error(`Only ${availableStock} items available`);
+                return;
+            }
+            
+            // Add to cart with selected quantity
             addToCart(productId, variantKey, quantity);
         } else {
             toast.error('Please select all options');
