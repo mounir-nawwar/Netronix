@@ -252,7 +252,7 @@ const Navbar = ({ visible }) => {
                     <div className="flex justify-end items-center mr-5 gap-4 lg:gap-6">
                         {/* Search icon */}
                         <IoSearchOutline 
-                            onClick={() => { navigate("/products"); setShowSearch(true) }} 
+                            onClick={() => setShowSearch(true)} 
                             className="w-5 h-5 lg:w-6 lg:h-6 cursor-pointer text-gray-800 hover:text-black transition-colors" 
                         />
                     
@@ -345,7 +345,7 @@ const Navbar = ({ visible }) => {
                 {/* Mobile Icons (Search, User, Cart, Menu) */}
                 <div className="md:hidden flex items-center gap-3 sm:gap-5 mr-3 sm:mr-5">
                     <IoSearchOutline 
-                        onClick={() => { navigate("/products"); setShowSearch(true) }} 
+                        onClick={() => setShowSearch(true)} 
                         className="w-5 h-5 sm:w-6 sm:h-6 cursor-pointer text-gray-800" 
                     />
                     

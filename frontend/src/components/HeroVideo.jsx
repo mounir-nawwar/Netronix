@@ -36,7 +36,7 @@ const HeroVideo = () => {
                 {/* Content Overlay */}
                 <div className="absolute inset-0 bg-black/30">
                     {/* Desktop: Bottom Left Content */}
-                    <div className="hidden sm:block absolute bottom-12 md:bottom-16 left-8 md:left-16 max-w-sm md:max-w-xl">
+                    <div className="hidden sm:block absolute bottom-12 md:bottom-16 left-8 md:left-20 max-w-sm md:max-w-xl">
                         <h1 className="text-2xl md:text-4xl font-michroma text-white mb-3 md:mb-4 leading-tight">
                             Razer Cobra Line – Precision Redefined
                         </h1>

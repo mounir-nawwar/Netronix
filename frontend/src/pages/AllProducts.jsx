@@ -6,12 +6,13 @@ import { FiFilter, FiX, FiChevronDown, FiShoppingBag, FiEye, FiHeart } from 'rea
 import { motion } from 'framer-motion';
 
 const AllProducts = () => {
-  const { backendUrl, addToCart } = useContext(ShopContext);
+  const { backendUrl, addToCart, search, setSearch } = useContext(ShopContext);
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sortOption, setSortOption] = useState('latest');
   const [searchParams] = useSearchParams();
   const tagFromUrl = searchParams.get('tag');
+  const searchFromUrl = searchParams.get('search');
   
   const [filters, setFilters] = useState({
     categories: {
@@ -25,7 +26,7 @@ const AllProducts = () => {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [hoverProductId, setHoverProductId] = useState(null);
 
-  // Apply URL tag filter if present
+  // Apply URL tag and search filter if present
   useEffect(() => {
     if (tagFromUrl) {
       // Set the filter once categories are loaded
@@ -40,7 +41,7 @@ const AllProducts = () => {
       }
     } else {
       // Clear selected categories if no tag in URL
-      if (filters.categories.selected.length > 0) {
+      if (filters.categories.selected.length > 0 && !searchFromUrl) {
         setFilters(prev => ({
           ...prev,
           categories: {
@@ -50,7 +51,12 @@ const AllProducts = () => {
         }));
       }
     }
-  }, [tagFromUrl, filters.categories.options]);
+    
+    // Set search from URL if present
+    if (searchFromUrl) {
+      setSearch(searchFromUrl);
+    }
+  }, [tagFromUrl, searchFromUrl, filters.categories.options, setSearch]);
 
   // Effect to fetch products and categories
   useEffect(() => {
@@ -264,46 +270,71 @@ const AllProducts = () => {
     setSortOption('latest');
   };
 
-  // Check if a product matches all selected filters
+  // Product matches filters with search functionality
   const productMatchesFilters = (product) => {
     // Price filter
     if (product.price < filters.priceRange[0] || product.price > filters.priceRange[1]) {
       return false;
     }
     
-    // Category filters (tags)
+    // Category filter
     if (filters.categories.selected.length > 0) {
-      // Only show products that have ALL the selected tags
-      if (!product.tags || !Array.isArray(product.tags)) {
-        return false; // Product has no tags
+      const productTags = product.tags || [];
+      if (!filters.categories.selected.some(tag => productTags.includes(tag))) {
+        return false;
       }
-      
-      // Check if product has all selected tags
-      const hasAllSelectedTags = filters.categories.selected.every(selectedTag => 
-        product.tags.includes(selectedTag)
-      );
-      
-      if (!hasAllSelectedTags) return false;
     }
     
-    // Check variant filters
-    for (const variantName in filters.variants) {
-      const selectedOptions = filters.variants[variantName].selected;
+    // Variant filters
+    for (const [variantName, variantData] of Object.entries(filters.variants)) {
+      if (variantData.selected.length > 0) {
+        // Find the variant in the product
+        const productVariant = product.variants?.find(v => v.name === variantName);
+        if (!productVariant) return false;
+        
+        // Check if any selected options are in this variant's options
+        const variantHasSelectedOption = variantData.selected.some(
+          option => productVariant.options.includes(option)
+        );
+        
+        if (!variantHasSelectedOption) return false;
+      }
+    }
+    
+    // Search filter with improved matching
+    if (search && search.trim() !== '') {
+      const searchTerm = search.toLowerCase().trim();
       
-      // Skip if no options are selected for this variant type
-      if (selectedOptions.length === 0) continue;
+      // If search term is too short, require exact match
+      if (searchTerm.length < 3) {
+        const exactNameMatch = product.name.toLowerCase().includes(searchTerm);
+        const exactBrandMatch = product.brand && product.brand.toLowerCase() === searchTerm;
+        return exactNameMatch || exactBrandMatch;
+      }
       
-      // Find if product has this variant type
-      const productVariant = product.variants?.find(v => v.name === variantName);
-      
-      // If product doesn't have this variant or doesn't have matching options, exclude it
-      if (!productVariant) return false;
-      
-      const hasMatchingOption = productVariant.options?.some(option => 
-        selectedOptions.includes(option)
+      // For meaningful search terms, implement smarter matching
+      // Check if search term appears as a whole word or significant part in the name
+      const nameWords = product.name.toLowerCase().split(/\s+/);
+      const nameMatch = nameWords.some(word => 
+        word.includes(searchTerm) || searchTerm.includes(word)
       );
       
-      if (!hasMatchingOption) return false;
+      // Check if search term appears in the description as a meaningful phrase
+      const descMatch = product.description && 
+        product.description.toLowerCase().split(/[,.;:!?-]\s*/).some(phrase => 
+          phrase.includes(searchTerm)
+        );
+      
+      // Check brand match
+      const brandMatch = product.brand && 
+        product.brand.toLowerCase().includes(searchTerm);
+      
+      // Check for exact tag matches only
+      const tagsMatch = product.tags && 
+        product.tags.some(tag => tag.toLowerCase() === searchTerm);
+      
+      // Only return true if there's a meaningful match
+      return nameMatch || descMatch || brandMatch || tagsMatch;
     }
     
     return true;

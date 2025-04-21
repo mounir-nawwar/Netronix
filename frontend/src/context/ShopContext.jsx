@@ -17,6 +17,22 @@ const ShopContextProvider = (props) => {
     const [wishlist, setWishlist] = useState([]);
     const navigate = useNavigate();
 
+    // Enhanced navigation function that handles search state
+    const navigateWithContext = (path, options = {}) => {
+        // Close search if not explicitly kept open
+        if (!options.keepSearchOpen) {
+            setShowSearch(false);
+        }
+        
+        // Reset search term if navigating away from products page
+        if (!path.includes('products') && !options.keepSearchTerm) {
+            setSearch('');
+        }
+        
+        // Perform the navigation
+        navigate(path);
+    };
+
     const addToCart = async (itemId, variantKey, quantity = 1) => {
         if (!variantKey) {
             toast.error('Select Product Options')
@@ -359,7 +375,7 @@ const ShopContextProvider = (props) => {
         search, setSearch, showSearch, setShowSearch,
         cartItems, addToCart, setCartItems,
         getCartCount, updateQuantity,
-        getCartAmount, navigate, backendUrl,
+        getCartAmount, navigate: navigateWithContext, backendUrl,
         setToken, token, getVariantDisplayName,
         getProductsByTag,
         // Wishlist

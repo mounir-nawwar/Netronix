@@ -7,6 +7,7 @@ import Product from './pages/Product'
 import Cart from './pages/Cart'
 import PlaceOrder from './pages/PlaceOrder'
 import Navbar from './components/Navbar'
+import SearchBar from './components/SearchBar'
 import Footer from './components/Footer'
 import LogIn from './pages/LogIn'
 import NewsLetterBar from './components/NewsLetterBar'
@@ -42,9 +43,10 @@ function App() {
   }, [location.pathname])
 
   return (
-    <ShopContextProvider>
+      <ShopContextProvider>
       <div className='bg-white'>
         <Navbar visible={visible} />
+        <SearchBar />
         <Routes>
           <Route path='/' element={<Home />} />
           <Route path='/collections/*' element={<Collections />} />
@@ -73,7 +75,7 @@ function App() {
           closeButton={false}
         />
       </div>
-    </ShopContextProvider>
+      </ShopContextProvider>
   )
 }
 

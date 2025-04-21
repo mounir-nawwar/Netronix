@@ -1,61 +1,213 @@
 import OpenAI from "openai";
+import productModel from "../models/productModel.js";
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
+// Get current directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const openai = new OpenAI({apiKey: process.env.OPENAI_API_KEY});
-
-
-// the rl is uneeded anymore
-const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
-});
-
-
-//must rewrite this to take it from an http request 
-//doesnt seem hard keep the promise  instead of rl.question we take http.body
-async function askQuestion(prompt) {
-  return new Promise((resolve) => rl.question(prompt, resolve));
-}
-
-async function fetchDBProducts() {
-  return [
-    { name: "Gaming Laptop X200", price: "$1299", specs: "16GB RAM, RTX 4060" },
-    { name: "Mechanical Keyboard K90", price: "$99", specs: "RGB, Blue Switches" },
-    { name: "27-inch 4K Monitor", price: "$399", specs: "IPS, 144Hz" }
-  ];
-}
-
-async function ChatbotMethod() {
-
-  const availableProducts = await fetchDBProducts();
-  const toolsMessage = {
-    role: "system",
-    content: JSON.stringify({ availableProducts })
-  };
-  const systemMessage = {
-    role: "system", 
-    content:
-      "You are a professional customer service agent for a computer e-commerce store. " +
-      "You are helpful and knowledgeable. Only recommend products from the provided list and never invent products."
-  };
-  const oldmessages = []
-
-  while (true){
-    const inputMessage = await askQuestion("You: ");;
-    if (inputMessage === "exit") break;
-    
-    const completion = await openai.chat.completions.create({
-      messages: [systemMessage, toolsMessage, ...oldmessages, {role: "user", content: inputMessage}],
-      model: "gpt-4o",
-      max_tokens: 150
+// Initialize OpenAI with API key
+const initializeOpenAI = () => {
+  // Try to read API key from .env file directly
+  let apiKey = process.env.OPENAI_API_KEY;
+  
+  // If not in process.env, try to read from .env file
+  if (!apiKey) {
+    try {
+      const envPath = path.join(__dirname, '..', '.env');
+      if (fs.existsSync(envPath)) {
+        const envContent = fs.readFileSync(envPath, 'utf8');
+        const match = envContent.match(/OPENAI_API_KEY=(.+)/);
+        if (match && match[1]) {
+          apiKey = match[1].trim();
+          // Set it in process.env for future use
+          process.env.OPENAI_API_KEY = apiKey;
+        }
+      }
+    } catch (error) {
+      console.error("Error reading .env file:", error);
+    }
+  }
+  
+  // Check if API key is now available
+  if (!apiKey) {
+    console.error("⚠️ OpenAI API key not found! Please set OPENAI_API_KEY in your environment variables.");
+    console.log("Using fallback responses since no API key is available");
+    return null;
+  }
+  
+  // Validate the API key format
+  // Check for both standard format (sk-...) and project API keys (sk-proj-...)
+  if (!apiKey.startsWith('sk-')) {
+    console.error("⚠️ Invalid OpenAI API key format. Key should start with 'sk-'");
+    return null;
+  }
+  
+  // Create the OpenAI client with proper configuration
+  try {
+    const client = new OpenAI({
+      apiKey: apiKey,
+      dangerouslyAllowBrowser: false, // Only used server-side
     });
-    if (oldmessages.length > 10) oldmessages.splice(0, oldmessages.length - 10);
-
     
-    oldmessages.push({role: "user", content: inputMessage});
-    oldmessages.push({role: "assistant", content: completion.choices[0].message.content});
-    console.log("\nAgent:",completion.choices[0].message.content,"\n");
+    console.log(`✅ OpenAI client initialized with key starting with ${apiKey.substring(0, 7)}...`);
+    return client;
+  } catch (error) {
+    console.error("⚠️ Failed to initialize OpenAI client:", error);
+    return null;
+  }
+};
+
+const openai = initializeOpenAI();
+
+// Update to fetch products from the actual MongoDB database
+async function fetchDBProducts() {
+  try {
+    const products = await productModel.find({});
+    
+    // Format products for the AI to understand
+    return products.map(product => ({
+      id: product._id.toString(),
+      name: product.name,
+      price: `$${product.price}`,
+      description: product.description,
+      brand: product.brand,
+      tags: product.tags.join(', '),
+    }));
+  } catch (error) {
+    console.error("Error fetching products for AI:", error);
+    // Return empty array in case of error to prevent breaking the AI flow
+    return [];
   }
 }
 
-ChatbotMethod();
+// Map to store chat sessions with timestamps for auto-closing
+const chatSessions = new Map();
+
+// Function to create or retrieve a chat session
+const getChatSession = (sessionId) => {
+  if (!chatSessions.has(sessionId)) {
+    chatSessions.set(sessionId, {
+      messages: [],
+      lastActivity: Date.now(),
+      systemMessage: {
+        role: "system", 
+        content:
+          "You are a professional customer service agent for Netronix, a premium tech and computer e-commerce store. " +
+          "You are helpful, friendly and knowledgeable. Only recommend products from the provided list and never invent products. The delivery all over lebanon which is the target market is 3$"
+      }
+    });
+  }
+  
+  // Update the last activity timestamp
+  const session = chatSessions.get(sessionId);
+  session.lastActivity = Date.now();
+  
+  return session;
+};
+
+// Function to process chat messages
+async function processChatMessage(sessionId, message) {
+  try {
+    // If OpenAI client is not initialized, return an error
+    if (!openai) {
+      return {
+        success: false,
+        message: "Our AI service is temporarily unavailable. Please try again later."
+      };
+    }
+    
+    // Get or create session
+    const session = getChatSession(sessionId);
+    
+    // Fetch product data
+    const availableProducts = await fetchDBProducts();
+    const toolsMessage = {
+      role: "system",
+      content: JSON.stringify({ availableProducts })
+    };
+    
+    // Add user message to session history
+    session.messages.push({ role: "user", content: message });
+    
+    // Prepare messages for OpenAI, including system message, tools and chat history
+    const apiMessages = [
+      session.systemMessage,
+      toolsMessage,
+      ...session.messages.slice(-10) // Keep the last 10 messages for context
+    ];
+    
+    console.log("Sending request to OpenAI...");
+    
+    // Get response from OpenAI
+    const completion = await openai.chat.completions.create({
+      messages: apiMessages,
+      model: "gpt-4o",
+      max_tokens: 250
+    });
+    
+    console.log("Received response from OpenAI");
+    
+    // Extract the assistant's response
+    const responseContent = completion.choices[0].message.content;
+    
+    // Add assistant response to session history
+    session.messages.push({ role: "assistant", content: responseContent });
+    
+    return {
+      success: true,
+      message: responseContent
+    };
+  } catch (error) {
+    console.error("Error processing chat message:", error);
+    console.error(error.stack);
+    
+    // Handle specific OpenAI errors
+    if (error.status === 401) {
+      return {
+        success: false,
+        message: "Authentication error with our AI service. Please contact support."
+      };
+    } else if (error.status === 429) {
+      return {
+        success: false,
+        message: "Our AI service is currently experiencing high demand. Please try again in a moment."
+      };
+    }
+    
+    // For any other error, also return error
+    return {
+      success: false,
+      message: "Sorry, I encountered an error processing your request. Please try again later."
+    };
+  }
+}
+
+// Function to close inactive sessions
+function cleanupInactiveSessions() {
+  const now = Date.now();
+  const INACTIVE_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
+  
+  for (const [sessionId, session] of chatSessions.entries()) {
+    if (now - session.lastActivity > INACTIVE_TIMEOUT) {
+      chatSessions.delete(sessionId);
+      console.log(`Closed inactive chat session: ${sessionId}`);
+    }
+  }
+}
+
+// Run cleanup every minute
+setInterval(cleanupInactiveSessions, 60 * 1000);
+
+// Function to manually close a session
+function closeSession(sessionId) {
+  if (chatSessions.has(sessionId)) {
+    chatSessions.delete(sessionId);
+    return true;
+  }
+  return false;
+}
+
+export { processChatMessage, closeSession };

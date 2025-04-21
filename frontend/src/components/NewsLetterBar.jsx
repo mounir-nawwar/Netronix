@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 
 const NewsLetterBar = ({
-  position = 'right-0',
+  position = 'left-0',
   heading = 'Newsletter',
   showSocial = true,
   socialLinks = [
