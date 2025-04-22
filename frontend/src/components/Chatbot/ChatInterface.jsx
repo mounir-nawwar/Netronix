@@ -92,7 +92,6 @@ const ChatInterface = ({ onClose }) => {
         
         // Generate a temporary local session ID
         setSessionId('guest-' + Math.random().toString(36).substring(2, 15));
-        return;
       }
       
       // For logged-in users, use the backend API
@@ -148,9 +147,7 @@ const ChatInterface = ({ onClose }) => {
       }
       
       // For guest users or if no token available, provide simple responses
-      if (!token || sessionId.startsWith('guest-')) {
-        return handleGuestMessage(messageText);
-      }
+      
       
       const response = await axios.post(
         `${backendUrl}/api/chatbot/message`, 
