@@ -3,10 +3,14 @@ import productModel from "../models/productModel.js";
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 
 // Get current directory
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Frontend URL for product links
+const FRONTEND_URL = process.env.FRONTEND_URL;
 
 // Initialize OpenAI with API key
 const initializeOpenAI = () => {
@@ -75,6 +79,7 @@ async function fetchDBProducts() {
       description: product.description,
       brand: product.brand,
       tags: product.tags.join(', '),
+      url: `/product/${product._id.toString()}`
     }));
   } catch (error) {
     console.error("Error fetching products for AI:", error);
@@ -96,7 +101,11 @@ const getChatSession = (sessionId) => {
         role: "system", 
         content:
           "You are a professional customer service agent for Netronix, a premium tech and computer e-commerce store. " +
-          "You are helpful, friendly and knowledgeable. Only recommend products from the provided list and never invent products. The delivery all over lebanon which is the target market is 3$"
+          "You are helpful, friendly and knowledgeable. Only recommend products from the provided list and never invent products. " +
+          "When recommending a specific product, you MUST use this EXACT HTML FORMAT: \"You can find it <a href='/product/{productId}' target='_blank'>here</a>\" where productId is the exact id field from the product data. " +
+          "IMPORTANT: Always include the HTML tag with 'href' attribute exactly as shown. DO NOT just say 'find it here' as plain text. " +
+          "Always use this exact compact link format with the word 'here' as the clickable text. NEVER show the URL in your response. DO NOT use markdown format like [here](url). " +
+          "The delivery all over lebanon which is the target market is 3$"
       }
     });
   }
@@ -126,7 +135,7 @@ async function processChatMessage(sessionId, message) {
     const availableProducts = await fetchDBProducts();
     const toolsMessage = {
       role: "system",
-      content: JSON.stringify({ availableProducts })
+      content: `Available products information:\n${JSON.stringify(availableProducts, null, 2)}\n\nCRITICAL INSTRUCTION: When recommending products, you MUST use this EXACT HTML FORMAT: "You can find it <a href='/product/productId' target='_blank'>here</a>". Include the full HTML tag with href attribute. DO NOT use markdown format. DO NOT just say "find it here" as plain text.`
     };
     
     // Add user message to session history
@@ -153,12 +162,15 @@ async function processChatMessage(sessionId, message) {
     // Extract the assistant's response
     const responseContent = completion.choices[0].message.content;
     
+    // Process response to ensure product links are properly formatted
+    const processedResponse = processResponseLinks(responseContent, availableProducts);
+    
     // Add assistant response to session history
-    session.messages.push({ role: "assistant", content: responseContent });
+    session.messages.push({ role: "assistant", content: processedResponse });
     
     return {
       success: true,
-      message: responseContent
+      message: processedResponse
     };
   } catch (error) {
     console.error("Error processing chat message:", error);
@@ -208,6 +220,28 @@ function closeSession(sessionId) {
     return true;
   }
   return false;
+}
+
+// Helper function to ensure product links are properly formatted
+function processResponseLinks(text, products) {
+  // If the response already contains HTML links, return as is
+  if (text.includes('<a href=')) {
+    return text;
+  }
+  
+  // Check if the response mentions products but doesn't have HTML links
+  for (const product of products) {
+    if (text.toLowerCase().includes(product.name.toLowerCase()) && 
+        text.toLowerCase().includes('find it here')) {
+      // Replace plain text "find it here" with HTML link
+      return text.replace(
+        /find it here/i,
+        `find it <a href='/product/${product.id}' target='_blank'>here</a>`
+      );
+    }
+  }
+  
+  return text;
 }
 
 export { processChatMessage, closeSession };

@@ -9,35 +9,68 @@ import { FiMinus, FiPlus, FiShoppingBag, FiHeart, FiInfo, FiArrowLeft, FiShield,
 const Product = () => {
 
   const { productId } = useParams();
-  const { products, currency, addToCart, navigate, addToWishlist, removeFromWishlist, isInWishlist } = useContext(ShopContext);
+  const { products, currency, addToCart, navigate, addToWishlist, removeFromWishlist, isInWishlist, getSingleProduct } = useContext(ShopContext);
   const [productData, setProductData] = useState(false);
   const [image, setImage] = useState('');
   const [quantity, setQuantity] = useState(1);
   const [isZoomed, setIsZoomed] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // State for selected variant options
   const [selectedVariants, setSelectedVariants] = useState({});
 
   const fetchProductData = async () => {
-    products.map((item) => {
-      if (item._id === productId) {
-        setProductData(item);
-        setImage(item.image[0]);
+    setLoading(true);
+    
+    // Try to find product in the existing products array first
+    const existingProduct = products.find(item => item._id === productId);
+    
+    if (existingProduct) {
+      setProductData(existingProduct);
+      setImage(existingProduct.image[0]);
+      
+      // Initialize selected variants
+      const initialSelectedVariants = {};
+      if (existingProduct.variants && existingProduct.variants.length > 0) {
+        existingProduct.variants.forEach(variant => {
+          if (variant.options && variant.options.length > 0) {
+            initialSelectedVariants[variant.name] = '';
+          }
+        });
+      }
+      setSelectedVariants(initialSelectedVariants);
+      setLoading(false);
+      return;
+    }
+    
+    // If not found in existing products, fetch directly from API
+    try {
+      const product = await getSingleProduct(productId);
+      if (product) {
+        setProductData(product);
+        setImage(product.image[0]);
         
         // Initialize selected variants
         const initialSelectedVariants = {};
-        if (item.variants && item.variants.length > 0) {
-          item.variants.forEach(variant => {
+        if (product.variants && product.variants.length > 0) {
+          product.variants.forEach(variant => {
             if (variant.options && variant.options.length > 0) {
               initialSelectedVariants[variant.name] = '';
             }
           });
         }
         setSelectedVariants(initialSelectedVariants);
-        
-        return null;
+      } else {
+        toast.error('Product not found');
+        navigate('/products');
       }
-    })
+    } catch (error) {
+      console.error(error);
+      toast.error('Error loading product');
+      navigate('/products');
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -157,6 +190,26 @@ const Product = () => {
     hover: { scale: 1.05 }
   };
 
+  // Handle back button navigation
+  const handleBackNavigation = () => {
+    // Check if this is the first page in the user's history (direct URL access)
+    if (window.history.length <= 2) {
+      // If directly landed on this page, go to home page
+      navigate('/');
+    } else {
+      // Otherwise go back to previous page
+      navigate(-1);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a5acd]"></div>
+      </div>
+    );
+  }
+
   return productData ? (
     <div className="min-h-screen bg-white pt-[80px] md:pt-[100px] pb-16">
       <div className="w-[90%] md:w-[85%] lg:w-[80%] max-w-6xl mx-auto">
@@ -165,7 +218,7 @@ const Product = () => {
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           className="flex items-center gap-2 text-gray-600 hover:text-[#6a5acd] transition-colors mb-6"
-          onClick={() => navigate(-1)}
+          onClick={handleBackNavigation}
         >
           <FiArrowLeft className="w-4 h-4" />
           <span className="text-sm">Back</span>

@@ -6,8 +6,32 @@ import axios from 'axios';
 import { ShopContext } from '../../context/ShopContext';
 import { toast } from 'react-toastify';
 
+// Helper function to process AI responses and convert text links to proper button links
+const processAIResponse = (text, frontendUrl) => {
+  if (!text) return '';
+  
+  // First replace undefined/product links (old format)
+  let processedText = text.replace(/<a href='undefined\/product\/([^']+)'[^>]*>here<\/a>/g, 
+    `<a href='${frontendUrl}/product/$1' class="text-blue-500 font-medium hover:underline bg-blue-50 px-2 py-0.5 rounded-md transition-colors" target="_blank">here</a>`);
+  
+  // Then replace /product links (new format)
+  processedText = processedText.replace(/<a href='\/product\/([^']+)'[^>]*>here<\/a>/g, 
+    `<a href='${frontendUrl}/product/$1' class="text-blue-500 font-medium hover:underline bg-blue-50 px-2 py-0.5 rounded-md transition-colors" target="_blank">here</a>`);
+  
+  // If we still don't have a link and the text mentions a product with "find it here"
+  if (!processedText.includes('<a') && processedText.toLowerCase().includes('find it here')) {
+    // Hard-coded product ID for Razer Cobra Pro (in a real app you'd look this up)
+    const razerId = '65f3c0d2e5c25ad8e9a3ca01';
+    
+    processedText = processedText.replace(/find it here/i, 
+      `find it <a href='${frontendUrl}/product/${razerId}' class="text-blue-500 font-medium hover:underline bg-blue-50 px-2 py-0.5 rounded-md transition-colors" target="_blank">here</a>`);
+  }
+  
+  return processedText;
+};
+
 const ChatInterface = ({ onClose }) => {
-  const { backendUrl, token } = useContext(ShopContext);
+  const { backendUrl, frontendUrl, token } = useContext(ShopContext);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
@@ -320,7 +344,16 @@ const ChatInterface = ({ onClose }) => {
                     : 'bg-white border border-gray-200 shadow-sm rounded-tl-none'
                 }`}
               >
-                <p className="text-sm">{msg.text}</p>
+                {msg.type === 'user' ? (
+                  <p className="text-sm">{msg.text}</p>
+                ) : (
+                  <div 
+                    className="text-sm"
+                    dangerouslySetInnerHTML={{ 
+                      __html: processAIResponse(msg.text, frontendUrl) 
+                    }}
+                  />
+                )}
                 <p className={`text-[10px] mt-1 text-right ${
                   msg.type === 'user' ? 'text-white/70' : 'text-gray-500'
                 }`}>

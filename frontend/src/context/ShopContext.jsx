@@ -9,6 +9,7 @@ const ShopContextProvider = (props) => {
     const currency = '$';
     const delivery_fee = 3;
     const backendUrl = import.meta.env.VITE_BACKEND_URL
+    const frontendUrl = import.meta.env.VITE_FRONTEND_URL || window.location.origin;
     const [search, setSearch] = useState('');
     const [showSearch, setShowSearch] = useState(false);
     const [cartItems, setCartItems] = useState({});
@@ -216,6 +217,23 @@ const ShopContextProvider = (props) => {
         }
     }
 
+    // Function to fetch a single product by ID
+    const getSingleProduct = async (productId) => {
+        try {
+            const response = await axios.post(`${backendUrl}/api/product/single`, { productId });
+            if (response.data.success) {
+                return response.data.product;
+            } else {
+                toast.error(response.data.message);
+                return null;
+            }
+        } catch (error) {
+            console.log(error);
+            toast.error(error.message);
+            return null;
+        }
+    }
+
     // Function to get products by tag
     const getProductsByTag = async (tag) => {
         try {
@@ -370,23 +388,39 @@ const ShopContextProvider = (props) => {
         }
     }, [token]);
 
-    const value = {
-        products, currency, delivery_fee,
-        search, setSearch, showSearch, setShowSearch,
-        cartItems, addToCart, setCartItems,
-        getCartCount, updateQuantity,
-        getCartAmount, navigate: navigateWithContext, backendUrl,
-        setToken, token, getVariantDisplayName,
+    // Make sure to include the frontendUrl in the context value
+    const contextValue = {
+        products,
+        cartItems,
+        addToCart,
+        getCartCount,
+        getCartAmount,
+        updateQuantity,
+        currency,
+        delivery_fee,
+        token,
+        setToken,
+        addToWishlist,
+        removeFromWishlist,
+        isInWishlist,
+        wishlist,
+        getVariantDisplayName,
+        search,
+        setSearch,
+        showSearch,
+        setShowSearch,
+        navigate: navigateWithContext,
         getProductsByTag,
-        // Wishlist
-        wishlist, addToWishlist, removeFromWishlist, isInWishlist
-    }
+        backendUrl,
+        frontendUrl,
+        getSingleProduct
+    };
 
     return (
-        <ShopContext.Provider value={value}>
+        <ShopContext.Provider value={contextValue}>
             {props.children}
         </ShopContext.Provider>
-    )
-}
+    );
+};
 
 export default ShopContextProvider;
