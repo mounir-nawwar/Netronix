@@ -225,9 +225,9 @@ const ShopTheLook = () => {
                                     className="product-card bg-[#f9f9f9] rounded-2xl overflow-hidden cursor-pointer group relative flex flex-col flex-grow shadow-md"
                                     whileHover={{ y: -5 }}
                                     transition={{ duration: 0.3 }}
-                                    onClick={() => displayProducts[activeProduct]._id && navigate(`/product/${displayProducts[activeProduct]._id}`)}
+                                    onClick={() => displayProducts[activeProduct]?._id && navigate(`/product/${displayProducts[activeProduct]._id}`)}
                                 >
-                                    <div className="relative aspect-square overflow-hidden bg-[#f9f9f9]">
+                                    <div className="relative h-64 mb-3">
                                         <img
                                             src={getProductImage(displayProducts[activeProduct])}
                                             alt={displayProducts[activeProduct].name}
