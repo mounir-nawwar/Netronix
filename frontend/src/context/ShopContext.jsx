@@ -207,29 +207,77 @@ const ShopContextProvider = (props) => {
         try {
             const response = await axios.get(backendUrl + '/api/product/list')
             if (response.data.success) {
-                setProducts(response.data.products)
+                // Ensure each product has properly formatted fields
+                const processedProducts = response.data.products.map(product => {
+                    // Ensure image is always an array
+                    const imageArray = Array.isArray(product.image) ? product.image : [];
+                    
+                    // Make sure all image URLs are valid strings
+                    const validImages = imageArray.filter(img => typeof img === 'string' && img.trim() !== '');
+                    
+                    // If description exists in desc field but not in description field, copy it
+                    const description = product.description || product.desc || '';
+                    
+                    return {
+                        ...product,
+                        image: validImages,
+                        description: description,
+                        // Ensure variants is always an array
+                        variants: Array.isArray(product.variants) ? product.variants : [],
+                        // Ensure tags is always an array 
+                        tags: Array.isArray(product.tags) ? product.tags : [],
+                        // Ensure inventory exists
+                        inventory: product.inventory || {}
+                    };
+                });
+                setProducts(processedProducts);
+                
+                // Log how many products have images
+                const withImages = processedProducts.filter(p => p.image && p.image.length > 0).length;
+                console.log(`Loaded ${processedProducts.length} products, ${withImages} with images`);
             } else {
                 toast.error(response.data.message);
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message)
+            toast.error("Error loading products");
         }
     }
 
     // Function to fetch a single product by ID
     const getSingleProduct = async (productId) => {
         try {
+            // First try to find the product in already loaded products
+            const existingProduct = products.find(p => p._id === productId);
+            if (existingProduct) {
+                return existingProduct; // Already processed in getProductsData
+            }
+            
+            // If not found in existing products, fetch from API
             const response = await axios.post(`${backendUrl}/api/product/single`, { productId });
             if (response.data.success) {
-                return response.data.product;
+                const product = response.data.product;
+                
+                // Process product data for consistency
+                const imageArray = Array.isArray(product.image) ? product.image : [];
+                const validImages = imageArray.filter(img => typeof img === 'string' && img.trim() !== '');
+                const description = product.description || product.desc || '';
+                
+                return {
+                    ...product,
+                    image: validImages,
+                    description: description,
+                    variants: Array.isArray(product.variants) ? product.variants : [],
+                    tags: Array.isArray(product.tags) ? product.tags : [],
+                    inventory: product.inventory || {}
+                };
             } else {
                 toast.error(response.data.message);
                 return null;
             }
         } catch (error) {
             console.log(error);
-            toast.error(error.message);
+            toast.error("Error loading product");
             return null;
         }
     }

@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiShoppingCart, FiTrash2, FiMinus, FiPlus, FiAlertCircle, FiArrowRight, FiChevronLeft } from 'react-icons/fi';
 import CartTotal from '../components/CartTotal';
+import BackButton from '../components/BackButton';
 
 const Cart = () => {
 
@@ -118,12 +119,7 @@ const Cart = () => {
         transition={{ duration: 0.5 }}
       >
         <div className="flex items-center mb-6">
-          <button 
-            onClick={() => navigate(-1)}
-            className="p-2 mr-3 rounded-full hover:bg-gray-100 transition-colors text-[#6a5acd]"
-          >
-            <FiChevronLeft className="w-5 h-5" />
-          </button>
+          <BackButton showLabel={false} className="mr-3" />
           <motion.h1 
             className="text-3xl font-bold text-gray-900"
             initial={{ opacity: 0, y: -20 }}

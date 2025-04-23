@@ -5,6 +5,7 @@ import RelatedProducts from '../components/RelatedProducts';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 import { FiMinus, FiPlus, FiShoppingBag, FiHeart, FiInfo, FiArrowLeft, FiShield, FiTruck, FiPackage } from 'react-icons/fi';
+import BackButton from '../components/BackButton';
 
 const Product = () => {
 
@@ -190,18 +191,6 @@ const Product = () => {
     hover: { scale: 1.05 }
   };
 
-  // Handle back button navigation
-  const handleBackNavigation = () => {
-    // Check if this is the first page in the user's history (direct URL access)
-    if (window.history.length <= 2) {
-      // If directly landed on this page, go to home page
-      navigate('/');
-    } else {
-      // Otherwise go back to previous page
-      navigate(-1);
-    }
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -214,15 +203,7 @@ const Product = () => {
     <div className="min-h-screen bg-white pt-[80px] md:pt-[100px] pb-16">
       <div className="w-[90%] md:w-[85%] lg:w-[80%] max-w-6xl mx-auto">
         {/* Back button */}
-        <motion.button
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-2 text-gray-600 hover:text-[#6a5acd] transition-colors mb-6"
-          onClick={handleBackNavigation}
-        >
-          <FiArrowLeft className="w-4 h-4" />
-          <span className="text-sm">Back</span>
-        </motion.button>
+        <BackButton className="mb-6" />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Product Images */}
@@ -322,7 +303,7 @@ const Product = () => {
             
             {/* Description */}
             <motion.p 
-              className="text-gray-600 mb-6"
+              className="text-gray-600 mb-6 line-clamp-3 relative"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.5 }}

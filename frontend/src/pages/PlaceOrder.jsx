@@ -2,10 +2,11 @@ import React, { useContext, useState } from 'react'
 import { ShopContext } from '../context/ShopContext';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
-import { FiShoppingBag, FiChevronLeft, FiCreditCard, FiHome, FiCheck, FiPackage } from 'react-icons/fi';
+import { FiShoppingBag, FiChevronLeft, FiCreditCard, FiHome, FiCheck, FiPackage, FiAlertCircle } from 'react-icons/fi';
 import CartTotal from '../components/CartTotal'
 import axios from 'axios';
 import whishLogo from '../assets/all/whishLogo.png';
+import BackButton from '../components/BackButton';
 
 const PlaceOrder = () => {
 
@@ -103,12 +104,7 @@ const PlaceOrder = () => {
         transition={{ duration: 0.5 }}
       >
         <div className="flex items-center mb-6">
-          <button 
-            onClick={() => navigate(-1)}
-            className="p-2 mr-3 rounded-full hover:bg-gray-100 transition-colors text-[#6a5acd]"
-          >
-            <FiChevronLeft className="w-5 h-5" />
-          </button>
+          <BackButton showLabel={false} className="mr-3" />
           <motion.h1 
             className="text-3xl font-bold text-gray-900"
             initial={{ opacity: 0, y: -20 }}
