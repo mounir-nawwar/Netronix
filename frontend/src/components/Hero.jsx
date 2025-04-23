@@ -17,7 +17,7 @@ const Hero = () => {
     <div className="relative w-full h-screen overflow-hidden max-w-[100vw] max-h-[100vh]">
       {/* Spline 3D Scene */}
       <div className="absolute inset-0 w-full h-full">
-      <iframe src='https://my.spline.design/nexbotrobotcharacterconcept-98ea87efdaff8e9988041f9b62305dbe/' frameborder='0' width='100%' height='100%'></iframe>
+      <iframe src='https://my.spline.design/nexbotrobotcharacterconcept-98ea87efdaff8e9988041f9b62305dbe/?logo=0' frameborder='0' width='100%' height='100%'></iframe>
       </div>
 
       {/* Hero Text */}
