@@ -40,7 +40,7 @@ connectCloudinary()
 // Middlewares
 app.use(express.json())
 app.use(cors({
-  origin: ['https://netronixstore.vercel.app', 'http://localhost:5173'],
+  origin: ['https://netronixstore.vercel.app', 'http://localhost:5173', 'http://localhost:5174', 'https://netronix-admin.vercel.app'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'token']
