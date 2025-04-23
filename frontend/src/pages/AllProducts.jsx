@@ -223,7 +223,7 @@ const AllProducts = () => {
       selected: []
     },
     variants: {},
-    priceRange: [0, 1000]
+    priceRange: [0, 20000]
   });
   
   const [showMobileFilters, setShowMobileFilters] = useState(false);
