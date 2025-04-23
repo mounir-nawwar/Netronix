@@ -335,9 +335,11 @@ const Navbar = ({ visible }) => {
                         {/* Cart icon with counter */}
                         <Link to='/cart' className='relative'>
                             <BsCartDash className='w-5 h-5 lg:w-6 lg:h-6 cursor-pointer text-gray-800 hover:text-black transition-colors' />
-                            <p className='absolute right-[-5px] bottom-[-5px] w-4 text-center leading-4 bg-black text-white aspect-square rounded-full text-[8px]'>
-                                {getCartCount()}
-                            </p>
+                            {getCartCount() > 0 && (
+                                <p className='absolute right-[-5px] bottom-[-5px] w-4 text-center leading-4 bg-black text-white aspect-square rounded-full text-[8px]'>
+                                    {getCartCount()}
+                                </p>
+                            )}
                         </Link>
                     </div>
                 </div>
@@ -423,9 +425,11 @@ const Navbar = ({ visible }) => {
                     
                     <Link to='/cart' className='relative'>
                         <BsCartDash className='w-5 h-5 sm:w-6 sm:h-6 cursor-pointer text-gray-800' />
-                        <p className='absolute right-[-5px] bottom-[-5px] w-4 text-center leading-4 bg-black text-white aspect-square rounded-full text-[8px]'>
-                            {getCartCount()}
-                        </p>
+                        {getCartCount() > 0 && (
+                            <p className='absolute right-[-5px] bottom-[-5px] w-4 text-center leading-4 bg-black text-white aspect-square rounded-full text-[8px]'>
+                                {getCartCount()}
+                            </p>
+                        )}
                     </Link>
                     
                     <motion.button
