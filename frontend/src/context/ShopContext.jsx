@@ -18,20 +18,52 @@ const ShopContextProvider = (props) => {
     const [wishlist, setWishlist] = useState([]);
     const navigate = useNavigate();
 
+    // Load cart from localStorage for guest users
+    useEffect(() => {
+        // Try to load guest cart from localStorage if no token
+        if (!token && localStorage.getItem('guestCart')) {
+            try {
+                const savedCart = JSON.parse(localStorage.getItem('guestCart'));
+                if (savedCart && typeof savedCart === 'object') {
+                    setCartItems(savedCart);
+                    console.log('Loaded guest cart from localStorage');
+                }
+            } catch (error) {
+                console.error('Error loading guest cart:', error);
+                localStorage.removeItem('guestCart');
+            }
+        }
+    }, [token]);
+
+    // Save cart to localStorage for guest users
+    useEffect(() => {
+        // Only save to localStorage if no token (guest user)
+        if (!token && Object.keys(cartItems).length > 0) {
+            localStorage.setItem('guestCart', JSON.stringify(cartItems));
+            console.log('Saved guest cart to localStorage');
+        }
+    }, [cartItems, token]);
+
     // Enhanced navigation function that handles search state
     const navigateWithContext = (path, options = {}) => {
-        // Close search if not explicitly kept open
-        if (!options.keepSearchOpen) {
-            setShowSearch(false);
+        try {
+            // Close search if not explicitly kept open
+            if (!options.keepSearchOpen) {
+                setShowSearch(false);
+            }
+            
+            // Reset search term if navigating away from products page
+            if (!path.includes('products') && !options.keepSearchTerm) {
+                setSearch('');
+            }
+            
+            // Perform the navigation
+            navigate(path);
+        } catch (error) {
+            console.error("Navigation error:", error);
+            // Fall back to direct navigation if there's an error
+            window.location.href = path;
         }
-        
-        // Reset search term if navigating away from products page
-        if (!path.includes('products') && !options.keepSearchTerm) {
-            setSearch('');
-        }
-        
-        // Perform the navigation
-        navigate(path);
     };
 
     const addToCart = async (itemId, variantKey, quantity = 1) => {
@@ -133,6 +165,9 @@ const ShopContextProvider = (props) => {
                 console.log(error);
                 toast.error(error.message)
             }
+        } else {
+            // For guest users, save to localStorage
+            localStorage.setItem('guestCart', JSON.stringify(cartData));
         }
     }
 

@@ -73,12 +73,30 @@ const PlaceOrder = () => {
 
       // Process the order based on payment method
       try {
-        const response = await axios.post(backendUrl + '/api/order/place', orderData, {headers:{token}});
+        const endpoint = token 
+          ? backendUrl + '/api/order/place'
+          : backendUrl + '/api/order/guest/place';
+          
+        const headers = token ? { token } : {};
+        
+        const response = await axios.post(endpoint, orderData, { headers });
         console.log('Server response:', response);
         if(response.data.success){
-          setCartItems({});
+          // Clear cart using different methods for guest vs logged-in users
+          if (token && typeof setCartItems === 'function') {
+            // For logged-in users, use context function
+            setCartItems({});
+          } else {
+            // For guest users, clear localStorage
+            localStorage.removeItem('guestCart');
+          }
+          
           toast.success('Order placed successfully!');
-          navigate('/orders');
+          
+          // Use timeout to allow toast to display before navigation
+          setTimeout(() => {
+            window.location.href = token ? '/orders' : '/';
+          }, 1500);
         } else {
           console.log('Order failed:', response.data);
           toast.error(response.data.message || 'Order placement failed');
@@ -86,11 +104,12 @@ const PlaceOrder = () => {
       } catch (error) {
         console.error('Order error:', error.response?.data || error);
         toast.error(error.response?.data?.message || error.message || 'Order placement failed');
+      } finally {
+        setIsSubmitting(false);
       }
     } catch (error) {
       console.log(error);
       toast.error(error.message);
-    } finally {
       setIsSubmitting(false);
     }
   }
@@ -342,7 +361,7 @@ const PlaceOrder = () => {
                   <FiShoppingBag className="w-5 h-5 text-[#6a5acd] mr-2" />
                   <button 
                     type="button"
-                    onClick={() => navigate('/cart')}
+                    onClick={() => window.location.href = '/cart'}
                     className="text-center text-[#6a5acd] hover:text-[#5a4cbb] transition-colors text-sm underline"
                   >
                     Return to Cart
