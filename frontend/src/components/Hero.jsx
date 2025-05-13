@@ -1,8 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Spline from '@splinetool/react-spline';
 
 const Hero = () => {
+  const [contentVisible, setContentVisible] = useState(false);
+  
   useEffect(() => {
     // Spline script
     if (!document.querySelector('script[src*="splinetool/viewer"]')) {
@@ -13,15 +15,29 @@ const Hero = () => {
     }
   }, []);
 
+  // Handle iframe load event
+  const handleSplineLoad = () => {
+    // Wait for 3 seconds after the Spline scene loads before showing content
+    setTimeout(() => {
+      setContentVisible(true);
+    }, 10);
+  };
+
   return (
     <div className="relative w-full h-screen overflow-hidden max-w-[100vw] max-h-[100vh]">
       {/* Spline 3D Scene */}
       <div className="absolute inset-0 w-full h-full">
-      <iframe src='https://my.spline.design/nexbotrobotcharacterconcept-98ea87efdaff8e9988041f9b62305dbe/?logo=0' frameborder='0' width='100%' height='100%'></iframe>
+        <iframe 
+          src='https://my.spline.design/nexbotrobotcharacterconcept-98ea87efdaff8e9988041f9b62305dbe/?logo=0' 
+          frameborder='0' 
+          width='100%' 
+          height='100%'
+          onLoad={handleSplineLoad}
+        ></iframe>
       </div>
 
       {/* Hero Text */}
-      <div
+      {contentVisible && <div
         className="absolute z-10 md:top-1/3 md:left-[10vw] md:max-w-[40vw] 
                   top-[10%] left-0 w-full px-6 md:px-0 text-center md:text-left"
         style={{
@@ -56,7 +72,7 @@ const Hero = () => {
             Shop Now
           </Link>
         </div>
-      </div>
+      </div>}
     </div>
   );
 };
