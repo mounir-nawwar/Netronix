@@ -17,10 +17,9 @@ const Hero = () => {
 
   // Handle iframe load event
   const handleSplineLoad = () => {
-    // Wait for 3 seconds after the Spline scene loads before showing content
     setTimeout(() => {
       setContentVisible(true);
-    }, 10);
+    }, 0);
   };
 
   return (
