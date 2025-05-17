@@ -306,6 +306,7 @@ const FeaturedProduct = () => {
                                             src={img}
                                             alt={`${product.name} view ${index + 1}`}
                                             className="w-full h-full object-cover"
+                                            loading="lazy"
                                         />
                                     </button>
                                 ))}
@@ -320,6 +321,7 @@ const FeaturedProduct = () => {
                                     alt={product.name}
                                     className="rounded-lg"
                                     style={{ width: "auto", height: "auto", maxHeight: "500px" }}
+                                    loading="lazy"
                                 />
                             </div>
                             
@@ -338,6 +340,7 @@ const FeaturedProduct = () => {
                                             src={img}
                                             alt={`${product.name} view ${index + 1}`}
                                             className="w-full h-full object-cover"
+                                            loading="lazy"
                                         />
                                     </button>
                                 ))}

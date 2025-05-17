@@ -187,6 +187,7 @@ const ShopTheLook = () => {
                                 src={mainImage}
                                 alt="Premium workspace setup"
                                 className="w-full h-full object-cover"
+                                loading="lazy"
                             />
 
                             {/* Hotspots with pulsing animation - Smaller on mobile */}

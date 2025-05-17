@@ -37,6 +37,7 @@ const CountdownBanner = () => {
           src={bannerImage} 
           alt="MacBook M4" 
           className="w-full"
+          loading="lazy"
         />
       </div>
 

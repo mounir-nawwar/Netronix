@@ -31,6 +31,8 @@ const HeroVideo = () => {
                     playsInline
                     className="w-full h-full object-cover"
                     src={videoSrc}
+                    controls
+                    loading="lazy"
                 />
 
                 {/* Content Overlay */}

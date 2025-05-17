@@ -86,6 +86,7 @@ const ImageComparison = ({
                     src={beforeImage}
                     alt="Before"
                     className="w-full h-full object-cover"
+                    loading="lazy"
                 />
                 {(beforeHeading || beforeSubheading) && (
                     <div className="absolute bottom-6 left-6" style={{ maxWidth: `calc(${percent}% - 40px)` }}>
@@ -114,6 +115,7 @@ const ImageComparison = ({
                     src={afterImage}
                     alt="After"
                     className="w-full h-full object-cover"
+                    loading="lazy"
                 />
                 {(afterHeading || afterSubheading) && (
                     <div className="absolute bottom-6 right-6 text-right" style={{ maxWidth: `calc(${100 - percent}% - 40px)` }}>
