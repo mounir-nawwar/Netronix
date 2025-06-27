@@ -153,8 +153,8 @@ async function processChatMessage(sessionId, message) {
     // Get response from OpenAI
     const completion = await openai.chat.completions.create({
       messages: apiMessages,
-      model: "gpt-4o",
-      max_tokens: 250
+      model: "gpt-4o-mini",
+      max_tokens: 200
     });
     
     console.log("Received response from OpenAI");
