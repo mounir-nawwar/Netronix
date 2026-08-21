@@ -1,162 +1,85 @@
-import React, { useContext, useEffect, useState, useRef } from 'react';
-import { ShopContext } from '../context/ShopContext';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { ShopContext } from '../context/shopContext';
+import { Link, useParams, useNavigate } from 'react-router-dom';
+import Seo from '../components/Seo';
+import { breadcrumbLd } from '../lib/seo';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiShoppingBag, FiFilter, FiChevronDown, FiX, FiGrid, FiList, FiSliders } from 'react-icons/fi';
 
-// Import product images (you'll need to add these to your assets)
-import laptopCategory from '../assets/category_images/Laptops category.png';
-import pcCategory from '../assets/category_images/pc pic 2.png';
-import macbookCategory from '../assets/category_images/m4 pro macbook.png';
-import headphonesCategory from '../assets/category_images/Headphones.jpg';
-import earphonesCategory from '../assets/category_images/Earphones.jpg';
-import speakersCategory from '../assets/category_images/Speakers.jpg';
-import accessoriesCategory from '../assets/category_images/Accessories.jpg';
-import gamingCategory from '../assets/category_images/Gaming.jpg';
+import ProductCard from '../components/ProductCard';
+import { catalogPriceCeiling, filterProducts, sortProducts, tagsOf } from '../lib/catalog';
 
-const ProductCard = ({ product }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const imageContainerRef = useRef(null);
-  const [isMobile, setIsMobile] = useState(false);
-  const [touchStart, setTouchStart] = useState(0);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  const handleMouseMove = (e) => {
-    if (isMobile) return;
-    
-    const { left, width } = imageContainerRef.current.getBoundingClientRect();
-    const x = e.clientX - left;
-    const section = width / 3;
-    
-    if (x < section) {
-      setCurrentImageIndex(0);
-    } else if (x < section * 2) {
-      setCurrentImageIndex(1);
-    } else {
-      setCurrentImageIndex(2);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    setCurrentImageIndex(0);
-  };
-
-  const handleTouchStart = (e) => {
-    setTouchStart(e.touches[0].clientX);
-  };
-
-  const handleTouchMove = (e) => {
-    if (!touchStart) return;
-
-    const currentTouch = e.touches[0].clientX;
-    const diff = touchStart - currentTouch;
-
-    if (Math.abs(diff) > 5) { // Add some threshold to prevent accidental swipes
-      if (diff > 0) {
-        // Swipe left
-        setCurrentImageIndex(prev => (prev + 1) % 3);
-      } else {
-        // Swipe right
-        setCurrentImageIndex(prev => (prev - 1 + 3) % 3);
-      }
-      setTouchStart(null);
-    }
-  };
-
-  // Get product images
-  const productImages = product.image && Array.isArray(product.image) && product.image.length > 0 
-    ? [product.image[0], product.image[0], product.image[0]] // Use duplicates if only one image is available
-    : [laptopCategory, laptopCategory, laptopCategory]; // Fallback to default image
-
-  const handleProductClick = () => {
-    navigate(`/product/${product._id}`);
-  };
-
-  return (
-    <motion.div 
-      className="product-card bg-[#f9f9f9] rounded-2xl overflow-hidden cursor-pointer group relative flex flex-col min-w-[120px] md:min-w-0"
-      whileHover={{ y: -5 }}
-      transition={{ duration: 0.3 }}
-      onClick={handleProductClick}
-    >
-      <div 
-        ref={imageContainerRef}
-        className="relative aspect-square overflow-hidden bg-[#f9f9f9]"
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-      >
-        <img
-          src={productImages[currentImageIndex]}
-          alt={product.name || "Product"}
-          className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-          loading="lazy"
-        />
-      </div>
-
-      {/* Image navigation dots */}
-      <div className="flex justify-center gap-1 py-1 md:py-2">
-        {productImages.map((_, index) => (
-          <button
-            key={index}
-            className={`w-1 h-1 md:w-1.5 md:h-1.5 rounded-full transition-all ${
-              currentImageIndex === index 
-                ? 'bg-black' 
-                : 'bg-gray-300'
-            }`}
-            onClick={(e) => {
-              e.stopPropagation();
-              setCurrentImageIndex(index);
-            }}
-          />
-        ))}
-      </div>
-
-      <div className="px-3 md:px-4 pb-3 md:pb-4">
-        <div className="flex justify-between items-start mb-0.5 md:mb-1">
-          <p className="text-[9px] md:text-sm text-gray-600 font-michroma">{product.vendor || product.brand || "Brand"}</p>
-          <div className="flex items-center">
-            <span className="text-[#6a5acd] text-xs md:text-base">★</span>
-            <span className="text-[9px] md:text-sm ml-0.5 md:ml-1">{product.rating || "4.5"}</span>
-          </div>
-        </div>
-        <h3 className="text-xs md:text-lg font-michroma text-gray-900 mb-1 md:mb-2 relative group-hover:after:w-full after:w-0 after:h-[2px] after:bg-[#6a5acd] after:absolute after:left-0 after:bottom-0 after:transition-all after:duration-300 truncate">
-          {product.name || "Product Name"}
-        </h3>
-        <p className="text-sm md:text-lg font-michroma text-[#6a5acd] mb-2 md:mb-3">${product.price || "0.00"}</p>
-      </div>
-    </motion.div>
-  );
-};
+// FE-003 — this page filtered and sorted on fields the schema does not have.
+//
+// The type filter read `item.category`, the sidebar's checkbox list was derived
+// from the same field, "newest" sorted on `item.createdAt`, and the price
+// ceiling was the literal `1000` — written into the state, into the slider's
+// `max`, and into the percentage arithmetic that positions the track. Products
+// are categorised by `tags`; "newest" is `date`, a number of epoch milliseconds;
+// and the ceiling is a property of the catalog.
+//
+// The practical effect of the last one was that `/collections/all` — the
+// destination of the empty cart's own call to action — hid every product over
+// $1,000, in a catalog whose laptops start at $1,149.
+//
+// FE-007 — the 121-line `ProductCard` that used to live at the top of this file
+// is gone. It fabricated three images by repeating `image[0]` and read
+// `product.vendor`, a field that has never existed. Every tiled surface now
+// renders `components/ProductCard`.
+//
+// The filtering itself is in `lib/catalog.js`, as pure functions over data.
+// Visual design is untouched.
 
 const Collections = () => {
   const { type } = useParams();
   const navigate = useNavigate();
-  const { products, addToCart } = useContext(ShopContext);
-  const [filteredProducts, setFilteredProducts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { products, tags, catalogStatus, catalogError, reloadCatalog, formatPrice, getPriceMinor } =
+    useContext(ShopContext);
   const [showFilters, setShowFilters] = useState(false);
   const [viewType, setViewType] = useState('grid'); // 'grid' or 'list'
   const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
-  
-  // Filter states
-  const [priceRange, setPriceRange] = useState([0, 1000]);
+
+  // The ceiling is derived from the whole catalog, so a $2,500 laptop is
+  // reachable and the slider's geometry agrees with the filter's arithmetic.
+  const maxPrice = useMemo(() => catalogPriceCeiling(products), [products]);
+
+  // Filter states. `null` means "not yet touched", which is how the range
+  // follows the catalog until the customer moves a handle themselves.
+  const [priceRange, setPriceRange] = useState(null);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [sortBy, setSortBy] = useState('newest');
 
+  // Destructured so the memo dependencies below are plain values rather than a
+  // fresh array identity on every render.
+  const [minSelected, maxSelected] = priceRange ?? [0, maxPrice];
+  const effectiveRange = useMemo(() => [minSelected, maxSelected], [minSelected, maxSelected]);
+
+  /**
+   * The taxonomy, from the real tags (FE-010).
+   *
+   * Preferring the `/product/tags` endpoint the context already fetched, and
+   * falling back to the tags present in the loaded catalog. Neither invents a
+   * category: the sidebar used to derive its list from `item.category` and was
+   * therefore always empty, and `AllProducts` compensated by injecting about
+   * forty hardcoded category names that matched no product at all.
+   */
+  const categories = useMemo(
+    () => (tags?.length > 0 ? [...tags].sort() : tagsOf(products)),
+    [tags, products],
+  );
+
+  const filteredProducts = useMemo(
+    () => sortProducts(
+      filterProducts(products, { type, priceRange: effectiveRange, tags: selectedCategories }),
+      sortBy,
+    ),
+    [products, type, effectiveRange, selectedCategories, sortBy],
+  );
+
+  const isLoading = catalogStatus === 'loading';
+  const hasFailed = catalogStatus === 'error';
+
   // Refs for the slider
-  const minThumbRef = useRef(null);
-  const maxThumbRef = useRef(null);
   const minPriceRef = useRef(null);
   const maxPriceRef = useRef(null);
   const rangeRef = useRef(null);
@@ -205,107 +128,29 @@ const Collections = () => {
     }
   };
 
-  // Update price range slider UI
+  // Update price range slider UI. The percentages use the same derived maximum
+  // the inputs do, so the track cannot disagree with the handles.
   useEffect(() => {
     if (!minPriceRef.current || !maxPriceRef.current || !trackRef.current || !rangeRef.current) return;
-    
-    const minPercent = (priceRange[0] / 1000) * 100;
-    const maxPercent = (priceRange[1] / 1000) * 100;
-    
-    if (trackRef.current) {
-      trackRef.current.style.left = `${minPercent}%`;
-      trackRef.current.style.width = `${maxPercent - minPercent}%`;
-    }
-  }, [priceRange]);
+    if (maxPrice <= 0) return;
 
-  useEffect(() => {
-    if (products && products.length > 0) {
-      setIsLoading(true);
-      let filtered = [...products];
+    const minPercent = (effectiveRange[0] / maxPrice) * 100;
+    const maxPercent = (effectiveRange[1] / maxPrice) * 100;
 
-      // Filter by type if not "all" and type is defined
-      if (type && type !== 'all') {
-        filtered = filtered.filter(item => 
-          item && item.category && 
-          typeof item.category === 'string' && 
-          item.category.toLowerCase() === type.toLowerCase()
-        );
-      }
-
-      // Apply price filter
-      filtered = filtered.filter(item => 
-        item && item.price && 
-        item.price >= priceRange[0] && 
-        item.price <= priceRange[1]
-      );
-
-      // Apply category filter if any selected
-      if (selectedCategories && selectedCategories.length > 0) {
-        filtered = filtered.filter(item => 
-          item && item.category && 
-          typeof item.category === 'string' && 
-          selectedCategories.includes(item.category.toLowerCase())
-        );
-      }
-
-      // Apply sorting
-      switch (sortBy) {
-        case 'price-low':
-          filtered.sort((a, b) => (a?.price || 0) - (b?.price || 0));
-          break;
-        case 'price-high':
-          filtered.sort((a, b) => (b?.price || 0) - (a?.price || 0));
-                break;
-        case 'newest':
-          filtered.sort((a, b) => {
-            const dateA = a?.createdAt ? new Date(a.createdAt) : new Date(0);
-            const dateB = b?.createdAt ? new Date(b.createdAt) : new Date(0);
-            return dateB - dateA;
-          });
-                break;
-            default:
-                break;
-        }
-
-      setFilteredProducts(filtered);
-      setTimeout(() => setIsLoading(false), 300); // Simulate loading for smoother transitions
-    } else {
-      setFilteredProducts([]);
-      setIsLoading(false);
-    }
-  }, [products, type, priceRange, selectedCategories, sortBy]);
-
-  // Get unique categories from products - with null checks
-  const categories = products && products.length 
-    ? [...new Set(
-        products
-          .filter(item => item && item.category && typeof item.category === 'string')
-          .map(item => item.category.toLowerCase())
-      )]
-    : [];
-
-  const handleAddToCart = (product) => {
-    if (!product || !product._id) return;
-    
-    // Default to first available size or "default" if none found
-    const inventory = product.inventory || {};
-    const firstSize = Object.keys(inventory).length > 0 
-      ? Object.keys(inventory)[0] 
-      : 'default';
-      
-    addToCart(product._id, firstSize);
-  };
+    trackRef.current.style.left = `${minPercent}%`;
+    trackRef.current.style.width = `${maxPercent - minPercent}%`;
+  }, [effectiveRange, maxPrice]);
 
   const handlePriceChange = (index, value) => {
-    const newRange = [...priceRange];
-    
+    const newRange = [...effectiveRange];
+
     // Make sure min can't exceed max, and max can't go below min
     if (index === 0) { // Min price
-      newRange[0] = Math.min(value, priceRange[1]);
+      newRange[0] = Math.min(value, effectiveRange[1]);
     } else { // Max price
-      newRange[1] = Math.max(value, priceRange[0]);
+      newRange[1] = Math.max(value, effectiveRange[0]);
     }
-    
+
     setPriceRange(newRange);
   };
 
@@ -320,13 +165,41 @@ const Collections = () => {
   };
 
   const clearFilters = () => {
-    setPriceRange([0, 1000]);
+    // Back to "not touched", so the range follows the catalog again.
+    setPriceRange(null);
     setSelectedCategories([]);
     setSortBy('newest');
   };
 
     return (
     <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 px-4 sm:px-6 lg:px-8 py-12 pt-[80px] md:pt-[100px]">
+      {/* SEO-002 / SEO-004 / SEO-005 — a typed collection gets its own title,
+          its own description and its own canonical, where every collection
+          used to share the single string "Netronix". The breadcrumb is the one
+          structured-data type this page can state as fact. */}
+      <Seo
+        title={type ? `${type}` : 'Collections'}
+        description={
+          type
+            ? `Browse ${type} at Netronix — with real stock per variant.`
+            : 'Every Netronix collection: laptops, gaming PCs, MacBooks, audio and accessories.'
+        }
+        path={type ? `/collections/${type}` : '/collections'}
+        jsonLd={[
+          breadcrumbLd(
+            type
+              ? [
+                { name: 'Home', path: '/' },
+                { name: 'Collections', path: '/collections' },
+                { name: type, path: `/collections/${type}` },
+              ]
+              : [
+                { name: 'Home', path: '/' },
+                { name: 'Collections', path: '/collections' },
+              ],
+          ),
+        ]}
+      />
       <motion.div 
         className="max-w-7xl mx-auto"
         initial={{ opacity: 0, y: 20 }}
@@ -392,7 +265,7 @@ const Collections = () => {
               <FiChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
             </button>
             
-            {(selectedCategories.length > 0 || priceRange[0] > 0 || priceRange[1] < 1000) && (
+            {(selectedCategories.length > 0 || effectiveRange[0] > 0 || effectiveRange[1] < maxPrice) && (
               <button 
                 onClick={clearFilters}
                 className="flex items-center gap-1 px-3 py-2 text-sm text-[#6a5acd] hover:text-[#5d4ebd] transition-colors fill-button"
@@ -440,7 +313,7 @@ const Collections = () => {
                       <h3 className="font-medium text-lg">Filters</h3>
                     </div>
                     
-                    {(selectedCategories.length > 0 || priceRange[0] > 0 || priceRange[1] < 1000) && (
+                    {(selectedCategories.length > 0 || effectiveRange[0] > 0 || effectiveRange[1] < maxPrice) && (
                       <button 
                         onClick={clearFilters}
                         className="text-sm text-[#6a5acd] hover:text-[#5d4ebd] transition-colors fill-button"
@@ -465,9 +338,9 @@ const Collections = () => {
                       <input
                         type="range"
                         min={0}
-                        max={1000}
+                        max={maxPrice}
                         ref={minPriceRef}
-                        value={priceRange[0]}
+                        value={effectiveRange[0]}
                         onChange={(e) => handlePriceChange(0, parseInt(e.target.value, 10))}
                         className="absolute w-full -top-3 h-1 bg-transparent appearance-none pointer-events-none 
                           [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto 
@@ -484,9 +357,9 @@ const Collections = () => {
                             <input 
                         type="range"
                         min={0}
-                        max={1000}
+                        max={maxPrice}
                         ref={maxPriceRef}
-                        value={priceRange[1]}
+                        value={effectiveRange[1]}
                         onChange={(e) => handlePriceChange(1, parseInt(e.target.value, 10))}
                         className="absolute w-full -top-3 h-1 bg-transparent appearance-none pointer-events-none 
                           [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:pointer-events-auto 
@@ -507,9 +380,9 @@ const Collections = () => {
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                             <input 
                           type="number" 
-                          min={0} 
-                          max={priceRange[1]} 
-                          value={priceRange[0]} 
+                          min={0}
+                          max={effectiveRange[1]}
+                          value={effectiveRange[0]}
                           onChange={(e) => handlePriceChange(0, parseInt(e.target.value, 10) || 0)}
                           className="w-24 pl-8 pr-2 py-2 border rounded-lg focus:ring-2 focus:ring-[#6a5acd] focus:border-transparent focus:outline-none"
                         />
@@ -519,9 +392,9 @@ const Collections = () => {
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                             <input 
                           type="number" 
-                          min={priceRange[0]} 
-                          max={1000} 
-                          value={priceRange[1]} 
+                          min={effectiveRange[0]}
+                          max={maxPrice}
+                          value={effectiveRange[1]}
                           onChange={(e) => handlePriceChange(1, parseInt(e.target.value, 10) || 0)}
                           className="w-24 pl-8 pr-2 py-2 border rounded-lg focus:ring-2 focus:ring-[#6a5acd] focus:border-transparent focus:outline-none"
                         />
@@ -560,9 +433,31 @@ const Collections = () => {
           {/* Products grid or list */}
           <div className="flex-1">
             {isLoading ? (
-              <div className="flex justify-center items-center h-64">
+              <div className="flex justify-center items-center h-64" role="status" aria-live="polite">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a5acd]"></div>
+                <span className="sr-only">Loading products…</span>
               </div>
+            ) : hasFailed ? (
+              /* FE-024 — a failed catalog is not an empty one, and saying "no
+                 products found" when the request failed is a lie the customer
+                 cannot act on. */
+              <motion.div
+                className="bg-white rounded-xl shadow-md p-10 text-center"
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5 }}
+                role="alert"
+              >
+                <FiShoppingBag className="w-16 h-16 text-[#6a5acd] mx-auto mb-4" />
+                <h2 className="text-xl font-semibold text-gray-800 mb-2">We could not load the catalog</h2>
+                <p className="text-gray-600 mb-6">{catalogError || 'Please try again in a moment.'}</p>
+                <button
+                  onClick={reloadCatalog}
+                  className="fill-button px-6 py-3 bg-white border border-[#6a5acd] text-[#6a5acd] rounded-lg hover:bg-[#6a5acd] hover:text-white transition-colors"
+                >
+                  Try again
+                </button>
+              </motion.div>
             ) : filteredProducts.length === 0 ? (
               <motion.div 
                 className="bg-white rounded-xl shadow-md p-10 text-center"
@@ -599,13 +494,14 @@ const Collections = () => {
                     variants={itemVariants}
                   >
                     {viewType === 'grid' ? (
-                      <ProductCard product={product} />
+                      <ProductCard product={product} variant="showcase" />
                     ) : (
                       <div className="flex bg-white rounded-xl shadow-sm overflow-hidden transition-all hover:shadow-md">
                         {/* Product image */}
-                        <div 
-                          className="w-40 h-40 flex-shrink-0 overflow-hidden bg-gray-100"
-                          onClick={() => navigate(`/product/${product._id}`)}
+                        <Link
+                          to={`/product/${product._id}`}
+                          className="w-40 h-40 flex-shrink-0 overflow-hidden bg-gray-100 block"
+                          aria-label={product.name}
                         >
                           {product.image && Array.isArray(product.image) && product.image[0] ? (
                             <img 
@@ -618,33 +514,32 @@ const Collections = () => {
                               <FiShoppingBag className="w-10 h-10 text-[#6a5acd]" />
                             </div>
                           )}
-                            </div>
-                        
+                        </Link>
+
                         {/* Product info */}
                         <div className="p-4 flex-1">
-                          <h3 
-                            className="text-lg font-medium text-gray-900 hover:text-[#6a5acd] cursor-pointer"
-                            onClick={() => navigate(`/product/${product._id}`)}
-                          >
-                            {product.name || 'Product name'}
+                          <h3 className="text-lg font-medium text-gray-900">
+                            <Link to={`/product/${product._id}`} className="hover:text-[#6a5acd]">
+                              {product.name || 'Product name'}
+                            </Link>
                           </h3>
-                          
+
                           <div className="mt-2">
-                            <p className="text-lg font-semibold">${product.price || 0}</p>
+                            <p className="text-lg font-semibold">{formatPrice(getPriceMinor(product))}</p>
                             {product.brand && <p className="text-sm text-gray-600">{product.brand}</p>}
-                </div>
-                
+                          </div>
+
                           <p className="mt-3 text-sm text-gray-600 line-clamp-2">
                             {product.description || 'No description available.'}
                           </p>
-                </div>
+                        </div>
                     </div>
                     )}
                   </motion.div>
                 ))}
               </motion.div>
                 )}
-            </div>
+          </div>
         </div>
       </motion.div>
         </div>

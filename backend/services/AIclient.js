@@ -1,247 +1,293 @@
+// The catalog-grounded support agent.
+import logger from '../lib/logger.js';
+//
+// SEC-004 — what changed in Phase 1, and why
+// ------------------------------------------
+// The previous contract between this file and the storefront was **HTML**. The
+// system prompt did not merely tolerate markup, it demanded it:
+//
+//     "you MUST use this EXACT HTML FORMAT: <a href='/product/{id}'>here</a>"
+//
+// and the reply was passed to `dangerouslySetInnerHTML` untouched. That is a
+// live XSS sink fed by a language model, on a public page, with the whole
+// admin-editable catalog inside the prompt.
+//
+// The fix is not a sanitiser. It is removing HTML from the contract:
+//
+//   * the model is asked for a **marker**, `[[product:<24-hex id>]]`;
+//   * `parseModelReply` resolves each marker against the catalog that was
+//     actually supplied to the prompt, and drops anything it cannot resolve;
+//   * everything that survives is **plain text plus `links: [{productId,
+//     label}]`** — no href, no tag, no attribute the model can influence;
+//   * angle brackets are removed from every string that leaves this module,
+//     including catalog-derived labels, so no model or admin text can become
+//     markup even if a future client renders it carelessly.
+//
+// The route a link points at is built by the *client* from `productId`, so the
+// worst a compromised model can do is name a product that exists.
+//
+// BE-001 / DEVOPS-001 — what changed in Phase 3
+// ---------------------------------------------
+// This module used to own a `Map` of sessions and a `setInterval` sweeping it.
+// It owns neither now. A session is a document in `chatSessionModel` with a TTL
+// index, and this module is a pure function of one turn: it is handed the
+// bounded history, it returns the reply, and it stores nothing. That is what
+// makes the chat survive a restart and a serverless cold start, and it is why
+// there is no application timer left to import.
+
 import OpenAI from "openai";
 import productModel from "../models/productModel.js";
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
 
-// Get current directory
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// ---------------------------------------------------------------------------
+// Output contract
+// ---------------------------------------------------------------------------
 
-// Frontend URL for product links
-const FRONTEND_URL = process.env.FRONTEND_URL;
+/** The only structure the model is allowed to emit. */
+export const PRODUCT_MARKER_PATTERN = /\[\[product:([0-9a-fA-F]{24})\]\]/g
 
-// Initialize OpenAI with API key
-const initializeOpenAI = () => {
-  // Try to read API key from .env file directly
-  let apiKey = process.env.OPENAI_API_KEY;
-  
-  // If not in process.env, try to read from .env file
-  if (!apiKey) {
-    try {
-      const envPath = path.join(__dirname, '..', '.env');
-      if (fs.existsSync(envPath)) {
-        const envContent = fs.readFileSync(envPath, 'utf8');
-        const match = envContent.match(/OPENAI_API_KEY=(.+)/);
-        if (match && match[1]) {
-          apiKey = match[1].trim();
-          // Set it in process.env for future use
-          process.env.OPENAI_API_KEY = apiKey;
-        }
-      }
-    } catch (error) {
-      console.error("Error reading .env file:", error);
+/** Any `[[product:…]]` marker at all, so an unresolvable one can be removed. */
+const ANY_PRODUCT_MARKER = /\[\[\s*product\s*:[^\]]*\]\]/g
+
+/** A reply may name at most this many products. */
+export const MAX_LINKS_PER_REPLY = 5
+
+/** Replies are bounded so a runaway generation cannot be relayed wholesale. */
+export const MAX_REPLY_LENGTH = 2000
+
+/**
+ * Reduce a string to inert plain text.
+ *
+ * Tag-like sequences go first, then any surviving angle bracket, so nothing
+ * that leaves this module can be parsed as markup by anything downstream. It is
+ * deliberately lossy — "under < 500 dollars" becomes "under 500 dollars" —
+ * because the contract is text, and a rare cosmetic loss is a fair price for a
+ * property that holds without depending on how a client renders.
+ */
+export function toInertText(value) {
+    if (typeof value !== 'string') return ''
+    return value
+        .replace(/<[^>]*>/g, ' ')       // complete tags
+        .replace(/[<>]/g, '')           // stray or truncated brackets
+        .replace(/\u00a0/g, ' ')   // non-breaking spaces collapse to plain ones
+        .replace(/[ \t]{2,}/g, ' ')
+        .trim()
+}
+
+/**
+ * Index the catalog that was supplied to the prompt, so a marker can only
+ * resolve to a product the model was actually shown.
+ *
+ * @param {{id: string, name: string}[]} products
+ * @returns {Map<string, {productId: string, label: string}>}
+ */
+export function buildCatalogIndex(products = []) {
+    const index = new Map()
+    for (const product of products) {
+        const id = String(product?.id ?? '')
+        if (!/^[0-9a-fA-F]{24}$/.test(id)) continue
+        const label = toInertText(String(product?.name ?? '')).slice(0, 120)
+        index.set(id.toLowerCase(), { productId: id.toLowerCase(), label: label || 'this product' })
     }
-  }
-  
-  // Check if API key is now available
+    return index
+}
+
+/**
+ * Turn a raw model reply into the API's structured result.
+ *
+ * @param {string} raw
+ * @param {Map<string, {productId: string, label: string}>} catalogIndex
+ * @returns {{ text: string, links: {productId: string, label: string}[] }}
+ */
+export function parseModelReply(raw, catalogIndex = new Map()) {
+    const links = []
+    const seen = new Set()
+
+    // Resolve well-formed markers first: each becomes the product's own name in
+    // the running text, plus one entry in `links`.
+    let text = String(raw ?? '').replace(PRODUCT_MARKER_PATTERN, (_match, id) => {
+        const entry = catalogIndex.get(String(id).toLowerCase())
+        if (!entry) return ''
+        if (!seen.has(entry.productId)) {
+            if (links.length >= MAX_LINKS_PER_REPLY) return entry.label
+            seen.add(entry.productId)
+            links.push({ productId: entry.productId, label: entry.label })
+        }
+        return entry.label
+    })
+
+    // Anything still marker-shaped was malformed, unknown, or an attempt to put
+    // something other than an id in the slot. It is removed, never relayed.
+    text = text.replace(ANY_PRODUCT_MARKER, '')
+
+    return { text: toInertText(text).slice(0, MAX_REPLY_LENGTH), links }
+}
+
+// ---------------------------------------------------------------------------
+// OpenAI client
+// ---------------------------------------------------------------------------
+
+/**
+ * Build the OpenAI client, or null when no key is configured.
+ *
+ * Two things changed here in Phase 1. The key is no longer read out of `.env`
+ * from disk by hand — `server.js` owns configuration — and, more importantly,
+ * **no part of the key is ever printed**. The previous version logged its first
+ * seven characters on every boot, which is secret material in a log file
+ * (SEC-016). A key is either configured or it is not; that is all a log line
+ * needs to say.
+ */
+const initializeOpenAI = () => {
+  const apiKey = process.env.OPENAI_API_KEY;
+
   if (!apiKey) {
-    console.error("⚠️ OpenAI API key not found! Please set OPENAI_API_KEY in your environment variables.");
-    console.log("Using fallback responses since no API key is available");
+    logger.warn({ event: 'openai.disabled' }, 'OPENAI_API_KEY is not set — the chatbot returns its offline reply');
     return null;
   }
-  
-  // Validate the API key format
-  // Check for both standard format (sk-...) and project API keys (sk-proj-...)
+
   if (!apiKey.startsWith('sk-')) {
-    console.error("⚠️ Invalid OpenAI API key format. Key should start with 'sk-'");
+    logger.warn({ event: 'openai.key_format' }, 'OPENAI_API_KEY does not have the expected format — the chatbot returns its offline reply');
     return null;
   }
-  
-  // Create the OpenAI client with proper configuration
+
   try {
     const client = new OpenAI({
       apiKey: apiKey,
       dangerouslyAllowBrowser: false, // Only used server-side
     });
-    
-    console.log(`✅ OpenAI client initialized with key starting with ${apiKey.substring(0, 7)}...`);
+    logger.info({ event: 'openai.ready' }, 'OpenAI client initialised');
     return client;
   } catch (error) {
-    console.error("⚠️ Failed to initialize OpenAI client:", error);
+    logger.error({ event: 'openai.init_failed', name: error?.name }, 'failed to initialise the OpenAI client');
     return null;
   }
 };
 
-const openai = initializeOpenAI();
+let openaiClient
+/** Lazily built so importing this module needs no configuration (B-0). */
+function getClient() {
+    if (openaiClient === undefined) openaiClient = initializeOpenAI()
+    return openaiClient
+}
 
-// Update to fetch products from the actual MongoDB database
+/** Test seam: forget the memoised client so a later env change is picked up. */
+export function resetOpenAIClient() {
+    openaiClient = undefined
+}
+
+// ---------------------------------------------------------------------------
+// Catalog
+// ---------------------------------------------------------------------------
+
+/**
+ * The catalog, reduced to the fields the model needs.
+ *
+ * Every string is passed through `toInertText` on the way in. Product names and
+ * descriptions are admin-controlled free text, and before Phase 1 they were
+ * injected into the prompt verbatim — a description could steer the model's
+ * output for every visitor who opened the chat. Stripping markup at this
+ * boundary means catalog text cannot re-introduce the sink from the other side.
+ *
+ * Trimming the prompt further (BE-013) is Phase 3; the description is still
+ * sent, only bounded.
+ */
 async function fetchDBProducts() {
   try {
-    const products = await productModel.find({});
-    
-    // Format products for the AI to understand
+    const products = await productModel.find({}, 'name price description brand tags').lean();
+
     return products.map(product => ({
       id: product._id.toString(),
-      name: product.name,
+      name: toInertText(product.name).slice(0, 120),
       price: `$${product.price}`,
-      description: product.description,
-      brand: product.brand,
-      tags: product.tags.join(', '),
-      url: `/product/${product._id.toString()}`
+      description: toInertText(product.description).slice(0, 400),
+      brand: toInertText(product.brand ?? '').slice(0, 60),
+      tags: toInertText((product.tags ?? []).join(', ')).slice(0, 120),
     }));
   } catch (error) {
-    console.error("Error fetching products for AI:", error);
-    // Return empty array in case of error to prevent breaking the AI flow
+    logger.error({ event: 'chat.catalog_failed', name: error?.name }, 'could not load the catalog for the chatbot');
+    // Return an empty array on error so the chat degrades rather than breaking.
     return [];
   }
 }
 
-// Map to store chat sessions with timestamps for auto-closing
-const chatSessions = new Map();
+// ---------------------------------------------------------------------------
+// One turn
+// ---------------------------------------------------------------------------
 
-// Function to create or retrieve a chat session
-const getChatSession = (sessionId) => {
-  if (!chatSessions.has(sessionId)) {
-    chatSessions.set(sessionId, {
-      messages: [],
-      lastActivity: Date.now(),
-      systemMessage: {
-        role: "system", 
-        content:
-          "You are a professional customer service agent for Netronix, a premium tech and computer e-commerce store. " +
-          "You are helpful, friendly and knowledgeable. Only recommend products from the provided list and never invent products. " +
-          "When recommending a specific product, you MUST use this EXACT HTML FORMAT: \"You can find it <a href='/product/{productId}' target='_blank'>here</a>\" where productId is the exact id field from the product data. " +
-          "IMPORTANT: Always include the HTML tag with 'href' attribute exactly as shown. DO NOT just say 'find it here' as plain text. " +
-          "Always use this exact compact link format with the word 'here' as the clickable text. NEVER show the URL in your response. DO NOT use markdown format like [here](url). " +
-          "The delivery all over lebanon which is the target market is 3$"
-      }
-    });
-  }
-  
-  // Update the last activity timestamp
-  const session = chatSessions.get(sessionId);
-  session.lastActivity = Date.now();
-  
-  return session;
-};
+export const SYSTEM_PROMPT =
+  "You are a professional customer service agent for Netronix, a premium tech and computer e-commerce store. " +
+  "You are helpful, friendly and knowledgeable. Only recommend products from the provided list and never invent products. " +
+  "Reply in PLAIN TEXT only. Never write HTML, never write markdown, never write a URL. " +
+  "To refer to a specific product, write the marker [[product:PRODUCT_ID]] using the exact id field from the product " +
+  "data — for example [[product:0123456789abcdef01234567]]. The application turns that marker into a link for the " +
+  "customer, so do not describe or format the link yourself. " +
+  "Refer to at most three products in one reply. " +
+  "Delivery anywhere in Lebanon, which is the target market, is $3.";
 
-// Function to process chat messages
-async function processChatMessage(sessionId, message) {
+/** The reply used whenever the model cannot be reached. Always structured. */
+const fallback = (message) => ({ success: false, message, text: message, links: [] })
+
+/** Only the two roles a stored transcript holds, and only strings. */
+const asPromptMessages = (history) =>
+  (Array.isArray(history) ? history : [])
+    .filter((entry) => entry && (entry.role === 'user' || entry.role === 'assistant') && typeof entry.content === 'string')
+    .map((entry) => ({ role: entry.role, content: entry.content }))
+
+/**
+ * Process one chat turn.
+ *
+ * Stateless by construction: the caller owns the session and hands over the
+ * history it wants replayed. There is nothing here for a restart to lose.
+ *
+ * @param {string} message  the customer's turn
+ * @param {{history?: {role: string, content: string}[]}} context
+ * @returns {Promise<{success: boolean, message: string, text: string,
+ *                    links: {productId: string, label: string}[]}>}
+ */
+async function processChatMessage(message, { history = [] } = {}) {
   try {
-    // If OpenAI client is not initialized, return an error
+    const openai = getClient()
     if (!openai) {
-      return {
-        success: false,
-        message: "Our AI service is temporarily unavailable. Please try again later."
-      };
+      return fallback("Our AI service is temporarily unavailable. Please try again later.");
     }
-    
-    // Get or create session
-    const session = getChatSession(sessionId);
-    
-    // Fetch product data
+
     const availableProducts = await fetchDBProducts();
+    const catalogIndex = buildCatalogIndex(availableProducts);
+
     const toolsMessage = {
       role: "system",
-      content: `Available products information:\n${JSON.stringify(availableProducts, null, 2)}\n\nCRITICAL INSTRUCTION: When recommending products, you MUST use this EXACT HTML FORMAT: "You can find it <a href='/product/productId' target='_blank'>here</a>". Include the full HTML tag with href attribute. DO NOT use markdown format. DO NOT just say "find it here" as plain text.`
+      content:
+        `Available products:\n${JSON.stringify(availableProducts)}\n\n` +
+        "Reminder: plain text only. Reference a product with [[product:<its id>]] and nothing else. " +
+        "Never emit HTML, markdown or a URL."
     };
-    
-    // Add user message to session history
-    session.messages.push({ role: "user", content: message });
-    
-    // Prepare messages for OpenAI, including system message, tools and chat history
+
     const apiMessages = [
-      session.systemMessage,
+      { role: "system", content: SYSTEM_PROMPT },
       toolsMessage,
-      ...session.messages.slice(-10) // Keep the last 10 messages for context
+      ...asPromptMessages(history),
+      { role: "user", content: String(message ?? '') },
     ];
-    
-    console.log("Sending request to OpenAI...");
-    
-    // Get response from OpenAI
+
     const completion = await openai.chat.completions.create({
       messages: apiMessages,
       model: "gpt-4o-mini",
       max_tokens: 200
     });
-    
-    console.log("Received response from OpenAI");
-    
-    // Extract the assistant's response
-    const responseContent = completion.choices[0].message.content;
-    
-    // Process response to ensure product links are properly formatted
-    const processedResponse = processResponseLinks(responseContent, availableProducts);
-    
-    // Add assistant response to session history
-    session.messages.push({ role: "assistant", content: processedResponse });
-    
-    return {
-      success: true,
-      message: processedResponse
-    };
+
+    const { text, links } = parseModelReply(completion.choices[0].message.content, catalogIndex);
+
+    return { success: true, message: text, text, links };
   } catch (error) {
-    console.error("Error processing chat message:", error);
-    console.error(error.stack);
-    
-    // Handle specific OpenAI errors
+    logger.error({ event: 'chat.failed', name: error?.name }, 'chat message could not be processed');
+
     if (error.status === 401) {
-      return {
-        success: false,
-        message: "Authentication error with our AI service. Please contact support."
-      };
-    } else if (error.status === 429) {
-      return {
-        success: false,
-        message: "Our AI service is currently experiencing high demand. Please try again in a moment."
-      };
+      return fallback("Authentication error with our AI service. Please contact support.");
     }
-    
-    // For any other error, also return error
-    return {
-      success: false,
-      message: "Sorry, I encountered an error processing your request. Please try again later."
-    };
-  }
-}
-
-// Function to close inactive sessions
-function cleanupInactiveSessions() {
-  const now = Date.now();
-  const INACTIVE_TIMEOUT = 5 * 60 * 1000; // 5 minutes in milliseconds
-  
-  for (const [sessionId, session] of chatSessions.entries()) {
-    if (now - session.lastActivity > INACTIVE_TIMEOUT) {
-      chatSessions.delete(sessionId);
-      console.log(`Closed inactive chat session: ${sessionId}`);
+    if (error.status === 429) {
+      return fallback("Our AI service is currently experiencing high demand. Please try again in a moment.");
     }
+    return fallback("Sorry, I encountered an error processing your request. Please try again later.");
   }
 }
 
-// Run cleanup every minute
-setInterval(cleanupInactiveSessions, 60 * 1000);
-
-// Function to manually close a session
-function closeSession(sessionId) {
-  if (chatSessions.has(sessionId)) {
-    chatSessions.delete(sessionId);
-    return true;
-  }
-  return false;
-}
-
-// Helper function to ensure product links are properly formatted
-function processResponseLinks(text, products) {
-  // If the response already contains HTML links, return as is
-  if (text.includes('<a href=')) {
-    return text;
-  }
-  
-  // Check if the response mentions products but doesn't have HTML links
-  for (const product of products) {
-    if (text.toLowerCase().includes(product.name.toLowerCase()) && 
-        text.toLowerCase().includes('find it here')) {
-      // Replace plain text "find it here" with HTML link
-      return text.replace(
-        /find it here/i,
-        `find it <a href='/product/${product.id}' target='_blank'>here</a>`
-      );
-    }
-  }
-  
-  return text;
-}
-
-export { processChatMessage, closeSession };
+export { processChatMessage };

@@ -1,10 +1,12 @@
-import React from 'react';
 import ImageComparison from './ImageComparison';
 import { useNavigate } from 'react-router-dom';
 
-// Import your comparison images
-import beforeImage from '../assets/comparison/before.png';
-import afterImage from '../assets/comparison/after.png';
+// PERF-004 — 2560×2560 PNGs (1.18 MB and 914 kB) for a square that is never
+// wider than about 640 CSS px. WebP at 800 and 1600, chosen by the browser.
+import before800 from '../assets/optimised/comparison-before-800.webp';
+import before1600 from '../assets/optimised/comparison-before-1600.webp';
+import after800 from '../assets/optimised/comparison-after-800.webp';
+import after1600 from '../assets/optimised/comparison-after-1600.webp';
 
 const ComparisonSection = () => {
     const navigate = useNavigate();
@@ -46,8 +48,11 @@ const ComparisonSection = () => {
                         {/* Image Comparison Component - Right Side */}
                         <div className="w-full aspect-square mt-4 md:mt-0">
                             <ImageComparison
-                                beforeImage={beforeImage}
-                                afterImage={afterImage}
+                                beforeImage={before800}
+                                beforeImageSet={`${before800} 800w, ${before1600} 1600w`}
+                                afterImage={after800}
+                                afterImageSet={`${after800} 800w, ${after1600} 1600w`}
+                                imageSizes="(max-width: 1023px) 92vw, 46vw"
                                 beforeHeading="Sleek Precision"
                                 afterHeading="Bold Performance"
                                 beforeSubheading="Classic. Timeless. Efficient."

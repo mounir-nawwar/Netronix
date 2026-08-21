@@ -5,9 +5,9 @@ import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 
 export default [
-  { ignores: ['dist'] },
+  { ignores: ['dist', 'coverage'] },
   {
-    files: ['**/*.{js,jsx}'],
+    files: ['**/*.{js,jsx,mjs}'],
     languageOptions: {
       ecmaVersion: 2020,
       globals: globals.browser,
@@ -33,6 +33,17 @@ export default [
         'warn',
         { allowConstantExport: true },
       ],
+    },
+  },
+  {
+    // Tests and tooling config run in Node, not in the browser.
+    // `e2e/**` is the Playwright harness: it starts processes, reads `/proc`
+    // and signals process groups, none of which exists in a browser.
+    // `scripts/**` is local tooling — the bundle budget report and the media
+    // optimiser — and runs under Node like the rest of this list.
+    files: ['src/test/**/*.{js,jsx}', '**/*.test.{js,jsx}', 'e2e/**/*.{js,mjs}', 'scripts/**/*.{js,mjs}', 'playwright.config.js', 'vitest.config.js', 'vite.config.js', 'eslint.config.js', 'postcss.config.js', 'tailwind.config.js'],
+    languageOptions: {
+      globals: { ...globals.node },
     },
   },
 ]

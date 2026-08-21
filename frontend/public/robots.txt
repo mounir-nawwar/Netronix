@@ -1,0 +1,19 @@
+# SEO-003 — `frontend/public/` used to contain only `vite.svg`. Nothing told a
+# crawler what existed, and nothing told it that the cart, the checkout, the
+# order history and the wishlist are per-visitor pages with no business in an
+# index.
+#
+# The sitemap line is written by `scripts/make-sitemap.mjs` at build time from
+# the configured origin, so it is correct for whichever origin this build is
+# for rather than naming a hostname chosen here.
+
+User-agent: *
+Allow: /
+
+Disallow: /cart
+Disallow: /placeorder
+Disallow: /orders
+Disallow: /wishlist
+Disallow: /login
+
+Sitemap: /sitemap.xml

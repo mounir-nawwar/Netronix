@@ -1,81 +1,112 @@
-import React, { useContext, useEffect, useState } from 'react'
-import { ShopContext } from '../context/ShopContext';
-import { toast } from 'react-toastify';
+import { useContext, useEffect, useState } from 'react'
+import { ShopContext } from '../context/shopContext';
+import { lineIdOf } from '../lib/cartLines';
+import { toast } from '../lib/toast';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiShoppingCart, FiTrash2, FiMinus, FiPlus, FiAlertCircle, FiArrowRight, FiChevronLeft } from 'react-icons/fi';
+import { FiShoppingCart, FiTrash2, FiMinus, FiPlus, FiAlertCircle, FiArrowRight } from 'react-icons/fi';
 import CartTotal from '../components/CartTotal';
 import BackButton from '../components/BackButton';
+import Seo from '../components/Seo';
 
+// FE-012 — the cart said "empty" while it was still loading.
+//
+// It ran `setTimeout(() => setIsLoading(false), 300)` on every effect, whether
+// or not the catalog had arrived, and the timeout was never cleared. Three
+// hundred milliseconds is not a fact about anything: on a slow connection the
+// timer won, `cartData` was still `[]` because the catalog had not landed, and a
+// customer with a full cart was told their cart was empty and shown a "Start
+// Shopping" button.
+//
+// Loading is not a timer. It is the state of the request, which the context now
+// reports, and this page reads.
 const Cart = () => {
 
-  const { products, currency, cartItems, updateQuantity, navigate, getVariantDisplayName } = useContext(ShopContext);
+  const {
+    products, cartLines, catalogStatus, catalogError, reloadCatalog, updateQuantity, navigate,
+    getVariantDisplayName, getPriceMinor, formatPrice, getUnpricedCartLines,
+  } = useContext(ShopContext);
 
   const [cartData, setCartData] = useState([]);
   const [inventoryWarnings, setInventoryWarnings] = useState({});
-  const [isLoading, setIsLoading] = useState(true);
+
+  const isLoading = catalogStatus === 'loading';
+  const hasFailed = catalogStatus === 'error';
+  // FE-024 — lines the catalog cannot price. Counting them as zero is how a
+  // cart quietly under-reports its own total.
+  const unpricedLines = getUnpricedCartLines();
 
   useEffect(() => {
-    setIsLoading(true);
-    
-    if (products.length > 0) {
-      const tempData = [];
-      const warnings = {};
-      
-      for (const items in cartItems) {
-        for (const variantKey in cartItems[items]) {
-          if (cartItems[items][variantKey] > 0) {
-            tempData.push({
-              _id: items,
-              variantKey: variantKey,
-              quantity: cartItems[items][variantKey],
-            });
-            
-            // Check inventory for this item
-            const product = products.find(p => p._id === items);
-            if (product && product.inventory) {
-              const availableQuantity = product.inventory[variantKey] || 0;
-              const cartQuantity = cartItems[items][variantKey];
-              
-              // If cart quantity exceeds available inventory, create a warning
-              if (cartQuantity > availableQuantity) {
-                warnings[`${items}-${variantKey}`] = {
-                  available: availableQuantity,
-                  requested: cartQuantity
-                };
-              }
-            }
-          }
-        }
-      }
-      setCartData(tempData);
-      setInventoryWarnings(warnings);
+    if (products.length === 0) {
+      setCartData([]);
+      setInventoryWarnings({});
+      return;
     }
-    
-    setTimeout(() => setIsLoading(false), 300); // Add a small delay for smoother transitions
-  }, [cartItems, products]);
 
-  // Check if a specific item has inventory warning
-  const hasInventoryWarning = (productId, variantKey) => {
-    return inventoryWarnings[`${productId}-${variantKey}`] !== undefined;
-  };
+    const tempData = [];
+    const warnings = {};
 
-  // Get available inventory for a product and variant
-  const getAvailableInventory = (productId, variantKey) => {
-    const product = products.find(p => p._id === productId);
-    if (!product || !product.inventory) return 0;
-    return product.inventory[variantKey] || 0;
-  };
+    // One row per line the customer actually chose (DB-003). Iterating the
+    // legacy `{ productId: { key: quantity } }` map collapsed two combinations
+    // whose option values hyphen-join to the same string into one row, so the
+    // cart could not show — or remove — the one that was overwritten.
+    for (const line of cartLines) {
+      if (line.quantity <= 0) continue;
+
+      const id = lineIdOf(line);
+      tempData.push({
+        id,
+        _id: String(line.productId),
+        variantKey: line.variantKey,
+        variantId: line.variantId,
+        variantOptions: line.variantOptions,
+        variantLabel: line.variantLabel,
+        quantity: line.quantity,
+        unresolvable: line.unresolvable,
+        available: line.available,
+      });
+
+      // `null` is not zero. A line the catalog cannot identify — an ambiguous
+      // hyphen join, or an option that was withdrawn — is a different problem
+      // from "none left", and telling the customer "out of stock" about a
+      // product that is in stock is both untrue and unactionable: re-adding the
+      // same option reproduces it.
+      if (line.unresolvable) {
+        warnings[id] = { available: 0, requested: line.quantity, unidentifiable: true };
+      } else if (line.quantity > (line.available ?? 0)) {
+        warnings[id] = { available: line.available ?? 0, requested: line.quantity };
+      }
+    }
+
+    setCartData(tempData);
+    setInventoryWarnings(warnings);
+  }, [cartLines, products]);
+
+  // Check if a specific line has an inventory warning
+  const hasInventoryWarning = (id) => inventoryWarnings[id] !== undefined;
+
+  /** True when the catalog cannot say which combination this line names. */
+  const isUnidentifiable = (id) => Boolean(inventoryWarnings[id]?.unidentifiable);
+
+  /**
+   * How to address one line.
+   *
+   * The canonical identity where the line has one, because two lines can share
+   * a legacy key and addressing by key would then change whichever came first.
+   */
+  const lineRefOf = (item) => (item.variantId
+    ? { variantId: item.variantId }
+    : { variantKey: item.variantKey });
 
   // Handle quantity change with inventory check
-  const handleQuantityChange = (productId, variantKey, newQuantity) => {
-    const availableInventory = getAvailableInventory(productId, variantKey);
-    
+  const handleQuantityChange = (item, newQuantity) => {
+    const availableInventory = item.available ?? 0;
+
     if (newQuantity > availableInventory) {
       toast.error(`Only ${availableInventory} items available for this variant`);
       // Update to maximum available
-      updateQuantity(productId, variantKey, availableInventory);
+      updateQuantity(item._id, lineRefOf(item), availableInventory);
     } else {
-      updateQuantity(productId, variantKey, newQuantity);
+      updateQuantity(item._id, lineRefOf(item), newQuantity);
     }
   };
 
@@ -111,7 +142,10 @@ const Cart = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 px-4 sm:px-6 lg:px-8 py-12 pt-[80px] md:pt-[100px]">
+
+      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 px-4 sm:px-6 lg:px-8 py-12 pt-[80px] md:pt-[100px]">
+
+        <Seo title="Your Cart" description="Review the items in your Netronix cart before checkout." />
       <motion.div 
         className="max-w-5xl mx-auto"
         initial={{ opacity: 0, y: 20 }}
@@ -131,9 +165,28 @@ const Cart = () => {
         </div>
 
         {isLoading ? (
-          <div className="flex justify-center items-center h-64">
+          <div className="flex justify-center items-center h-64" role="status" aria-live="polite">
             <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a5acd]"></div>
+            <span className="sr-only">Loading your cart…</span>
           </div>
+        ) : hasFailed ? (
+          <motion.div
+            className="bg-white rounded-xl shadow-md p-10 text-center"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5 }}
+            role="alert"
+          >
+            <FiAlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold text-gray-800 mb-2">We could not load your cart</h2>
+            <p className="text-gray-600 mb-6">{catalogError || 'Please try again in a moment.'}</p>
+            <button
+              onClick={reloadCatalog}
+              className="px-6 py-3 rounded-lg text-white bg-[#6a5acd] hover:bg-[#5a4cbb] transition-colors fill-button"
+            >
+              Try again
+            </button>
+          </motion.div>
         ) : cartData.length === 0 ? (
           <motion.div 
             className="bg-white rounded-xl shadow-md p-10 text-center"
@@ -152,6 +205,22 @@ const Cart = () => {
             </button>
           </motion.div>
         ) : (
+          <>
+            {unpricedLines.length > 0 && (
+              /* FE-024 — a line whose product the catalog cannot produce is not
+                 worth zero, it is unknown. It used to be skipped silently, so
+                 the total was simply wrong with nothing to show for it. */
+              <div
+                className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 flex items-start gap-3"
+                role="alert"
+              >
+                <FiAlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <span>
+                  {unpricedLines.length === 1 ? 'One item is' : `${unpricedLines.length} items are`} no longer
+                  in the catalog, so {unpricedLines.length === 1 ? 'it is' : 'they are'} not included in the total below.
+                </span>
+              </div>
+            )}
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Cart Items */}
             <motion.div 
@@ -161,17 +230,21 @@ const Cart = () => {
               animate="visible"
             >
               <AnimatePresence>
-                {cartData.map((item, index) => {
+                {cartData.map((item) => {
                   const productData = products.find((product) => product._id === item._id);
-                  const hasWarning = hasInventoryWarning(item._id, item.variantKey);
-                  const availableInventory = getAvailableInventory(item._id, item.variantKey);
-                  const variantDisplay = getVariantDisplayName(productData, item.variantKey);
+                  const hasWarning = hasInventoryWarning(item.id);
+                  const unidentifiable = isUnidentifiable(item.id);
+                  const availableInventory = item.available ?? 0;
+                  // The line names its own combination, so the label is read
+                  // from the options rather than reconstructed from the key.
+                  const variantDisplay = item.variantLabel
+                    || getVariantDisplayName(productData, item.variantKey);
                   
                   if (!productData) return null;
                   
                   return (
                     <motion.div 
-                      key={`${item._id}-${item.variantKey}`}
+                      key={item.id}
                       className="bg-white rounded-xl shadow-sm mb-4 overflow-hidden transition-all hover:shadow-md"
                       variants={itemVariants}
                       exit="exit"
@@ -198,7 +271,7 @@ const Cart = () => {
                             <div className="flex justify-between items-start">
                               <h3 className="text-lg font-semibold text-gray-900">{productData.name || 'Product'}</h3>
                               <button 
-                                onClick={() => updateQuantity(item._id, item.variantKey, 0)}
+                                onClick={() => updateQuantity(item._id, lineRefOf(item), 0)}
                                 className="p-1 text-gray-400 hover:text-[#6a5acd] transition-colors"
                                 aria-label="Remove item"
                               >
@@ -207,34 +280,48 @@ const Cart = () => {
                             </div>
                             
                             <div className="mt-1 text-sm text-gray-500">
-                              Size: {variantDisplay || 'One Size'}
+                              {/* ARCH-003 — `variantDisplay` already names its
+                                  axes ("Storage: 1TB"), so the hardcoded
+                                  "Size:" prefix rendered "Size: Storage: 1TB"
+                                  and was simply wrong on any product whose
+                                  axis is not called Size. */}
+                              {variantDisplay || 'One Size'}
                             </div>
                             
                             <div className="mt-2 text-lg font-medium text-[#6a5acd]">
-                              {currency}{productData.price || 0}
+                              {formatPrice(getPriceMinor(productData))}
                             </div>
                             
                             <div className="mt-4 flex justify-between items-center">
                               <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
-                                <button 
-                                  onClick={() => handleQuantityChange(item._id, item.variantKey, Math.max(1, item.quantity - 1))}
+                                {/* A11Y-009 — axe reported these two as
+                                    *critical* "Buttons must have discernible
+                                    text": an icon-only stepper announced as
+                                    "button", twice per line, with no way to
+                                    tell which was which or what it acted on. */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuantityChange(item, Math.max(1, item.quantity - 1))}
+                                  aria-label={`Decrease the quantity of ${productData.name}`}
                                   className="px-3 py-1 hover:bg-gray-100 transition-colors"
                                   disabled={item.quantity <= 1}
                                 >
-                                  <FiMinus className={`w-4 h-4 ${item.quantity <= 1 ? 'text-gray-300' : 'text-[#6a5acd]'}`} />
+                                  <FiMinus aria-hidden="true" className={`w-4 h-4 ${item.quantity <= 1 ? 'text-gray-300' : 'text-[#6a5acd]'}`} />
                                 </button>
                                 <span className="px-3 py-1 min-w-[40px] text-center">{item.quantity}</span>
-                                <button 
-                                  onClick={() => handleQuantityChange(item._id, item.variantKey, item.quantity + 1)}
+                                <button
+                                  type="button"
+                                  onClick={() => handleQuantityChange(item, item.quantity + 1)}
+                                  aria-label={`Increase the quantity of ${productData.name}`}
                                   className="px-3 py-1 hover:bg-gray-100 transition-colors"
                                   disabled={item.quantity >= availableInventory}
                                 >
-                                  <FiPlus className={`w-4 h-4 ${item.quantity >= availableInventory ? 'text-gray-300' : 'text-[#6a5acd]'}`} />
+                                  <FiPlus aria-hidden="true" className={`w-4 h-4 ${item.quantity >= availableInventory ? 'text-gray-300' : 'text-[#6a5acd]'}`} />
                                 </button>
                               </div>
                               
                               <div className="text-lg font-semibold text-[#6a5acd]">
-                                {currency}{(productData.price * item.quantity).toFixed(2)}
+                                {formatPrice(getPriceMinor(productData) * item.quantity)}
                               </div>
                             </div>
                             
@@ -248,13 +335,22 @@ const Cart = () => {
                               >
                                 <FiAlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
                                 <div className="text-sm text-red-600">
-                                  Only {availableInventory} item(s) in stock. 
-                                  Please adjust your quantity.
+                                  {unidentifiable ? (
+                                    <>
+                                      This option cannot be identified any more.
+                                      Please remove it and choose again.
+                                    </>
+                                  ) : (
+                                    <>
+                                      Only {availableInventory} item(s) in stock.
+                                      Please adjust your quantity.
+                                    </>
+                                  )}
                                 </div>
                               </motion.div>
                             )}
                             
-                            {availableInventory === 0 && (
+                            {availableInventory === 0 && !unidentifiable && (
                               <motion.div 
                                 className="mt-3 p-2 bg-red-50 border border-red-100 rounded-md flex items-start gap-2"
                                 initial={{ opacity: 0, height: 0 }}
@@ -325,6 +421,7 @@ const Cart = () => {
               </div>
             </motion.div>
           </div>
+          </>
         )}
       </motion.div>
     </div>

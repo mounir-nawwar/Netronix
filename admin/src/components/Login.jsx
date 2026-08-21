@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { backendUrl } from '../App';
+import { backendUrl } from '../config';
 import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 import { IoMailOutline, IoLockClosedOutline, IoArrowForwardOutline } from "react-icons/io5";
@@ -122,7 +122,7 @@ const Login = ({ setToken }) => {
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <IoMailOutline className="h-5 w-5 text-gray-400" />
+                <IoMailOutline className="h-5 w-5 text-gray-600" />
               </div>
               <input
                 id="email"
@@ -143,7 +143,7 @@ const Login = ({ setToken }) => {
             </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <IoLockClosedOutline className="h-5 w-5 text-gray-400" />
+                <IoLockClosedOutline className="h-5 w-5 text-gray-600" />
               </div>
               <input
                 id="password"

@@ -1,6 +1,6 @@
-import React from 'react';
 import { HiOutlineUserGroup, HiOutlineShieldCheck } from 'react-icons/hi';
 import { FiHeadphones, FiTruck } from 'react-icons/fi';
+import PropTypes from 'prop-types';
 
 const features = [
     {
@@ -34,6 +34,13 @@ const FeatureCard = ({ Icon, title, description }) => (
         <p className="text-gray-600 text-sm max-w-xs">{description}</p>
     </div>
 );
+
+
+FeatureCard.propTypes = {
+    Icon: PropTypes.elementType.isRequired,
+    title: PropTypes.string.isRequired,
+    description: PropTypes.string.isRequired,
+};
 
 const BusinessFeatures = () => {
     return (

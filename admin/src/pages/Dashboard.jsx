@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   BarChart, Bar, PieChart, Pie, Cell, Legend
@@ -9,12 +10,18 @@ import {
   FiArrowUp, FiArrowDown, FiCheck, FiPieChart
 } from 'react-icons/fi';
 import axios from 'axios';
-import { backendUrl, currency } from '../App';
+import { backendUrl } from '../config';
+import { formatMoney, readMinor, sumMinor } from '../lib/money';
+import { entriesOf } from '../lib/variant';
 import { toast } from 'react-toastify';
+import { collectPages, completeItems } from '../lib/productRequests';
 
 const Dashboard = ({ token }) => {
   // Dashboard Stats
   const [stats, setStats] = useState({
+    // Exact integer minor units (DB-004); `totalSales` is the same figure in
+    // major units, kept because other panels still read it.
+    totalSalesMinor: 0,
     totalSales: 0,
     totalOrders: 0,
     totalProducts: 0,
@@ -27,49 +34,22 @@ const Dashboard = ({ token }) => {
   const [categoryData, setCategoryData] = useState([]);
   const [recentOrders, setRecentOrders] = useState([]);
   const [lowStockProducts, setLowStockProducts] = useState([]);
-  const [trendingProducts, setTrendingProducts] = useState([]);
-  const [orderStatus, setOrderStatus] = useState({});
+  // Both of these are computed by fetchDashboardData but never rendered.
+  // The value bindings are elided rather than removed so the state updates
+  // — and therefore the render behaviour — stay exactly as they were.
+  const [, setTrendingProducts] = useState([]);
+  const [, setOrderStatus] = useState({});
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   // Time Range
   const [timeRange, setTimeRange] = useState('7d');
 
   const COLORS = ['#6a5acd', '#8470ff', '#9370db', '#483d8b', '#7b68ee'];
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, [timeRange, token]);
-
-  const fetchDashboardData = async () => {
-    if (!token) return;
-    setIsLoading(true);
-    try {
-      // Fetch products data
-      const productsResponse = await axios.get(backendUrl + '/api/product/list');
-      let products = [];
-      if (productsResponse.data.success) {
-        products = productsResponse.data.products;
-      }
-
-      // Fetch orders data
-      const ordersResponse = await axios.post(backendUrl + '/api/order/list', {}, { headers: { token } });
-      let orders = [];
-      if (ordersResponse.data.success) {
-        orders = ordersResponse.data.orders;
-      }
-
-      // Calculate dashboard data from real data
-      calculateDashboardData(products, orders);
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-      toast.error("Failed to load dashboard data");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   // Calculate dashboard data from real data
-  const calculateDashboardData = (products, orders) => {
+  const calculateDashboardData = useCallback((products, orders) => {
     // Filter orders based on time range
     const daysAgo = timeRange === '7d' ? 7 : 30;
     const dateThreshold = new Date();
@@ -78,7 +58,13 @@ const Dashboard = ({ token }) => {
     const recentOrders = orders.filter(order => new Date(order.date) >= dateThreshold);
     
     // Calculate total sales
-    const totalSales = orders.reduce((sum, order) => sum + order.amount, 0);
+    // DB-004 — summed as integer minor units. Adding hundreds of float
+    // `order.amount` values is exactly the accumulation this project got wrong:
+    // the figure headlining the dashboard drifted from the sum of the orders it
+    // claimed to describe. Dual-read, so an order written before the migration
+    // still contributes.
+    const totalSalesMinor = sumMinor(orders.map((order) => readMinor(order, 'amountMinor', 'amount') ?? 0));
+    const totalSales = totalSalesMinor / 100;
     
     // Get unique customers
     const uniqueCustomers = [...new Set(orders.map(order => order.address.email || order.address.phone))];
@@ -87,18 +73,21 @@ const Dashboard = ({ token }) => {
     const lowStockThreshold = 10;
     let lowStockCount = 0;
     
-    // Process inventory data from products
+    // Process inventory data from products.
+    //
+    // DB-003 — `Object.values(product.inventory)` read an untyped bag. The API
+    // now serves the typed array, and `entriesOf` reads either shape, so a
+    // product with a `16-inch` option is counted rather than skipped.
     products.forEach(product => {
-      if (product.inventory) {
-        const inventoryValues = Object.values(product.inventory);
-        if (inventoryValues.some(stock => stock <= lowStockThreshold)) {
-          lowStockCount++;
-        }
+      const quantities = entriesOf(product).map(entry => entry.quantity);
+      if (quantities.length > 0 && quantities.some(stock => stock <= lowStockThreshold)) {
+        lowStockCount++;
       }
     });
     
     // Set the stats
     setStats({
+      totalSalesMinor,
       totalSales,
       totalOrders: orders.length,
       totalProducts: products.length,
@@ -124,7 +113,9 @@ const Dashboard = ({ token }) => {
       const dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
       
       if (salesByDay[dateString]) {
-        salesByDay[dateString].sales += order.amount;
+        salesByDay[dateString].salesMinor = (salesByDay[dateString].salesMinor ?? 0)
+            + (readMinor(order, 'amountMinor', 'amount') ?? 0);
+        salesByDay[dateString].sales = salesByDay[dateString].salesMinor / 100;
         salesByDay[dateString].orders += 1;
       }
     });
@@ -176,10 +167,10 @@ const Dashboard = ({ token }) => {
     // Set low stock products
     const lowStockItems = [];
     products.forEach(product => {
-      if (product.inventory) {
-        const inventoryValues = Object.values(product.inventory);
-        const minStock = Math.min(...inventoryValues);
-        
+      const quantities = entriesOf(product).map(entry => entry.quantity);
+      if (quantities.length > 0) {
+        const minStock = Math.min(...quantities);
+
         if (minStock <= lowStockThreshold) {
           lowStockItems.push({
             id: product._id,
@@ -240,7 +231,42 @@ const Dashboard = ({ token }) => {
       .slice(0, 5);
     
     setTrendingProducts(trendingProductsArray);
-  };
+  }, [timeRange]);
+
+  const fetchDashboardData = useCallback(async () => {
+    if (!token) return;
+    setIsLoading(true);
+    setLoadError('');
+    try {
+      const productPages = await collectPages(async (paging) => {
+        const { data } = await axios.get(backendUrl + '/api/product/list', { params: paging });
+        return data;
+      });
+      const orderPages = await collectPages(async (paging) => {
+        const { data } = await axios.post(backendUrl + '/api/order/list', {}, { headers: { token }, params: paging });
+        return data;
+      });
+      const products = completeItems(productPages, 'Dashboard product data');
+      const orders = completeItems(orderPages, 'Dashboard order data');
+
+      // Calculate dashboard data from real data
+      calculateDashboardData(products, orders);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+      setLoadError(`Dashboard data is incomplete or unavailable. ${error.message}`);
+      toast.error("Failed to load dashboard data");
+    } finally {
+      setIsLoading(false);
+    }
+    // TEST-002 — `calculateDashboardData` is the dependency that matters here,
+    // and it is itself memoised on `timeRange` below. That keeps the refetch
+    // behaviour identical to the `[timeRange, token]` array this replaces:
+    // changing the range or the session refetches, and nothing else does.
+  }, [token, calculateDashboardData]);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
   // Stat Card Component
   const StatCard = ({ icon, title, value, trend, trendValue, bg = 'bg-white' }) => (
@@ -250,7 +276,7 @@ const Dashboard = ({ token }) => {
           {icon}
         </div>
         {trend && (
-          <div className={`flex items-center text-xs ${trendValue >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+          <div className={`flex items-center text-xs ${trendValue >= 0 ? 'text-green-700' : 'text-red-500'}`}>
             {trendValue >= 0 ? <FiArrowUp className="mr-1" /> : <FiArrowDown className="mr-1" />}
             {Math.abs(trendValue)}%
           </div>
@@ -291,6 +317,8 @@ const Dashboard = ({ token }) => {
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a5acd]"></div>
         </div>
+      ) : loadError ? (
+        <div role="alert" className="rounded-lg bg-red-50 p-4 text-red-700">{loadError}</div>
       ) : (
         <>
           {/* Stats Overview */}
@@ -298,7 +326,7 @@ const Dashboard = ({ token }) => {
             <StatCard 
               icon={<FiDollarSign className="w-5 h-5 text-[#6a5acd]" />}
               title="Total Sales"
-              value={`${currency}${stats.totalSales.toLocaleString()}`}
+              value={formatMoney(stats.totalSalesMinor ?? 0)}
               trend={true}
               trendValue={12}
             />
@@ -413,7 +441,7 @@ const Dashboard = ({ token }) => {
                         <td className="py-3 text-[#6a5acd]">{order.id}</td>
                         <td className="py-3">{order.customer}</td>
                         <td className="py-3">{order.date}</td>
-                        <td className="py-3">{currency}{order.amount}</td>
+                        <td className="py-3">{formatMoney(readMinor(order, 'amountMinor', 'amount') ?? 0)}</td>
                         <td className="py-3">
                           <span className={`px-2 py-1 rounded-full text-xs 
                             ${order.status === 'Delivered' && 'bg-green-100 text-green-800'}

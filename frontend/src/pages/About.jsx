@@ -1,9 +1,13 @@
-import React, { useEffect, useRef } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import { motion, useAnimation, useInView } from 'framer-motion';
-import { FiCpu, FiTarget, FiAward, FiStar, FiShield, FiTrendingUp, FiPackage, FiHeadphones, FiHardDrive, FiMonitor, FiSmartphone, FiServer } from 'react-icons/fi';
-import { assets } from '../assets/frontend_assets/assets';
+
+import { ShopContext } from '../context/shopContext';
+import { FiCpu, FiTarget, FiAward, FiShield, FiTrendingUp, FiPackage, FiHeadphones, FiHardDrive, FiMonitor, FiSmartphone, FiServer } from 'react-icons/fi';
+import Seo from '../components/Seo';
 
 const About = () => {
+  const { navigate } = useContext(ShopContext);
+
   // Animation variants
   const fadeIn = {
     hidden: { opacity: 0, y: 20 },
@@ -59,7 +63,10 @@ const About = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 pt-[80px] md:pt-[100px]">
+
+      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 pt-[80px] md:pt-[100px]">
+
+        <Seo title="About" description="Who Netronix is, and what the shop sells." />
       {/* Hero Section */}
       <motion.div 
         className="relative overflow-hidden bg-[#6a5acd] text-white"
@@ -532,7 +539,10 @@ const About = () => {
               whileTap={{ scale: 0.95 }}
             >
               <button 
-                onClick={() => window.location.href = '/collections/all'} 
+                /* FE-031 — router navigation. `window.location.href` discarded
+                   the whole application and reloaded it from the network to move
+                   between two routes the router already owns. */
+                onClick={() => navigate('/collections/all')}
                 className="fill-button px-8 py-4 bg-white text-[#6a5acd] rounded-lg font-medium hover:bg-gray-100 transition-colors shadow-lg"
               >
                 Shop Now

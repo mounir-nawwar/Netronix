@@ -2,9 +2,78 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/src/assets/logos/Favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Netronix</title>
+    <link rel="icon" type="image/png" href="/src/assets/logos/Favicon.png" />
+
+    <!-- PERF-009 — the two Google Fonts stylesheets used to be `@import`ed from
+         the top of `src/index.css`. An `@import` cannot start until the
+         stylesheet containing it has been fetched and parsed, so the fonts were
+         two serialised round trips in front of first paint. `preconnect` opens
+         the connections early and the `<link>`s are discovered by the preload
+         scanner in the initial HTML. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+
+    <!-- Loaded as a preload and promoted to a stylesheet on load, so it never
+         blocks the first paint. Lighthouse measured the blocking version
+         costing 780 ms of render-blocking time on this machine. The families
+         are all `display=swap`, so text paints in the fallback face and is
+         re-rendered when they arrive; the `<noscript>` copy keeps the fonts for
+         a client with JavaScript disabled, which is also the only client that
+         cannot run the `onload`. -->
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Outfit:wght@100..900&family=Michroma&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'"
+    />
+    <noscript>
+      <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Outfit:wght@100..900&family=Michroma&display=swap"
+      />
+    </noscript>
+
+    <!-- SEO-001 — the entire metadata for this site used to be `charset`,
+         `viewport`, `icon` and a bare one-word title. No description, no
+         Open Graph, no Twitter Card, no theme colour: sharing a Netronix URL
+         anywhere produced a bare link with no title, no summary and no image.
+
+         These are the site-wide defaults, present in the served HTML for
+         crawlers that do not execute JavaScript. Per-route values are set at
+         runtime by `<Seo>` (`src/components/Seo.jsx`), which overwrites only
+         the tags it owns.
+
+         `og:url` and `og:image` are deliberately root-relative here. The
+         canonical origin is configuration (`VITE_FRONTEND_URL`) and this file
+         is built once for every environment, so hardcoding a hostname would
+         mean shipping a URL that is wrong everywhere but one place. `<Seo>`
+         rewrites both to absolute URLs from the configured origin on mount. -->
+    <title>Netronix — Next-Gen Tech, Delivered</title>
+    <meta
+      name="description"
+      content="Netronix is a computer and gaming hardware store: laptops, MacBooks, gaming PCs, components, headphones, speakers and accessories, with variant-level stock and cash-on-delivery or Whish checkout."
+    />
+    <meta name="theme-color" content="#6a5acd" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Netronix" />
+    <meta property="og:title" content="Netronix — Next-Gen Tech, Delivered" />
+    <meta
+      property="og:description"
+      content="Laptops, MacBooks, gaming PCs, components and audio — with real stock per variant."
+    />
+    <meta property="og:image" content="/og/netronix-og.png" />
+    <meta property="og:image:alt" content="Netronix — next-gen tech, delivered" />
+    <meta property="og:locale" content="en_US" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Netronix — Next-Gen Tech, Delivered" />
+    <meta
+      name="twitter:description"
+      content="Laptops, MacBooks, gaming PCs, components and audio — with real stock per variant."
+    />
+    <meta name="twitter:image" content="/og/netronix-og.png" />
   </head>
   <body>
     <div id="root"></div>

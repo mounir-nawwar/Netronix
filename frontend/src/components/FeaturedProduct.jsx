@@ -1,183 +1,95 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { motion } from 'framer-motion';
+import { useState, useMemo, useContext } from 'react';
 import { Link } from 'react-router-dom';
-import { ShopContext } from '../context/ShopContext';
-import axios from 'axios';
-import { toast } from 'react-toastify';
+import { toast } from '../lib/toast';
 import { FiShoppingBag } from 'react-icons/fi';
-import earphones from '../assets/category_images/Earphones.jpg';
-import gaming from '../assets/category_images/Gaming.jpg';
-import laptops from '../assets/category_images/Laptops category.png';
-import pc from '../assets/category_images/pc pic 2.png';
+
+import { ShopContext } from '../context/shopContext';
+import { canonicalVariantId, entriesOf } from '../lib/variant';
+
+// FE-004 / PORT-001 / PORT-005 — the section that invented a product.
+//
+// It named one product by literal ObjectId, fetched the entire catalog to
+// `.find()` it, and when the lookup missed — which it does against any database
+// not restored from the original dump — it **displayed a product that does not
+// exist**: a "Razer Cobra Mouse" at $79.99, with a description and a colour
+// picker, none of it in any catalog. That is worse than an empty section,
+// because a visitor cannot tell it apart from a real one, and the Add to Cart
+// button led nowhere.
+//
+// Both are gone. The product is selected by its `showcase` slot from the catalog
+// the context already holds — no id, no second fetch — and when the slot is
+// empty the section renders nothing at all.
+//
+// The variant picker, the quantity stepper, the rotating badge and the layout
+// are unchanged. Stock now resolves through the shared helper (DB-003), so a
+// `16-inch` option reads the row it names rather than nothing.
 
 const FeaturedProduct = () => {
-    const { backendUrl, addToCart } = useContext(ShopContext);
+    const { showcaseOne, catalogStatus, addToCart, formatPrice, getPriceMinor } = useContext(ShopContext);
     const [currentImage, setCurrentImage] = useState(0);
-    const [loading, setLoading] = useState(true);
     const [quantity, setQuantity] = useState(1);
-    
-    // State for product data
-    const [product, setProduct] = useState(null);
-    const productId = "680262846be92b2511550a66"; // Razer Cobra Mouse ID
-    
-    // For variant selection
-    const [selectedVariants, setSelectedVariants] = useState({});
-    
-    useEffect(() => {
-        const fetchProduct = async () => {
-            try {
-                setLoading(true);
-                // Try the list endpoint instead of single product endpoint
-                const response = await axios.get(`${backendUrl}/api/product/list`);
-                
-                if (response.data.success) {
-                    // Find the product with matching ID from the list
-                    const foundProduct = response.data.products.find(p => p._id === productId);
-                    
-                    if (foundProduct) {
-                        setProduct(foundProduct);
-                        
-                        // Initialize selected variants
-                        if (foundProduct.variants && foundProduct.variants.length > 0) {
-                            const initialVariants = {};
-                            foundProduct.variants.forEach(variant => {
-                                if (variant.options && variant.options.length > 0) {
-                                    initialVariants[variant.name] = variant.options[0]; // Select first option by default
-                                }
-                            });
-                            setSelectedVariants(initialVariants);
-                        }
-                    } else {
-                        // If product not found in the list, show error
-                        toast.error("Product not found");
-                        // Fallback to a mock product for display
-                        setProduct({
-                            name: "Razer Cobra Mouse",
-                            brand: "Razer",
-                            price: 79.99,
-                            desc: "Advanced gaming mouse with precision optical sensor and customizable RGB lighting.",
-                            image: [gaming],
-                            variants: [
-                                {
-                                    name: "Color",
-                                    options: ["Black", "White"]
-                                }
-                            ]
-                        });
-                        setSelectedVariants({ Color: "Black" });
-                    }
-                } else {
-                    toast.error("Failed to fetch products");
-                    // Use a fallback product
-                    setProduct({
-                        name: "Razer Cobra Mouse",
-                        brand: "Razer",
-                        price: 79.99,
-                        desc: "Advanced gaming mouse with precision optical sensor and customizable RGB lighting.",
-                        image: [gaming],
-                        variants: [
-                            {
-                                name: "Color",
-                                options: ["Black", "White"]
-                            }
-                        ]
-                    });
-                    setSelectedVariants({ Color: "Black" });
-                }
-                setLoading(false);
-            } catch (error) {
-                console.error("Error fetching product:", error);
-                toast.error("Error loading product");
-                // Use fallback product on error
-                setProduct({
-                    name: "Razer Cobra Mouse",
-                    brand: "Razer",
-                    price: 79.99,
-                    desc: "Advanced gaming mouse with precision optical sensor and customizable RGB lighting.",
-                    image: [gaming],
-                    variants: [
-                        {
-                            name: "Color",
-                            options: ["Black", "White"]
-                        }
-                    ]
-                });
-                setSelectedVariants({ Color: "Black" });
-                setLoading(false);
-            }
-        };
-        
-        fetchProduct();
-    }, [backendUrl]);
-    
-    // Calculate available stock for selected variant
-    const getAvailableQuantity = () => {
-        if (!product || !product.inventory) return 0;
-        
-        const variantKey = getVariantKey();
-        if (!variantKey || !product.inventory[variantKey]) return 0;
-        
-        return product.inventory[variantKey];
-    };
-    
+    const [chosenOptions, setChosenOptions] = useState(null);
+
+    const product = showcaseOne('featured-product');
+    const loading = catalogStatus === 'loading';
+
+    /** The first option on each axis, until the customer picks otherwise. */
+    const selectedVariants = useMemo(() => {
+        if (chosenOptions) return chosenOptions;
+        const defaults = {};
+        for (const variant of product?.variants ?? []) {
+            if (variant?.options?.length > 0) defaults[variant.name] = variant.options[0];
+        }
+        return defaults;
+    }, [chosenOptions, product]);
+
+    /**
+     * Stock for the chosen combination (DB-003).
+     *
+     * This used to be `product.inventory[variantKey]` where `variantKey` was the
+     * option values joined with "-". For a product whose options include
+     * `16-inch` that key matches nothing, and the guard read as "out of stock".
+     * Resolution goes through the combination's own option pairs now.
+     */
+    const currentEntry = useMemo(() => {
+        const entries = entriesOf(product ?? {});
+        if (entries.length === 0) return null;
+        const wanted = canonicalVariantId(selectedVariants);
+        return entries.find((entry) => entry.variantId === wanted) ?? null;
+    }, [product, selectedVariants]);
+
+    const availableStock = currentEntry?.quantity ?? 0;
+
     const handleQuantityChange = (change) => {
-        const newQuantity = quantity + change;
-        const availableStock = getAvailableQuantity();
-        
-        // Don't allow quantity below 1
-        if (newQuantity < 1) return;
-        
-        // Don't allow quantity above available stock
-        if (availableStock > 0 && newQuantity > availableStock) {
+        const next = quantity + change;
+        if (next < 1) return;
+        if (availableStock > 0 && next > availableStock) {
             toast.warning(`Only ${availableStock} items available`);
             return;
         }
-        
-        setQuantity(newQuantity);
+        setQuantity(next);
     };
-    
+
     const handleVariantChange = (variantName, option) => {
-        setSelectedVariants(prev => ({
-            ...prev,
-            [variantName]: option
-        }));
+        setChosenOptions({ ...selectedVariants, [variantName]: option });
+        setQuantity(1);
     };
-    
-    // Generate variant key for cart
-    const getVariantKey = () => {
-        if (!product || !product.variants) return '';
-        
-        return product.variants
-            .map(variant => selectedVariants[variant.name])
-            .filter(option => option) // Filter out empty values
-            .join('-');
-    };
-    
+
     const handleAddToCart = () => {
-        const variantKey = getVariantKey();
-        if (variantKey) {
-            // Check available stock
-            const availableStock = getAvailableQuantity();
-            if (availableStock < quantity) {
-                toast.error(`Only ${availableStock} items available`);
-                return;
-            }
-            
-            // Add to cart with selected quantity
-            addToCart(productId, variantKey, quantity);
-        } else {
+        if (!product?._id) return;
+        if (!currentEntry) {
             toast.error('Please select all options');
+            return;
         }
+        if (availableStock < quantity) {
+            toast.error(`Only ${availableStock} items available`);
+            return;
+        }
+        addToCart(product._id, { variantOptions: currentEntry.options }, quantity);
     };
-    
-    // Get description from various possible field names
-    const getDescription = () => {
-        if (!product) return '';
-        
-        // Check various possible field names for description
-        return product.desc || product.description || product.details || '';
-    };
-    
+
+    const description = product?.description ?? '';
+
     if (loading) {
         return (
             <div className="py-16 flex justify-center items-center">
@@ -186,13 +98,20 @@ const FeaturedProduct = () => {
         );
     }
     
+    // FE-004 — nothing to show is shown as nothing. There is no fallback
+    // product to invent any more.
     if (!product) {
         return null;
     }
 
     return (
         <section className="py-6 sm:py-8 md:py-16 px-4 sm:px-6 lg:px-8">
-            <style jsx>{`
+            {/* TEST-002 — `<style jsx>` is styled-jsx's prop. This project has
+                never had styled-jsx installed, so React passed an unknown
+                `jsx` attribute straight to the DOM and warned about it in the
+                console; ESLint reported it as react/no-unknown-property. The
+                rule below is plain global CSS and always was. */}
+            <style>{`
                 @keyframes spin {
                     0% {
                         transform: rotate(0deg);
@@ -393,16 +312,16 @@ const FeaturedProduct = () => {
                         ))}
 
                         <div className="mb-4 sm:mb-8">
-                            <p className="text-base sm:text-lg font-michroma text-gray-900">${product.price}</p>
+                            <p className="text-base sm:text-lg font-michroma text-gray-900">{formatPrice(getPriceMinor(product))}</p>
                             
                             {/* Truncated product description with clamp for 3 lines max */}
                             <div className="mt-2 sm:mt-4">
                                 <p className="text-xs sm:text-sm md:text-base text-gray-500 overflow-hidden line-clamp-3">
-                                    {getDescription()}
+                                    {description}
                                 </p>
-                                {getDescription().length > 150 && (
+                                {description.length > 150 && (
                                     <Link 
-                                        to={`/product/${productId}`}
+                                        to={`/product/${product._id}`}
                                         className="text-xs sm:text-sm text-[#6a5acd] hover:text-[#5a4cbb] hover:underline font-medium inline-flex items-center mt-1"
                                     >
                                         View Details
@@ -454,7 +373,7 @@ const FeaturedProduct = () => {
                                 Add to Cart
                             </button>
                             <Link 
-                                to={`/product/${productId}`}
+                                to={`/product/${product._id}`}
                                 className="w-full py-3 sm:py-4 px-6 sm:px-8 rounded-full bg-gray-100 hover:bg-gray-200 transition text-xs sm:text-sm text-gray-900 font-michroma text-center"
                             >
                                 View Details

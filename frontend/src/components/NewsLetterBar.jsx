@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 
 const NewsLetterBar = ({
   position = 'left-0',
@@ -31,19 +32,28 @@ const NewsLetterBar = ({
       element.style.transform = 'translate3d(0, 0, 0)';
     };
 
-    socialIconsRef.current.forEach(icon => {
-      if (icon) {
-        icon.addEventListener('mousemove', (e) => handleMagneticEffect(e, icon));
-        icon.addEventListener('mouseleave', () => handleMouseLeave(icon));
-      }
+    const attached = [];
+    socialIconsRef.current.forEach((icon) => {
+      if (!icon) return;
+      const onMove = (event) => handleMagneticEffect(event, icon);
+      const onLeave = () => handleMouseLeave(icon);
+      icon.addEventListener('mousemove', onMove);
+      icon.addEventListener('mouseleave', onLeave);
+      attached.push({ icon, onMove, onLeave });
     });
 
+    // TEST-002 — the cleanup read `socialIconsRef.current` *at cleanup time*,
+    // which React warns about because by then the ref may point at different
+    // nodes than the ones the listeners were attached to. Worse, it passed
+    // brand-new arrow functions to `removeEventListener`, which therefore
+    // removed nothing at all: every remount leaked two listeners per icon.
+    // The nodes and their exact handlers are captured here instead.
+    const icons = attached;
+
     return () => {
-      socialIconsRef.current.forEach(icon => {
-        if (icon) {
-          icon.removeEventListener('mousemove', (e) => handleMagneticEffect(e, icon));
-          icon.removeEventListener('mouseleave', () => handleMouseLeave(icon));
-        }
+      icons.forEach(({ icon, onMove, onLeave }) => {
+        icon.removeEventListener('mousemove', onMove);
+        icon.removeEventListener('mouseleave', onLeave);
       });
     };
   }, []);
@@ -128,6 +138,20 @@ const NewsLetterBar = ({
       )}
     </div>
   );
+};
+
+NewsLetterBar.propTypes = {
+  position: PropTypes.string,
+  heading: PropTypes.string,
+  showSocial: PropTypes.bool,
+  socialLinks: PropTypes.arrayOf(PropTypes.shape({
+    platform: PropTypes.string,
+    url: PropTypes.string,
+    icon: PropTypes.string,
+  })),
+  mobileDisabled: PropTypes.bool,
+  mobileHideSocial: PropTypes.bool,
+  onClick: PropTypes.func,
 };
 
 export default NewsLetterBar; 

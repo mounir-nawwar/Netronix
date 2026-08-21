@@ -1,16 +1,22 @@
-import React, { useContext, useEffect, useState } from 'react'
+import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { ShopContext } from '../context/ShopContext';
+import { ShopContext } from '../context/shopContext';
+import Seo from '../components/Seo';
+import { breadcrumbLd, productLd } from '../lib/seo';
+import { isSoldOut } from '../lib/productSummary';
 import RelatedProducts from '../components/RelatedProducts';
-import { toast } from 'react-toastify';
+import { toast } from '../lib/toast';
 import { motion } from 'framer-motion';
-import { FiMinus, FiPlus, FiShoppingBag, FiHeart, FiInfo, FiArrowLeft, FiShield, FiTruck, FiPackage } from 'react-icons/fi';
+import { FiMinus, FiPlus, FiShoppingBag, FiHeart, FiInfo, FiShield, FiTruck, FiPackage } from 'react-icons/fi';
 import BackButton from '../components/BackButton';
 
 const Product = () => {
 
   const { productId } = useParams();
-  const { products, currency, addToCart, navigate, addToWishlist, removeFromWishlist, isInWishlist, getSingleProduct } = useContext(ShopContext);
+  const {
+    products, addToCart, navigate, addToWishlist, removeFromWishlist,
+    isInWishlist, getSingleProduct, availableFor, getPriceMinor, formatPrice,
+  } = useContext(ShopContext);
   const [productData, setProductData] = useState(false);
   const [image, setImage] = useState('');
   const [quantity, setQuantity] = useState(1);
@@ -19,8 +25,10 @@ const Product = () => {
   
   // State for selected variant options
   const [selectedVariants, setSelectedVariants] = useState({});
+  const loadGeneration = useRef(0);
 
-  const fetchProductData = async () => {
+  const fetchProductData = useCallback(async () => {
+    const generation = ++loadGeneration.current;
     setLoading(true);
     
     // Try to find product in the existing products array first
@@ -47,6 +55,7 @@ const Product = () => {
     // If not found in existing products, fetch directly from API
     try {
       const product = await getSingleProduct(productId);
+      if (generation !== loadGeneration.current) return;
       if (product) {
         setProductData(product);
         setImage(product.image[0]);
@@ -66,54 +75,53 @@ const Product = () => {
         navigate('/products');
       }
     } catch (error) {
+      if (generation !== loadGeneration.current) return;
       console.error(error);
       toast.error('Error loading product');
       navigate('/products');
     } finally {
-      setLoading(false);
+      if (generation === loadGeneration.current) setLoading(false);
     }
-  }
+  }, [productId, products, getSingleProduct, navigate])
 
   useEffect(() => {
     window.scrollTo(0, 0);
     fetchProductData();
-  }, [productId])
+    // TEST-002 — `fetchProductData` is memoised on `productId` (and on the two
+    // context callbacks it calls), so depending on the function is the same
+    // refetch behaviour as depending on `[productId]` was, stated honestly.
+  }, [fetchProductData])
 
-  // Generate variant combination key
-  const getVariantKey = () => {
-    if (!productData || !productData.variants) return '';
-    
-    return productData.variants
-      .map(variant => selectedVariants[variant.name])
-      .filter(option => option) // filter out empty values
-      .join('-');
-  };
 
-  // Check if a variant combination is out of stock
+  /**
+   * DB-003 — this guard used to fail **open**.
+   *
+   * It was:
+   *
+   *     if (variantKey.split('-').length !== variants.length) return false;
+   *
+   * `false` meaning "in stock". A hyphenated option value — `16-inch`,
+   * `RTX-4090`, `Wi-Fi 6E`, `USB-C`, all of which this catalog sells — inflates
+   * the segment count, so the counts never matched, the guard short-circuited,
+   * and an unavailable combination rendered as purchasable. The cart key it then
+   * produced matched no inventory key, so the server's own check mis-resolved
+   * too.
+   *
+   * Resolution now goes through the shared helper, against the option pairs
+   * rather than a string that has to be split back apart, and every path fails
+   * **closed**: an incomplete selection, an unknown combination and an ambiguous
+   * one all report out of stock.
+   */
   const isOutOfStock = () => {
-    const variantKey = getVariantKey();
-    
-    // If not all variants are selected, consider it in stock
-    if (variantKey.split('-').length !== (productData?.variants?.length || 0)) {
-      return false;
-    }
-    
-    if (!productData.inventory || !productData.inventory[variantKey]) {
-      return true; // No inventory data means out of stock
-    }
-    
-    return productData.inventory[variantKey] <= 0;
+    if (!areAllVariantsSelected()) return true;
+    const available = availableFor(productData, { variantOptions: selectedVariants });
+    return available === null || available <= 0;
   };
 
   // Get available quantity for selected variant combination
   const getAvailableQuantity = () => {
-    const variantKey = getVariantKey();
-    
-    if (!productData.inventory || !productData.inventory[variantKey]) {
-      return 0;
-    }
-    
-    return productData.inventory[variantKey];
+    if (!areAllVariantsSelected()) return 0;
+    return availableFor(productData, { variantOptions: selectedVariants }) ?? 0;
   };
 
   // Check if all variants are selected
@@ -163,7 +171,7 @@ const Product = () => {
     }
 
     // Add to cart with the selected quantity (not in a loop anymore)
-    addToCart(productData._id, getVariantKey(), quantity);
+    addToCart(productData._id, { variantOptions: selectedVariants }, quantity);
   };
 
   // Handle save/unsave for wishlist
@@ -193,14 +201,49 @@ const Product = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a5acd]"></div>
+      <div
+        className="min-h-screen flex items-center justify-center"
+        role="status"
+        aria-label="Loading product"
+      >
+        <div
+          aria-hidden="true"
+          className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a5acd]"
+        />
       </div>
     );
   }
 
   return productData ? (
     <div className="min-h-screen bg-white pt-[80px] md:pt-[100px] pb-16">
+      {/* SEO-001 / SEO-002 / SEO-004 — every product page used to be titled
+          "Netronix", with no description and no structured data. Everything
+          below is read from the catalog document: the name, the description,
+          the real images, and a price and availability derived from the
+          minor-unit price and the typed inventory. No AggregateRating and no
+          review count, because there are no reviews. */}
+      <Seo
+        title={productData.name}
+        description={
+          productData.description
+            ? String(productData.description).replace(/\s+/g, ' ').trim().slice(0, 200)
+            : `${productData.name} at Netronix.`
+        }
+        path={`/product/${productData._id}`}
+        image={Array.isArray(productData.image) ? productData.image[0] : undefined}
+        ogType="product"
+        jsonLd={[
+          productLd(productData, {
+            priceMinor: getPriceMinor(productData),
+            inStock: !isSoldOut(productData),
+          }),
+          breadcrumbLd([
+            { name: 'Home', path: '/' },
+            { name: 'Products', path: '/products' },
+            { name: productData.name, path: `/product/${productData._id}` },
+          ]),
+        ]}
+      />
       <div className="w-[90%] md:w-[85%] lg:w-[80%] max-w-6xl mx-auto">
         {/* Back button */}
         <BackButton className="mb-6" />
@@ -216,25 +259,41 @@ const Product = () => {
             <div className="flex flex-col-reverse md:flex-row gap-4">
               {/* Thumbnails */}
               <div className="flex md:flex-col gap-3 overflow-x-auto md:overflow-y-auto md:w-24 pb-2 md:pb-0">
+                {/* A11Y-005 / A11Y-007 — each thumbnail was a `<div onClick>`
+                    wrapping an image: unreachable by Tab and announced as
+                    nothing, so a keyboard user could not change the view at
+                    all. They are `<button>`s with `aria-pressed`, and the
+                    image inside is decorative because the button already
+                    carries the name. Styling is untouched. */}
                 {productData.image.map((img, index) => (
-                  <div 
+                  <button
                     key={index}
+                    type="button"
+                    aria-label={`Show view ${index + 1} of ${productData.name}`}
+                    aria-pressed={img === image}
                     className={`border-2 rounded-lg overflow-hidden cursor-pointer flex-shrink-0 w-20 h-20 
                     ${img === image ? 'border-[#6a5acd]' : 'border-gray-200'}`}
                     onClick={() => setImage(img)}
                   >
-                    <img 
-                      src={img} 
-                      alt={`${productData.name} - view ${index + 1}`} 
+                    <img
+                      src={img}
+                      alt=""
+                      width={80}
+                      height={80}
+                      loading="lazy"
+                      decoding="async"
                       className="w-full h-full object-cover"
                     />
-                  </div>
+                  </button>
                 ))}
               </div>
 
-              {/* Main Image */}
-              <div 
-                className="flex-1 rounded-xl overflow-hidden bg-[#f9f9f9] relative cursor-zoom-in"
+              {/* Main Image — the zoom toggle was a `<div onClick>` too. */}
+              <button
+                type="button"
+                aria-pressed={isZoomed}
+                aria-label={isZoomed ? `Zoom out of ${productData.name}` : `Zoom in on ${productData.name}`}
+                className="flex-1 aspect-square rounded-xl overflow-hidden bg-[#f9f9f9] relative cursor-zoom-in"
                 onClick={() => setIsZoomed(!isZoomed)}
               >
                 <motion.img
@@ -246,43 +305,28 @@ const Product = () => {
                   transition={{ duration: 0.3 }}
                   style={{ maxHeight: isZoomed ? '700px' : '500px' }}
                 />
-              </div>
+              </button>
             </div>
           </motion.div>
 
           {/* Product Details */}
-          <motion.div
-            className="flex flex-col"
-            variants={fadeIn}
-            initial="hidden"
-            animate="visible"
-          >
+          <div className="flex flex-col">
             {/* Brand and name */}
             {productData.brand && (
-              <motion.span 
-                className="text-[#6a5acd] text-sm tracking-wide uppercase font-michroma mb-1"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.2 }}
-              >
+              <span className="text-[#6a5acd] text-sm tracking-wide uppercase font-michroma mb-1">
                 {productData.brand}
-              </motion.span>
+              </span>
             )}
             
-            <motion.h1 
-              className="text-2xl md:text-3xl font-michroma text-gray-900 mb-2"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-            >
+            <h1 className="text-2xl md:text-3xl font-michroma text-gray-900 mb-2">
               {productData.name}
-            </motion.h1>
+            </h1>
             
             {/* Tags */}
             {productData.tags && productData.tags.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-4">
                 {productData.tags.map((tag, index) => (
-                  <Link to={`/collections/tag/${tag}`} key={index}>
+                  <Link to={`/products?${new URLSearchParams({ tag }).toString()}`} key={index}>
                     <span className="bg-[#f5f3ff] text-[#6a5acd] text-xs px-3 py-1 rounded-full font-michroma hover:bg-[#6a5acd] hover:text-white transition-colors">
                       {tag}
                     </span>
@@ -292,24 +336,14 @@ const Product = () => {
             )}
             
             {/* Price */}
-            <motion.div 
-              className="text-2xl md:text-3xl font-michroma text-[#6a5acd] mt-2 mb-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-            >
-              {currency}{productData.price}
-            </motion.div>
+            <div className="text-2xl md:text-3xl font-michroma text-[#6a5acd] mt-2 mb-4">
+              {formatPrice(getPriceMinor(productData))}
+            </div>
             
             {/* Description */}
-            <motion.p 
-              className="text-gray-600 mb-6 line-clamp-3 relative"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 }}
-            >
+            <p className="text-gray-600 mb-6 line-clamp-3 relative">
               {productData.description}
-            </motion.p>
+            </p>
             
             <div className="space-y-6 mb-8">
               {/* Variant Selections */}
@@ -322,13 +356,19 @@ const Product = () => {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.3 + (variantIndex * 0.1) }}
                     >
-                      <label className="block text-gray-700 text-sm font-medium mb-2 font-michroma">
+                      <label className="block text-gray-700 text-sm font-medium mb-2 font-michroma" id={`variant-axis-${variantIndex}`}>
                         {variant.name}
                       </label>
-                      <div className="flex flex-wrap gap-2">
+                      {/* A named group, so each row of options is identifiable
+                          as the axis it belongs to — by a screen reader and by a
+                          test. The buttons announced only their own value
+                          ("Black"), with nothing saying which axis chose it. */}
+                      <div className="flex flex-wrap gap-2" role="group" aria-labelledby={`variant-axis-${variantIndex}`}>
                         {variant.options.map((option, optionIndex) => (
                           <button 
                             key={optionIndex}
+                            type="button"
+                            aria-pressed={selectedVariants[variant.name] === option}
                             onClick={() => handleVariantChange(variant.name, option)}
                             className={`px-4 py-2 rounded-md border transition-all ${
                               selectedVariants[variant.name] === option 
@@ -374,6 +414,8 @@ const Product = () => {
                   </label>
                   <div className="flex items-center">
                     <button 
+                      type="button"
+                      aria-label="Decrease quantity"
                       onClick={decreaseQuantity}
                       disabled={quantity <= 1}
                       className={`w-10 h-10 flex items-center justify-center border border-gray-300 rounded-l-md ${
@@ -386,6 +428,8 @@ const Product = () => {
                       {quantity}
                     </div>
                     <button 
+                      type="button"
+                      aria-label="Increase quantity"
                       onClick={increaseQuantity}
                       disabled={quantity >= getAvailableQuantity()}
                       className={`w-10 h-10 flex items-center justify-center border border-gray-300 rounded-r-md ${
@@ -462,7 +506,7 @@ const Product = () => {
                 </div>
               </div>
             </motion.div>
-          </motion.div>
+          </div>
         </div>
         
         {/* Product Details Tabs */}
@@ -490,12 +534,19 @@ const Product = () => {
         </motion.div>
         
         {/* Related Products */}
+        {/* PERF-003 — `paint-on-approach` is `content-visibility: auto`: the
+            strip is the bottom of a page four viewports tall, and the browser
+            skips its style, layout and paint until it is approached. It is
+            rendered by React on the first pass either way, and stays in the
+            accessibility tree and in find-in-page. See `index.css`. */}
         <motion.div
+          className="paint-on-approach"
+          style={{ '--approach-height': '1045px' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.2 }}
         >
-          <RelatedProducts category={productData.category} subCategory={productData.subCategory} tags={productData.tags}/>
+          <RelatedProducts tags={productData.tags} />
         </motion.div>
       </div>
     </div>

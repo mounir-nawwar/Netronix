@@ -1,14 +1,23 @@
-import React, { useContext, useEffect, useState } from 'react';
-import { ShopContext } from '../context/ShopContext';
-import axios from 'axios';
-import { toast } from 'react-toastify';
+import { useContext, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import { toast } from '../lib/toast';
+
+import { ShopContext } from '../context/shopContext';
+import * as authApi from '../api/auth';
+import { ApiError } from '../api/client';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
 import { IoMailOutline, IoLockClosedOutline, IoPersonOutline, IoArrowForwardOutline } from "react-icons/io5";
+import Seo from '../components/Seo';
 
 const LogIn = () => {
   const [currentState, setCurrentState] = useState('Login');
-  const { token, setToken, navigate, backendUrl } = useContext(ShopContext);
+  // FE-009 — signing in goes through `applySession`, which merges whatever this
+  // browser had in its guest cart before it hands over. The old path set the
+  // token and let an effect call `getUserCart`, which replaced local state
+  // wholesale: everything chosen before signing in was discarded at exactly the
+  // moment the customer committed to the site, with no message.
+  const { token, applySession, navigate } = useContext(ShopContext);
+  const location = useLocation();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -20,36 +29,29 @@ const LogIn = () => {
     setIsLoading(true);
     
     try {
-      if (currentState === 'Sign Up') {
-        const response = await axios.post(backendUrl + '/api/user/register', { name, email, password });
-        if (response.data.success) {
-          toast.success('Sign up successful! Welcome aboard!');
-          setToken(response.data.token);
-          localStorage.setItem('token', response.data.token);
-        } else {
-          toast.error(response.data.message);
-        }
-      } else {
-        const response = await axios.post(backendUrl + '/api/user/login', { email, password });
-        if (response.data.success) {
-          setToken(response.data.token);
-          localStorage.setItem('token', response.data.token);
-        } else {
-          toast.error(response.data.message);
-        }
+      const nextToken = currentState === 'Sign Up'
+        ? await authApi.register({ name, email, password })
+        : await authApi.login({ email, password });
+
+      if (!nextToken) {
+        toast.error('We could not sign you in. Please try again.');
+        return;
       }
+
+      if (currentState === 'Sign Up') toast.success('Sign up successful! Welcome aboard!');
+      await applySession(nextToken);
     } catch (error) {
-      console.log(error);
-      toast.error(error.message);
+      // The server's own message, not "Request failed with status code 401".
+      toast.error(error instanceof ApiError ? error.message : 'We could not sign you in.');
     } finally {
       setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    if (token) {
-      navigate('/');
-    }
+    // Back to wherever the guard sent them from, or home (FE-021).
+    if (token) navigate(location.state?.from ?? '/');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   // Animation variants
@@ -99,7 +101,10 @@ const LogIn = () => {
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-gradient-to-b from-white to-gray-50">
+
+      <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-gradient-to-b from-white to-gray-50">
+
+        <Seo title="Sign in" description="Sign in to your Netronix account, or create one." />
       <motion.div 
         className="w-full max-w-md bg-white shadow-xl rounded-3xl overflow-hidden border border-gray-100"
         initial={{ opacity: 0, y: 50 }}

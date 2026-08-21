@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
 import { motion } from 'framer-motion';
+import PropTypes from 'prop-types';
 
 const testimonials = [
     {
@@ -66,6 +66,14 @@ const TestimonialCard = ({ text, author, avatar, index }) => {
             </div>
         </motion.div>
     );
+};
+
+
+TestimonialCard.propTypes = {
+    text: PropTypes.string.isRequired,
+    author: PropTypes.string.isRequired,
+    avatar: PropTypes.string,
+    index: PropTypes.number,
 };
 
 const Testimonials = () => {

@@ -1,9 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400..900&family=Outfit:wght@100..900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Michroma&display=swap');
+/* PERF-009 — the two Google Fonts stylesheets used to be `@import`ed here.
+   An `@import` inside a stylesheet is discovered only after that stylesheet has
+   been downloaded and parsed, so the font requests could not start in parallel
+   with anything: two serialised round trips in front of first paint. They are
+   `<link rel="preconnect">` + `<link rel="stylesheet">` in `index.html` now,
+   which is the same fonts, fetched at the same time as the CSS. */
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
 
 a.active hr{
     display: block;
@@ -398,4 +406,129 @@ body {
 
 .Toastify__close-button:hover {
   opacity: 1 !important;
+}
+/* ---------------------------------------------------------------------------
+   A11Y-001 — reduced motion.
+
+   Netronix animates almost everything: a 3D hero, a dual-direction brand
+   marquee, scroll-reactive outlined text, an autoplaying product film,
+   staggered entrances on every page, a depth-scaling slider and a live
+   countdown. Before this block there was not one `prefers-reduced-motion`
+   rule anywhere in the project — verified by grep across `index.css`,
+   `logos.css`, `admin/index.css` and every JSX file.
+
+   For a visitor with a vestibular disorder that is not a preference setting.
+   Continuous motion, parallax and autoplay cause nausea and migraine. WCAG
+   2.1 2.3.3 (Animation from Interactions) and, for the film, 2.2.2 (Pause,
+   Stop, Hide).
+
+   This is the blunt half of the fix and it is deliberately blunt: anything
+   declarative stops. The half that needs judgement — not *requesting* the
+   Spline iframe, not attaching the video's sources, not starting the
+   `requestAnimationFrame` loop at all — is in the components, because CSS
+   can only make an animation instant, it cannot stop a network fetch.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* The two marquees and the logo strip are infinite CSS animations. Zeroing
+     their duration would make them jitter at the wrap point rather than stop,
+     so they are paused where they are. */
+  .animate-marquee-left,
+  .animate-marquee-right,
+  .logos-slide {
+    animation-play-state: paused !important;
+    animation: none !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   A11Y-008 — a visible focus indicator and a skip link.
+
+   There was no `:focus-visible` rule in either stylesheet, and Tailwind's
+   preflight removes the browser's default outline, so keyboard focus was
+   invisible across the whole storefront. `:focus-visible` rather than
+   `:focus` so a mouse click does not leave a ring behind.
+   --------------------------------------------------------------------------- */
+:focus-visible {
+  outline: 3px solid #6a5acd;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.skip-link {
+  position: absolute;
+  left: 8px;
+  top: -100px;
+  z-index: 100;
+  padding: 12px 20px;
+  background: #6a5acd;
+  color: #fff;
+  border-radius: 8px;
+  font-family: Michroma, Outfit, sans-serif;
+  font-size: 14px;
+  transition: top 150ms ease-in-out;
+}
+
+.skip-link:focus {
+  top: 8px;
+}
+
+/* Visually hidden, still announced. Used for labels on controls whose
+   affordance is an icon. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   PERF-003 — the browser's own render skipping, for what is below the fold.
+
+   The homepage is ten viewports tall on a 412 px screen and every section of
+   it was styled, laid out and painted before the page was interactive:
+   Lighthouse measured 1,463 ms of Style & Layout and 705 ms of Rendering on a
+   mobile profile, against 785 ms of total blocking time. Almost all of that
+   work is for content nobody has scrolled to yet — including two infinite
+   marquee animations that run off-screen from the first frame.
+
+   `content-visibility: auto` is the platform feature for exactly this. The
+   browser skips rendering work for a subtree until it comes near the viewport
+   and does it then. What it is *not* is the deferred-mounting experiment this
+   phase tried and reverted:
+
+     * the elements are in the DOM from the first render, so nothing depends on
+       an observer firing for the content to exist;
+     * they stay in the accessibility tree, and find-in-page still reaches them
+       — that is the documented difference between this and `display: none`;
+     * React is not involved at all, so there is no state in which a section can
+       fail to mount.
+
+   `contain-intrinsic-size: auto <height>` gives the skipped subtree a stand-in
+   height, and the `auto` keyword makes the browser remember the real one after
+   the section has been rendered once. The per-section values below are the
+   measured heights of the sections on a 412 px viewport, so the scrollbar is
+   honest before anything has been revealed.
+
+   Deliberately **not** applied to: the hero and the slider, which are at or
+   near the first viewport and would gain nothing; and `NewsLetterBar`, whose
+   tab is `position: fixed` — containment would make it fixed to the section
+   instead of the viewport.
+   --------------------------------------------------------------------------- */
+.paint-on-approach {
+  content-visibility: auto;
+  contain-intrinsic-size: auto var(--approach-height, 600px);
 }

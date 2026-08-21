@@ -1,9 +1,20 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
+import PropTypes from 'prop-types';
 import { motion } from 'framer-motion';
+
+// A11Y-005 / A11Y-008 — the divider was a `<motion.button>` with no accessible
+// name and no keyboard behaviour: a mouse-only control with a focus ring that
+// did nothing. It is a real slider now — `role="slider"`, a live
+// `aria-valuenow`, and arrow/Home/End keys — and the drag interaction is
+// untouched, which is the one that makes the section worth having.
+const KEY_STEP = 4;
 
 const ImageComparison = ({
     beforeImage,
     afterImage,
+    beforeImageSet,
+    afterImageSet,
+    imageSizes,
     beforeHeading,
     afterHeading,
     beforeSubheading,
@@ -40,7 +51,7 @@ const ImageComparison = ({
         setIsScrolling(false);
     };
 
-    const drag = (e) => {
+    const drag = useCallback((e) => {
         if (!isScrolling || !containerRef.current) return;
 
         const rect = containerRef.current.getBoundingClientRect();
@@ -56,6 +67,19 @@ const ImageComparison = ({
             const newPercent = Math.max(0, Math.min(100, (y * 100) / height));
             setPercent(newPercent);
         }
+    }, [isScrolling, isHorizontal]);
+
+    const nudge = (event) => {
+        const back = isHorizontal ? 'ArrowLeft' : 'ArrowUp';
+        const forward = isHorizontal ? 'ArrowRight' : 'ArrowDown';
+        let next = null;
+        if (event.key === back) next = Math.max(0, percent - KEY_STEP);
+        else if (event.key === forward) next = Math.min(100, percent + KEY_STEP);
+        else if (event.key === 'Home') next = 0;
+        else if (event.key === 'End') next = 100;
+        if (next === null) return;
+        event.preventDefault();
+        setPercent(next);
     };
 
     useEffect(() => {
@@ -72,7 +96,7 @@ const ImageComparison = ({
             window.removeEventListener('mouseup', stopDragging);
             window.removeEventListener('touchend', stopDragging);
         };
-    }, [isScrolling]);
+    }, [isScrolling, drag]);
 
     return (
         <div
@@ -84,9 +108,12 @@ const ImageComparison = ({
             <div className="flex justify-center items-center absolute inset-0 w-full h-full">
                 <img
                     src={beforeImage}
-                    alt="Before"
+                    srcSet={beforeImageSet}
+                    sizes={imageSizes}
+                    alt={beforeHeading ? `${beforeHeading} — before` : 'Before'}
                     className="w-full h-full object-cover"
                     loading="lazy"
+                    decoding="async"
                 />
                 {(beforeHeading || beforeSubheading) && (
                     <div className="absolute bottom-6 left-6" style={{ maxWidth: `calc(${percent}% - 40px)` }}>
@@ -113,9 +140,12 @@ const ImageComparison = ({
             >
                 <img
                     src={afterImage}
-                    alt="After"
+                    srcSet={afterImageSet}
+                    sizes={imageSizes}
+                    alt={afterHeading ? `${afterHeading} — after` : 'After'}
                     className="w-full h-full object-cover"
                     loading="lazy"
+                    decoding="async"
                 />
                 {(afterHeading || afterSubheading) && (
                     <div className="absolute bottom-6 right-6 text-right" style={{ maxWidth: `calc(${100 - percent}% - 40px)` }}>
@@ -140,6 +170,15 @@ const ImageComparison = ({
 
             {/* Drag Handle */}
             <motion.button
+                type="button"
+                role="slider"
+                aria-label="Reveal more of the before or after image"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(percent)}
+                aria-valuetext={`${Math.round(percent)}% ${afterHeading || 'after'}`}
+                aria-orientation={isHorizontal ? 'horizontal' : 'vertical'}
+                onKeyDown={nudge}
                 className={`absolute z-20 ${isHorizontal ? 'h-full cursor-col-resize' : 'w-full cursor-row-resize'}`}
                 style={{
                     top: isHorizontal ? 0 : `${percent}%`,
@@ -159,7 +198,9 @@ const ImageComparison = ({
                 <div
                     className={`absolute top-1/2 left-1/2 w-[28px] md:w-[38px] h-[48px] md:h-[64px] -translate-x-1/2 -translate-y-1/2 bg-white rounded-full flex items-center justify-center shadow-lg ${isHorizontal ? '' : 'rotate-90'}`}
                 >
-                    <svg 
+                    <svg
+                        aria-hidden="true"
+                        focusable="false"
                         className="w-[12px] h-[24px]" 
                         viewBox="0 0 12 17" 
                         stroke="currentColor" 
@@ -174,6 +215,23 @@ const ImageComparison = ({
             </motion.button>
         </div>
     );
+};
+
+ImageComparison.propTypes = {
+    beforeImage: PropTypes.string.isRequired,
+    afterImage: PropTypes.string.isRequired,
+    beforeImageSet: PropTypes.string,
+    afterImageSet: PropTypes.string,
+    imageSizes: PropTypes.string,
+    beforeHeading: PropTypes.string,
+    afterHeading: PropTypes.string,
+    beforeSubheading: PropTypes.string,
+    afterSubheading: PropTypes.string,
+    layout: PropTypes.oneOf(['horizontal', 'vertical']),
+    height: PropTypes.string,
+    rounded: PropTypes.bool,
+    fullWidth: PropTypes.bool,
+    textSize: PropTypes.oneOf(['small', 'normal']),
 };
 
 export default ImageComparison; 

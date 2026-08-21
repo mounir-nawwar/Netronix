@@ -1,22 +1,60 @@
-import React, { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
  import axios from 'axios';
- import { backendUrl, currency } from '../App';
+ import { backendUrl } from '../config';
+import { formatMoney, readMinor } from '../lib/money';
+import { collectPages, completeItems } from '../lib/productRequests';
  import { toast } from 'react-toastify';
 import { FiPackage, FiInfo, FiMapPin, FiPhone, FiCalendar, FiCreditCard, FiTag, FiUser, FiSearch, FiChevronDown, FiChevronRight } from 'react-icons/fi';
  
  const Orders = ({ token }) => {
+
+  /**
+   * DB-004 / FE-018 — money is formatted through `Intl.NumberFormat`, never by
+   * concatenating a symbol onto a float. `{currency}{order.amount}` rendered
+   * 2502 as "$2502", with no decimals and no thousands separator, and
+   * `(item.price * item.quantity).toFixed(2)` recomputed a line total in the
+   * browser from a price the order did not record.
+   *
+   * Dual-read: an order written before the migration carries only the
+   * major-unit field, and still renders correctly.
+   */
+  const money = (source, minorField, majorField) =>
+    formatMoney(readMinor(source ?? {}, minorField, majorField) ?? 0);
+
+  /** The line total the order itself recorded, not one recomputed here. */
+  const lineTotal = (item) => {
+    const minor = readMinor(item ?? {}, 'lineTotalMinor', 'lineTotal');
+    if (minor !== null) return formatMoney(minor);
+    const unit = readMinor(item ?? {}, 'unitPriceMinor', 'unitPrice')
+      ?? readMinor(item ?? {}, 'priceMinor', 'price');
+    return unit === null ? 'N/A' : formatMoney(unit * (Number(item.quantity) || 1));
+  };
    const [orderData, setOrderData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedOrder, setExpandedOrder] = useState(null);
   const [filterStatus, setFilterStatus] = useState('All');
  
-   const fetchAllOrders = async () => {
+   // TEST-002 — memoised so the effect below can depend on the function
+   // itself rather than on `[token]` while calling something that closes over
+   // more than that. The refetch behaviour is unchanged: a new session
+   // refetches, nothing else does.
+   const fetchAllOrders = useCallback(async () => {
      if (!token) return null;
  
     setLoading(true);
+    setLoadError('');
      try {
-      const response = await axios.post(backendUrl + '/api/order/list', {}, { headers: { token } });
+      // Walked, not sampled: one request is one bounded page of 100 (BE-009),
+      // and rendering it as the whole list hid every older order from the only
+      // screen that can act on one.
+      const collected = await collectPages(async (paging) => {
+        const { data } = await axios.post(backendUrl + '/api/order/list', {}, { headers: { token }, params: paging });
+        return data;
+      });
+      const completeOrders = completeItems(collected, 'Order list');
+      const response = { data: { success: true, orders: completeOrders, items: completeOrders } };
        if (response.data.success) {
          setOrderData(response.data.orders.reverse());
        } else {
@@ -24,11 +62,13 @@ import { FiPackage, FiInfo, FiMapPin, FiPhone, FiCalendar, FiCreditCard, FiTag, 
        }
      } catch (error) {
        console.log(error);
+       setOrderData([]);
+       setLoadError(error.message || 'Could not load the order list');
        toast.error(error.message);
     } finally {
       setLoading(false);
      }
-  };
+  }, [token]);
  
    const statusHandler = async (event, orderId) => {
      try {
@@ -49,7 +89,7 @@ import { FiPackage, FiInfo, FiMapPin, FiPhone, FiCalendar, FiCreditCard, FiTag, 
  
    useEffect(() => {
      fetchAllOrders();
-  }, [token]);
+  }, [fetchAllOrders]);
 
   // Filter orders based on search term and status filter
   const filteredOrders = orderData.filter((order) => {
@@ -133,6 +173,8 @@ import { FiPackage, FiInfo, FiMapPin, FiPhone, FiCalendar, FiCreditCard, FiTag, 
         <div className="flex justify-center items-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a5acd]"></div>
         </div>
+      ) : loadError ? (
+        <div role="alert" className="rounded-lg bg-red-50 p-4 text-red-700">{loadError}</div>
       ) : filteredOrders.length === 0 ? (
         <div className="flex flex-col items-center justify-center h-64 text-gray-500">
           <FiPackage className="w-12 h-12 mb-3" />
@@ -160,7 +202,7 @@ import { FiPackage, FiInfo, FiMapPin, FiPhone, FiCalendar, FiCreditCard, FiTag, 
                       </span>
                     </div>
                     <span className="text-sm text-gray-600 mt-1">
-                      {formatDate(order.date)} · {currency}{order.amount}
+                      {formatDate(order.date)} · {money(order, 'amountMinor', 'amount')}
                     </span>
                   </div>
                   
@@ -197,7 +239,7 @@ import { FiPackage, FiInfo, FiMapPin, FiPhone, FiCalendar, FiCreditCard, FiTag, 
                                   />
                                 ) : (
                                   <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                                    <FiPackage className="text-gray-400 w-8 h-8" />
+                                    <FiPackage className="text-gray-600 w-8 h-8" />
                                   </div>
                                 )}
                               </div>
@@ -209,7 +251,10 @@ import { FiPackage, FiInfo, FiMapPin, FiPhone, FiCalendar, FiCreditCard, FiTag, 
                                 <div className="flex items-center mt-2 text-sm text-gray-700">
                                   <div className="flex-grow">
                                     <p>
-                                      Size: <span className="font-medium">{item.size}</span>
+                                      {/* ARCH-003 — the label the order carries,
+                                          not a hardcoded "Size:" on a key that
+                                          may name any axis at all. */}
+                                      <span className="font-medium">{item.variantLabel || item.variantKey || item.size}</span>
                                     </p>
                                     <p className="mt-1">
                                       Quantity: <span className="font-medium">{item.quantity}</span>
@@ -217,7 +262,7 @@ import { FiPackage, FiInfo, FiMapPin, FiPhone, FiCalendar, FiCreditCard, FiTag, 
                                   </div>
                                   <div className="text-right">
                                     <p className="text-[#6a5acd] font-medium">
-                                      {currency}{item.price ? (item.price * item.quantity).toFixed(2) : 'N/A'}
+                                      {lineTotal(item)}
                                     </p>
                                   </div>
                                 </div>
@@ -230,15 +275,15 @@ import { FiPackage, FiInfo, FiMapPin, FiPhone, FiCalendar, FiCreditCard, FiTag, 
                         <div className="mt-6 border-t border-gray-200 pt-4">
                           <div className="flex justify-between text-sm mb-2">
                             <span className="text-gray-600">Subtotal</span>
-                            <span className="font-medium">{currency}{order.subtotal || (order.amount - order.delivery_fee) || 0}</span>
+                            <span className="font-medium">{money(order, 'subtotalMinor', 'subtotal')}</span>
                           </div>
                           <div className="flex justify-between text-sm mb-2">
                             <span className="text-gray-600">Shipping</span>
-                            <span className="font-medium">{currency}{order.delivery_fee || 0}</span>
+                            <span className="font-medium">{money(order, 'deliveryFeeMinor', 'delivery_fee')}</span>
                           </div>
                           <div className="flex justify-between text-base font-medium mt-3 pt-3 border-t border-gray-100">
                             <span>Total</span>
-                            <span className="text-[#6a5acd]">{currency}{order.amount}</span>
+                            <span className="text-[#6a5acd]">{money(order, 'amountMinor', 'amount')}</span>
                           </div>
                         </div>
                  </div>

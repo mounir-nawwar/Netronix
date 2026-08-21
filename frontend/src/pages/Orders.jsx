@@ -1,82 +1,94 @@
-import React, { useContext, useEffect, useState } from 'react'
-import { ShopContext } from '../context/ShopContext'
-import axios from 'axios'
-import { toast } from 'react-toastify'
+import { useContext, useEffect, useState } from 'react'
+import { ShopContext } from '../context/shopContext'
+import * as ordersApi from '../api/orders'
+import { ApiError } from '../api/client'
+import { firstImage } from '../lib/catalog'
+import { toast } from '../lib/toast'
 import { motion } from 'framer-motion'
-import { FiPackage, FiClock, FiCheckCircle, FiCreditCard, FiCalendar, FiTruck } from 'react-icons/fi'
+import { FiPackage, FiCreditCard, FiCalendar } from 'react-icons/fi'
+import Seo from '../components/Seo';
 
 const Orders = () => {
 
-  const { backendUrl, token, currency, products } = useContext(ShopContext)
+  // FE-021 — `/orders` is behind `RequireAuth` now, so this page is only ever
+  // rendered for a signed-in customer. It used to be public, with
+  // `if (!token) return null` inside a `try` whose `finally` cleared the loading
+  // flag — so a logged-out visitor was shown "No orders found", which is a
+  // statement about their account rather than their session, and it is false.
+  const { token, products, formatPrice, getPriceMinor, navigate } = useContext(ShopContext)
   const [orderData, setOrderData] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadOrderData = async () => {
     setIsLoading(true);
     try {
-      if (!token) return null;
-
-      const response = await axios.post(backendUrl + '/api/order/userorders', {}, { headers: { token } });
-      if (response.data.success) {
+      const { items } = await ordersApi.listMyOrders();
+      {
         let allOrdersItem = []
-        response.data.orders.map((order) => {
+        items.map((order) => {
           order.items.map((item) => {
-            // Find the product details from the products context
+            // FE-017 / DB-005 — the spread order here was the bug.
+            //
+            // It used to be `{ ...item, ...productDetails }`, so today's
+            // catalog name, price and image **overwrote** the line. Changing a
+            // product's price rewrote every past order that contained it, and
+            // deleting a product degraded the line to "Product" and "$0".
+            //
+            // The order is inverted: the catalog is the *fallback*, and the
+            // snapshot the order actually carries wins. For an order placed
+            // after the Phase 2 migration nothing is read from the catalog at
+            // all — the API no longer even looks it up.
             const productDetails = products.find(p => p._id === item.productId) || {};
-            
-            // Create a new item with all necessary properties
+
             const enrichedItem = {
+              ...productDetails,
               ...item,
-              ...productDetails, // Add product details (name, image, etc.)
               status: order.status,
               payment: order.payment,
               paymentMethod: order.paymentMethod,
               date: order.date,
               orderId: order._id,
-              orderNumber: order.orderNumber || order._id
+              orderNumber: order.orderNumber || order._id,
+              // Exact integer minor units, preferring the snapshot and falling
+              // back to the catalog only for a pre-migration line (DB-004).
+              unitPriceMinor: item.unitPriceMinor
+                ?? (item.unitPrice !== undefined ? Math.round(item.unitPrice * 100) : getPriceMinor(productDetails)),
+              // A reconstructed line is an approximation, not a record. Say so.
+              reconstructed: Boolean(item._reconstructed),
             };
             
             allOrdersItem.push(enrichedItem);
           })
         })
         setOrderData(allOrdersItem.reverse());
-      } else {
-        toast.error(response.data.message);
       }
     } catch (error) {
-      console.log(error);
-      toast.error(error.response?.data?.message || error.message);
+      console.error('Could not load your orders', error);
+      toast.error(error instanceof ApiError ? error.message : 'Could not load your orders');
     } finally {
       setIsLoading(false);
     }
   }
 
+  // Once per session, not once per catalog change. `products` used to be a
+  // dependency because the page enriched each line from the catalog; after
+  // DB-005 an order line is a self-contained snapshot and the catalog is only a
+  // fallback for orders written before the migration, so re-fetching when the
+  // catalog arrives just issued the same request twice.
   useEffect(() => {
-    loadOrderData();
-  }, [products]) // Add products as a dependency to reload when products are loaded
+    if (token) loadOrderData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token])
 
   // Add a function to display order number or ID
   const getOrderDisplay = (item) => {
     return item.orderNumber ? `#${item.orderNumber}` : `#${item.orderId}`;
   };
 
-  // Status indicator helper
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'Order Placed':
-        return <FiPackage className="text-blue-500" />;
-      case 'Packing':
-        return <FiPackage className="text-yellow-500" />;
-      case 'Shipped':
-        return <FiTruck className="text-purple-500" />;
-      case 'Out for Delivery':
-        return <FiTruck className="text-orange-500" />;
-      case 'Delivered':
-        return <FiCheckCircle className="text-green-500" />;
-      default:
-        return <FiClock className="text-gray-500" />;
-    }
-  };
+  // TEST-002 — a `getStatusIcon` helper used to sit here, fully written and
+  // called by nothing: the status column renders `getStatusColor` badges
+  // instead. Deleted rather than wired in, because deciding that order rows
+  // should carry icons is a design change, not a lint fix.
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -120,7 +132,10 @@ const Orders = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 px-4 sm:px-6 lg:px-8 py-12 pt-[80px] md:pt-[100px]">
+
+      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 px-4 sm:px-6 lg:px-8 py-12 pt-[80px] md:pt-[100px]">
+
+        <Seo title="Your Orders" description="Track the status of your Netronix orders." />
       <motion.div 
         className="max-w-5xl mx-auto"
         initial={{ opacity: 0, y: 20 }}
@@ -157,9 +172,9 @@ const Orders = () => {
           >
             <FiPackage className="w-16 h-16 text-gray-300 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-gray-800 mb-2">No orders found</h2>
-            <p className="text-gray-600 mb-6">You haven't placed any orders yet.</p>
+            <p className="text-gray-600 mb-6">You haven&apos;t placed any orders yet.</p>
             <button 
-              onClick={() => window.location.href = '/collections/all'} 
+              onClick={() => navigate('/collections/all')}
               className="px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
             >
               Start Shopping
@@ -182,10 +197,10 @@ const Orders = () => {
                   <div className="flex flex-col md:flex-row md:items-center gap-6">
                     {/* Product Image */}
                     <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
-                      {item.image && item.image[0] ? (
+                      {firstImage(item.image) ? (
                         <img 
                           className="w-full h-full object-cover" 
-                          src={item.image[0]} 
+                          src={firstImage(item.image)}
                           alt={item.name || 'Product'} 
                         />
                       ) : (
@@ -203,14 +218,27 @@ const Orders = () => {
                           Order {getOrderDisplay(item)}
                         </span>
                         <span className="inline-flex items-center bg-gray-100 rounded-full px-3 py-1">
-                          {currency}{item.price || 0}
+                          {formatPrice(item.unitPriceMinor || 0)}
                         </span>
                         <span className="inline-flex items-center bg-gray-100 rounded-full px-3 py-1">
                           Qty: {item.quantity || 1}
                         </span>
-                        <span className="inline-flex items-center bg-gray-100 rounded-full px-3 py-1">
-                          Size: {item.size || 'N/A'}
-                        </span>
+                        {(item.variantLabel || item.variantKey || item.size) && (
+                          <span className="inline-flex items-center bg-gray-100 rounded-full px-3 py-1">
+                            {/* ARCH-003 — the label the order itself carries,
+                                rather than the hardcoded "Size:" prefix on a
+                                key that may name any axis at all. */}
+                            {item.variantLabel || item.variantKey || item.size}
+                          </span>
+                        )}
+                        {item.reconstructed && (
+                          <span
+                            className="inline-flex items-center bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-3 py-1"
+                            title="This order predates order snapshots. Its price and name were reconstructed from the catalogue and are an approximation, not a record of what was charged."
+                          >
+                            Reconstructed
+                          </span>
+                        )}
                       </div>
                       <div className="flex flex-wrap gap-4 text-sm text-gray-500">
                         <span className="inline-flex items-center gap-1">

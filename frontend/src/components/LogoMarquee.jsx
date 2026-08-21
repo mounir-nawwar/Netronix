@@ -1,4 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
+
+import useReducedMotion from '../lib/useReducedMotion';
 
 // Import new brand logos
 import appleLogoUrl from '../assets/brands/Apple_logo_black.svg';
@@ -9,7 +11,6 @@ import amdLogoUrl from '../assets/brands/amd.svg';
 import razerLogoUrl from '../assets/brands/razer.svg';
 import hpLogoUrl from '../assets/brands/hp.svg';
 import lenovoLogoUrl from '../assets/brands/lenovo.svg';
-import sonyLogoUrl from '../assets/brands/aony.svg';
 import nvidiaLogoUrl from '../assets/brands/Nvidia_logo.svg';
 
 // Brand logos array with consistent sizing - adjusted for visual weight
@@ -28,7 +29,13 @@ const brandLogos = [
 // Duplicate for seamless scrolling
 const allLogos = [...brandLogos, ...brandLogos];
 
+// A11Y-001 — the two counter-rotating marquees are the most continuous motion
+// on the page. Under `prefers-reduced-motion: reduce` the animation class is
+// simply not applied, so the strips render as static rows of brand logos: the
+// section still says what it says, it just stops moving. (`index.css` also
+// pauses them, belt and braces, for anything that renders the class anyway.)
 const LogoMarquee = () => {
+  const reducedMotion = useReducedMotion();
   const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
   
   useEffect(() => {
@@ -86,7 +93,7 @@ const LogoMarquee = () => {
       <section className="overflow-visible py-4 md:py-8 -mt-6 md:-mt-24 relative">
         {/* First marquee - rotated counterclockwise and moving right */}
         <div className="relative transform -rotate-[3deg] z-20 py-3 md:py-6 overflow-hidden bg-[#f9f9f9] shadow-md -mx-1 mb-8 md:mb-14 w-[110%]">
-          <div className="flex whitespace-nowrap animate-marquee-right">
+          <div className={`flex whitespace-nowrap ${reducedMotion ? '' : 'animate-marquee-right'}`}>
             {allLogos.map((logo, index) => (
               <div 
                 key={`top-${logo.id}-${index}`} 
@@ -99,12 +106,15 @@ const LogoMarquee = () => {
                   }}
                   className="flex items-center justify-center"
                 >
-                  <img 
-                    src={logo.url} 
+                  <img
+                    src={logo.url}
                     alt={logo.alt}
+                    width={logo.width}
+                    height={logo.height}
                     className="w-full h-full object-contain"
                     loading="lazy"
-                    style={{ 
+                    decoding="async"
+                    style={{
                       filter: "grayscale(100%) brightness(0%) contrast(1)",
                       maxWidth: "100%",
                       maxHeight: "100%"
@@ -118,7 +128,7 @@ const LogoMarquee = () => {
         
         {/* Second marquee - rotated clockwise and moving left */}
         <div className="relative transform rotate-[4deg] -mt-6 md:-mt-12 py-3 md:py-6 bg-[#6a5acd] z-10 overflow-hidden w-[110%]">
-          <div className="flex whitespace-nowrap animate-marquee-left">
+          <div className={`flex whitespace-nowrap ${reducedMotion ? '' : 'animate-marquee-left'}`}>
             {allLogos.map((logo, index) => (
               <div 
                 key={`bottom-${logo.id}-${index}`} 
@@ -131,12 +141,15 @@ const LogoMarquee = () => {
                   }}
                   className="flex items-center justify-center"
                 >
-                  <img 
-                    src={logo.url} 
-                    alt={logo.alt}
+                  <img
+                    src={logo.url}
+                    alt=""
+                    width={logo.width}
+                    height={logo.height}
                     className="w-full h-full object-contain"
                     loading="lazy"
-                    style={{ 
+                    decoding="async"
+                    style={{
                       filter: "grayscale(100%) brightness(0%) contrast(1) invert(1)",
                       maxWidth: "100%",
                       maxHeight: "100%"

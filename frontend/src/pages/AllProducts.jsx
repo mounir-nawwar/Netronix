@@ -1,617 +1,177 @@
-import React, { useContext, useEffect, useState, useRef } from 'react';
-import { ShopContext } from '../context/ShopContext';
-import axios from 'axios';
-import { Link, useLocation, useSearchParams, useNavigate } from 'react-router-dom';
-import { FiFilter, FiX, FiChevronDown, FiShoppingBag, FiEye, FiHeart, FiArrowLeft } from 'react-icons/fi';
-import { motion } from 'framer-motion';
+import { useContext, useEffect, useMemo, useState } from 'react';
+import { ShopContext } from '../context/shopContext';
+import { useSearchParams } from 'react-router-dom';
+import { FiFilter, FiX, FiShoppingBag } from 'react-icons/fi';
 import BackButton from '../components/BackButton';
+import ProductCard from '../components/ProductCard';
+import { catalogPriceCeiling, matchesSearch, priceOf, sortProducts, tagsOf } from '../lib/catalog';
+import Seo from '../components/Seo';
+import { breadcrumbLd } from '../lib/seo';
 
-const ProductCard = ({ product, onClick }) => {
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const imageContainerRef = useRef(null);
-  const [isMobile, setIsMobile] = useState(false);
-  const [touchStart, setTouchStart] = useState(0);
-  const { addToCart } = useContext(ShopContext);
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth <= 768);
-    };
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
-
-  const handleMouseMove = (e) => {
-    if (isMobile || !product.image || product.image.length <= 1) return;
-    
-    const { left, width } = imageContainerRef.current.getBoundingClientRect();
-    const x = e.clientX - left;
-    const section = width / Math.max(product.image.length, 1);
-    
-    // Calculate the appropriate image index based on mouse position
-    const index = Math.min(
-      Math.floor(x / section),
-      product.image.length - 1
-    );
-    
-    if (index >= 0) {
-      setCurrentImageIndex(index);
-    }
-  };
-
-  const handleMouseLeave = () => {
-    setCurrentImageIndex(0);
-  };
-
-  const handleTouchStart = (e) => {
-    setTouchStart(e.touches[0].clientX);
-  };
-
-  const handleTouchMove = (e) => {
-    if (!touchStart || !product.image || product.image.length <= 1) return;
-
-    const currentTouch = e.touches[0].clientX;
-    const diff = touchStart - currentTouch;
-
-    if (Math.abs(diff) > 5) { // Add some threshold to prevent accidental swipes
-      if (diff > 0) {
-        // Swipe left
-        setCurrentImageIndex(prev => (prev + 1) % product.image.length);
-      } else {
-        // Swipe right
-        setCurrentImageIndex(prev => (prev - 1 + product.image.length) % product.image.length);
-      }
-      setTouchStart(null);
-    }
-  };
-
-  const handleQuickAdd = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!product || !product._id) return;
-    
-    // Get the default variant key or first available variant
-    const defaultVariantKey = product.variants && product.variants.length > 0 
-      ? product.variants.map(v => v.options[0]).join('-')
-      : 'default';
-      
-    addToCart(product._id, defaultVariantKey, 1);
-  };
-
-  // Ensure we have an array of product images
-  const productImages = Array.isArray(product.image) && product.image.length > 0
-    ? product.image
-    : ['https://placehold.co/400x400/f7f7f7/a3a3a3?text=No+Image'];
-
-  return (
-    <motion.div 
-      className="product-card bg-white rounded-lg overflow-hidden shadow-sm cursor-pointer group relative flex flex-col h-full"
-      whileHover={{ y: -5 }}
-      transition={{ duration: 0.3 }}
-      onClick={onClick}
-    >
-      <div 
-        ref={imageContainerRef}
-        className="relative aspect-square overflow-hidden bg-[#f9f9f9]"
-        onMouseMove={handleMouseMove}
-        onMouseLeave={handleMouseLeave}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-      >
-        <img
-          src={productImages[currentImageIndex]}
-          alt={product.name}
-          className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-110"
-          loading="lazy"
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = 'https://placehold.co/400x400/f7f7f7/a3a3a3?text=Image+Not+Available';
-          }}
-        />
-        
-        {/* Hover overlay with action buttons */}
-        <div 
-          className="absolute inset-0 bg-black bg-opacity-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center gap-2"
-        >
-          <button 
-            onClick={handleQuickAdd}
-            className="p-2 bg-white rounded-full shadow-md hover:bg-indigo-500 hover:text-white transition-colors"
-            aria-label="Add to cart"
-          >
-            <FiShoppingBag className="h-5 w-5" />
-          </button>
-          <button 
-            className="p-2 bg-white rounded-full shadow-md hover:bg-indigo-500 hover:text-white transition-colors"
-            aria-label="Quick view"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <FiEye className="h-5 w-5" />
-          </button>
-          <button 
-            className="p-2 bg-white rounded-full shadow-md hover:bg-indigo-500 hover:text-white transition-colors"
-            aria-label="Add to wishlist"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <FiHeart className="h-5 w-5" />
-          </button>
-        </div>
-        
-        {/* Tags */}
-        {product.tags && product.tags.length > 0 && (
-          <div className="absolute top-2 left-2 flex flex-wrap gap-1">
-            {product.tags.slice(0, 2).map((tag, index) => (
-              <span 
-                key={index} 
-                className="inline-flex items-center rounded-full bg-indigo-500 bg-opacity-80 px-2 py-1 text-xs text-white"
-              >
-                {tag}
-              </span>
-            ))}
-            {product.tags.length > 2 && (
-              <span className="inline-flex items-center rounded-full bg-gray-800 bg-opacity-80 px-2 py-1 text-xs text-white">
-                +{product.tags.length - 2}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Image navigation dots if multiple images */}
-      {productImages.length > 1 && (
-        <div className="flex justify-center gap-1 py-1 md:py-2">
-          {productImages.map((_, index) => (
-            <button
-              key={index}
-              className={`w-1 h-1 md:w-1.5 md:h-1.5 rounded-full transition-all ${
-                currentImageIndex === index 
-                  ? 'bg-black' 
-                  : 'bg-gray-300'
-              }`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setCurrentImageIndex(index);
-              }}
-            />
-          ))}
-        </div>
-      )}
-
-      <div className="flex flex-col flex-1 p-4">
-        <div className="flex justify-between items-start mb-1">
-          {product.brand && (
-            <p className="text-xs md:text-sm text-indigo-600 font-medium">{product.brand}</p>
-          )}
-          <div className="flex items-center">
-            <span className="text-amber-500 text-xs md:text-sm">★★★★★</span>
-          </div>
-        </div>
-        <h3 className="text-sm md:text-base font-medium text-gray-900 mb-1 line-clamp-2 group-hover:text-indigo-600 transition-colors">
-          {product.name}
-        </h3>
-        <p className="mt-1 text-xs text-gray-500 line-clamp-2 flex-grow">
-          {product.description || product.desc || ''}
-        </p>
-        <div className="mt-3 flex items-center justify-between">
-          <p className="text-base md:text-lg font-semibold text-indigo-600">${product.price}</p>
-          <button 
-            onClick={handleQuickAdd} 
-            className="text-xs font-medium py-1 px-2 bg-indigo-50 text-indigo-600 rounded hover:bg-indigo-100 transition-colors"
-          >
-            Add to Cart
-          </button>
-        </div>
-      </div>
-    </motion.div>
-  );
-};
+// FE-006 / PERF-005 — this page no longer fetches the catalog.
+//
+// It pulled `/api/product/list` itself, and `/api/product/tags` after it, on top
+// of the two copies the duplicated provider already issued and the four the
+// homepage sections each issued for themselves. The catalog is loaded once, by
+// the context, and read from there.
+//
+// FE-010 — `addMissingCategories()` is gone. It injected about forty hardcoded
+// category names — `Networking`, `Clearance`, `Webcam`, `Legacy categories` —
+// into the filter sidebar. None of them was a tag any product carried, so
+// selecting one always returned nothing: forty checkboxes that could only ever
+// produce an empty page. The taxonomy comes from `/api/product/tags`, which the
+// context fetches once, with the catalog's own tags as the fallback.
+//
+// FE-007 — the 190-line `ProductCard` that used to live here was the best of the
+// four, and it is the one `components/ProductCard` is built from: the same
+// mouse-position image scrubbing, the same touch swipe, the same hover row and
+// tag badges. It renders here as `variant="full"`.
 
 const AllProducts = () => {
-  const { backendUrl, addToCart, search, setSearch, navigate } = useContext(ShopContext);
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { products, tags, catalogStatus, catalogError, reloadCatalog, search, setSearch } =
+    useContext(ShopContext);
   const [sortOption, setSortOption] = useState('latest');
   const [searchParams] = useSearchParams();
   const tagFromUrl = searchParams.get('tag');
   const searchFromUrl = searchParams.get('search');
-  const [maxPrice, setMaxPrice] = useState(1000);
-  
-  const [filters, setFilters] = useState({
-    categories: {
-      options: [],
-      selected: []
-    },
-    variants: {},
-    priceRange: [0, 20000]
-  });
-  
+
+  const maxPrice = useMemo(() => catalogPriceCeiling(products), [products]);
+
+  /** Every tag the catalog actually uses. Never an invented one (FE-010). */
+  const categoryOptions = useMemo(
+    () => (tags?.length > 0 ? [...tags].sort() : tagsOf(products)),
+    [tags, products],
+  );
+
+  /** The variant axes the catalog actually declares, and their option values. */
+  const variantOptions = useMemo(() => {
+    const axes = {};
+    for (const product of products) {
+      for (const variant of product.variants ?? []) {
+        if (!variant?.name) continue;
+        axes[variant.name] = axes[variant.name] ?? new Set();
+        for (const option of variant.options ?? []) axes[variant.name].add(option);
+      }
+    }
+    return Object.fromEntries(
+      Object.entries(axes).map(([name, values]) => [name, [...values].sort()]),
+    );
+  }, [products]);
+
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedVariants, setSelectedVariants] = useState({});
+  const [priceRange, setPriceRange] = useState(null);
+
+  const [minSelected, maxSelected] = priceRange ?? [0, maxPrice];
+  const effectiveRange = useMemo(() => [minSelected, maxSelected], [minSelected, maxSelected]);
+
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [hoverProductId, setHoverProductId] = useState(null);
 
-  // Apply URL tag and search filter if present
+  const loading = catalogStatus === 'loading';
+  const hasFailed = catalogStatus === 'error';
+
+  // Apply the URL's tag and search term.
   useEffect(() => {
-    if (tagFromUrl) {
-      // Set the filter once categories are loaded
-      if (filters.categories.options.length > 0) {
-        setFilters(prev => ({
-          ...prev,
-          categories: {
-            ...prev.categories,
-            selected: [tagFromUrl]
-          }
-        }));
-      }
-    } else {
-      // Clear selected categories if no tag in URL
-      if (filters.categories.selected.length > 0 && !searchFromUrl) {
-        setFilters(prev => ({
-          ...prev,
-          categories: {
-            ...prev.categories,
-            selected: []
-          }
-        }));
-      }
-    }
-    
-    // Set search from URL if present
-    if (searchFromUrl) {
-      setSearch(searchFromUrl);
-    }
-  }, [tagFromUrl, searchFromUrl, filters.categories.options, setSearch]);
+    if (tagFromUrl) setSelectedCategories([tagFromUrl]);
+    else if (!searchFromUrl) setSelectedCategories([]);
+  }, [tagFromUrl, searchFromUrl]);
 
-  // Effect to fetch products and categories
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch products
-        const productsResponse = await axios.get(`${backendUrl}/api/product/list`);
-        
-        if (productsResponse.data.success) {
-          const productData = productsResponse.data.products;
-          setProducts(productData);
-          
-          // Determine max price for price filter
-          const highestPrice = Math.max(
-            ...productData.map(p => p.price || 0),
-            1000 // Fallback minimum
-          );
-          
-          // Round up to nearest 100 or 1000 for better UX
-          const roundedMaxPrice = highestPrice <= 1000 
-            ? Math.ceil(highestPrice / 100) * 100
-            : Math.ceil(highestPrice / 1000) * 1000;
-            
-          setMaxPrice(roundedMaxPrice);
-          
-          // Extract categories and variants from products
-          const categories = new Set();
-          const variantTypes = {};
-          
-          // Collect all tags from products
-          productData.forEach(product => {
-            if (product.tags && Array.isArray(product.tags)) {
-              product.tags.forEach(tag => categories.add(tag));
-            }
-            
-            // Extract variant types and options
-            if (product.variants && Array.isArray(product.variants)) {
-              product.variants.forEach(variant => {
-                const variantName = variant.name;
-                
-                if (!variantTypes[variantName]) {
-                  variantTypes[variantName] = new Set();
-                }
-                
-                if (variant.options && Array.isArray(variant.options)) {
-                  variant.options.forEach(option => {
-                    variantTypes[variantName].add(option);
-                  });
-                }
-              });
-            }
-          });
-          
-          // Also try to fetch categories from dedicated endpoint
-          try {
-            const categoriesResponse = await axios.get(`${backendUrl}/api/product/tags`);
-            if (categoriesResponse.data.success && Array.isArray(categoriesResponse.data.tags)) {
-              categoriesResponse.data.tags.forEach(tag => categories.add(tag));
-            }
-          } catch (error) {
-            console.error('Error fetching categories:', error);
-          }
-          
-          // Process variant filters
-          const processedVariants = {};
-          Object.keys(variantTypes).forEach(variantName => {
-            processedVariants[variantName] = {
-              options: Array.from(variantTypes[variantName]).sort(),
-              selected: []
-            };
-          });
-          
-          // Set the complete filter state with dynamic max price
-          setFilters({
-            categories: {
-              options: Array.from(categories).sort(),
-              selected: []
-            },
-            variants: processedVariants,
-            priceRange: [0, roundedMaxPrice]
-          });
-          
-          // Auto-load the computer categories
-          addMissingCategories();
-        }
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setLoading(false);
-      }
-    };
+    if (searchFromUrl) setSearch(searchFromUrl);
+  }, [searchFromUrl, setSearch]);
 
-    fetchData();
-  }, [backendUrl]);
-
-  // Function to add computer store categories
-  const addMissingCategories = () => {
-    const additionalCategories = [
-      // Main Product Categories
-      'Laptops', 'Desktops', 'Monitors', 'Components', 'Peripherals',
-      // Specific Product Categories
-      'MacBooks', 'Gaming PCs', 'Headphones', 'Earphones', 'Speakers',
-      // Components
-      'CPU', 'GPU', 'Motherboard', 'RAM', 'Storage', 'PSU', 'Cooling',
-      // Peripherals
-      'Keyboard', 'Mouse', 'Headset', 'Webcam', 'Speaker', 
-      // Networking
-      'Networking', 'Router', 'Switch', 'Adapter', 
-      // Accessories
-      'Accessories', 'Cable', 'Charger', 'Case', 
-      // General categories
-      'Gaming', 'Office', 'Home', 'Student', 'Professional',
-      // Marketing categories
-      'New Arrivals', 'Best Sellers', 'Clearance', 'Featured',
-      // Legacy categories
-      'Electronics'
-    ];
-    
-    setFilters(prevFilters => {
-      const updatedOptions = [...prevFilters.categories.options];
-      
-      additionalCategories.forEach(category => {
-        if (!updatedOptions.includes(category)) {
-          updatedOptions.push(category);
-        }
-      });
-      
-      return {
-        ...prevFilters,
-        categories: {
-          ...prevFilters.categories,
-          options: updatedOptions.sort()
-        }
-      };
-    });
-  };
-
-  // Toggle category filter
   const toggleCategory = (category) => {
-    setFilters(prevFilters => {
-      const isSelected = prevFilters.categories.selected.includes(category);
-      
-      return {
-        ...prevFilters,
-        categories: {
-          ...prevFilters.categories,
-          selected: isSelected
-            ? prevFilters.categories.selected.filter(c => c !== category)
-            : [...prevFilters.categories.selected, category]
-        }
-      };
+    setSelectedCategories((previous) =>
+      previous.includes(category)
+        ? previous.filter((candidate) => candidate !== category)
+        : [...previous, category]);
+  };
+
+  const toggleVariantFilter = (axis, option) => {
+    setSelectedVariants((previous) => {
+      const selected = previous[axis] ?? [];
+      const next = selected.includes(option)
+        ? selected.filter((candidate) => candidate !== option)
+        : [...selected, option];
+      return { ...previous, [axis]: next };
     });
   };
 
-  // Toggle variant filter
-  const toggleVariantFilter = (variantName, option) => {
-    setFilters(prevFilters => {
-      const isSelected = prevFilters.variants[variantName].selected.includes(option);
-      
-      return {
-        ...prevFilters,
-        variants: {
-          ...prevFilters.variants,
-          [variantName]: {
-            ...prevFilters.variants[variantName],
-            selected: isSelected
-              ? prevFilters.variants[variantName].selected.filter(o => o !== option)
-              : [...prevFilters.variants[variantName].selected, option]
-          }
-        }
-      };
-    });
-  };
-  
-  // Handle price range change
   const handlePriceChange = (value, index) => {
-    setFilters(prevFilters => {
-      const newRange = [...prevFilters.priceRange];
-      newRange[index] = value;
-      
-      // Make sure min never exceeds max
-      if (index === 0 && value > newRange[1]) {
-        newRange[0] = newRange[1]; 
-      }
-      
-      // Make sure max never falls below min
-      if (index === 1 && value < newRange[0]) {
-        newRange[1] = newRange[0];
-      }
-      
-      return {
-        ...prevFilters,
-        priceRange: newRange
-      };
-    });
+    const next = [...effectiveRange];
+    next[index] = value;
+    if (index === 0 && value > next[1]) next[0] = next[1];
+    if (index === 1 && value < next[0]) next[1] = next[0];
+    setPriceRange(next);
   };
 
-  // Handle back button navigation
-  const handleBackNavigation = () => {
-    // Check if this is the first page in the user's history (direct URL access)
-    if (window.history.length <= 2) {
-      // If directly landed on this page, go to home page
-      navigate('/');
-    } else {
-      // Otherwise go back to previous page
-      navigate(-1);
-    }
-  };
-
-  // Clear all filters with dynamic max price
   const clearFilters = () => {
-    setFilters(prevFilters => {
-      const resetVariants = {};
-      
-      // Reset all variant selections
-      Object.keys(prevFilters.variants).forEach(variantName => {
-        resetVariants[variantName] = {
-          ...prevFilters.variants[variantName],
-          selected: []
-        };
-      });
-      
-      return {
-        categories: {
-          ...prevFilters.categories,
-          selected: []
-        },
-        variants: resetVariants,
-        priceRange: [0, maxPrice]
-      };
-    });
-    
+    setSelectedCategories([]);
+    setSelectedVariants({});
+    setPriceRange(null);
     setSortOption('latest');
   };
 
-  // Product matches filters with search functionality
+  /** Does this product survive the sidebar and the search box? */
   const productMatchesFilters = (product) => {
-    // Price filter
-    if (product.price < filters.priceRange[0] || product.price > filters.priceRange[1]) {
-      return false;
+    const price = priceOf(product);
+    if (price < effectiveRange[0] || price > effectiveRange[1]) return false;
+
+    if (selectedCategories.length > 0) {
+      const productTags = product.tags ?? [];
+      if (!selectedCategories.some((tag) => productTags.includes(tag))) return false;
     }
-    
-    // Category filter
-    if (filters.categories.selected.length > 0) {
-      const productTags = product.tags || [];
-      if (!filters.categories.selected.some(tag => productTags.includes(tag))) {
-        return false;
-      }
+
+    for (const [axis, selected] of Object.entries(selectedVariants)) {
+      if (selected.length === 0) continue;
+      const productAxis = product.variants?.find((variant) => variant.name === axis);
+      if (!productAxis) return false;
+      if (!selected.some((option) => productAxis.options.includes(option))) return false;
     }
-    
-    // Variant filters
-    for (const [variantName, variantData] of Object.entries(filters.variants)) {
-      if (variantData.selected.length > 0) {
-        // Find the variant in the product
-        const productVariant = product.variants?.find(v => v.name === variantName);
-        if (!productVariant) return false;
-        
-        // Check if any selected options are in this variant's options
-        const variantHasSelectedOption = variantData.selected.some(
-          option => productVariant.options.includes(option)
-        );
-        
-        if (!variantHasSelectedOption) return false;
-      }
-    }
-    
-    // Search filter with improved matching
-    if (search && search.trim() !== '') {
-      const searchTerm = search.toLowerCase().trim();
-      
-      // If search term is too short, require exact match
-      if (searchTerm.length < 3) {
-        const exactNameMatch = product.name.toLowerCase().includes(searchTerm);
-        const exactBrandMatch = product.brand && product.brand.toLowerCase() === searchTerm;
-        return exactNameMatch || exactBrandMatch;
-      }
-      
-      // For meaningful search terms, implement smarter matching
-      // Check if search term appears as a whole word or significant part in the name
-      const nameWords = product.name.toLowerCase().split(/\s+/);
-      const nameMatch = nameWords.some(word => 
-        word.includes(searchTerm) || searchTerm.includes(word)
-      );
-      
-      // Check if search term appears in the description as a meaningful phrase
-      const descMatch = product.description && 
-        product.description.toLowerCase().split(/[,.;:!?-]\s*/).some(phrase => 
-          phrase.includes(searchTerm)
-        );
-      
-      // Check brand match
-      const brandMatch = product.brand && 
-        product.brand.toLowerCase().includes(searchTerm);
-      
-      // Check for exact tag matches only
-      const tagsMatch = product.tags && 
-        product.tags.some(tag => tag.toLowerCase() === searchTerm);
-      
-      // Only return true if there's a meaningful match
-      return nameMatch || descMatch || brandMatch || tagsMatch;
-    }
-    
-    return true;
+
+    return matchesSearch(product, search);
   };
 
-  // Apply filters and get filtered products
-  const filteredProducts = products.filter(productMatchesFilters);
+  // Sorted through the shared helper, so "latest" reads the schema's `date`
+  // rather than the `createdAt` this page used to reach for.
+  const sortedProducts = useMemo(
+    () => sortProducts(
+      products.filter(productMatchesFilters),
+      sortOption === 'latest' ? 'newest' : sortOption,
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [products, effectiveRange, selectedCategories, selectedVariants, search, sortOption],
+  );
 
-  // Sort filtered products
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    switch (sortOption) {
-      case 'price-low':
-        return a.price - b.price;
-      case 'price-high':
-        return b.price - a.price;
-      case 'name-asc':
-        return a.name.localeCompare(b.name);
-      case 'name-desc':
-        return b.name.localeCompare(a.name);
-      case 'latest':
-      default:
-        // Use createdAt or date, fallback to current date if neither exists
-        const dateA = a.createdAt || a.date || new Date();
-        const dateB = b.createdAt || b.date || new Date();
-        return new Date(dateB) - new Date(dateA);
-    }
-  });
-
-  // Count active filters
-  const getActiveFilterCount = () => {
-    let count = filters.categories.selected.length;
-    
-    // Add count of selected variant options
-    Object.values(filters.variants).forEach(variant => {
-      count += variant.selected.length;
-    });
-    
-    // Add price filter if it's not at default values
-    if (filters.priceRange[0] > 0 || filters.priceRange[1] < maxPrice) {
-      count += 1;
-    }
-    
-    return count;
-  };
-  
-  const activeFilterCount = getActiveFilterCount();
+  const activeFilterCount = selectedCategories.length
+    + Object.values(selectedVariants).reduce((total, selected) => total + selected.length, 0)
+    + ((effectiveRange[0] > 0 || effectiveRange[1] < maxPrice) ? 1 : 0);
 
   return (
     <div className="min-h-screen bg-gray-50 pt-[120px] pb-12">
+      {/* SEO-005 — `/products?tag=Laptops` and `/collections/laptops` are two
+          paths to overlapping content. The canonical here names the *path*
+          without the query, so a tag-filtered view does not compete with the
+          unfiltered one in an index; the title still says which filter is on,
+          because that is what a person sees. A search result page is
+          `noindex`: it is a view of the catalog, not a page of its own. */}
+      <Seo
+        title={tagFromUrl ? `${tagFromUrl}` : 'All Products'}
+        description={
+          tagFromUrl
+            ? `Every ${tagFromUrl} in the Netronix catalog, with real stock per variant.`
+            : 'The full Netronix catalog: laptops, gaming PCs, MacBooks, components, audio and accessories.'
+        }
+        path="/products"
+        noIndex={Boolean(searchFromUrl)}
+        jsonLd={[
+          breadcrumbLd([
+            { name: 'Home', path: '/' },
+            { name: 'Products', path: '/products' },
+            ...(tagFromUrl ? [{ name: tagFromUrl, path: '/products' }] : []),
+          ]),
+        ]}
+      />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Page Header */}
         <div className="flex items-center justify-between mb-8">
@@ -689,7 +249,7 @@ const AllProducts = () => {
                         type="number" 
                         min="0" 
                         max={maxPrice}
-                        value={filters.priceRange[0]} 
+                        value={effectiveRange[0]}
                         onChange={(e) => handlePriceChange(parseInt(e.target.value) || 0, 0)}
                         className="w-full py-1 px-2 border border-gray-300 rounded text-sm"
                       />
@@ -699,9 +259,9 @@ const AllProducts = () => {
                       <label className="text-xs text-gray-500 mb-1 block">Max ($)</label>
                       <input 
                         type="number" 
-                        min={filters.priceRange[0]} 
+                        min={effectiveRange[0]}
                         max={maxPrice}
-                        value={filters.priceRange[1]} 
+                        value={effectiveRange[1]}
                         onChange={(e) => handlePriceChange(parseInt(e.target.value) || 0, 1)}
                         className="w-full py-1 px-2 border border-gray-300 rounded text-sm"
                       />
@@ -712,8 +272,8 @@ const AllProducts = () => {
                     <div 
                       className="absolute h-full bg-indigo-600 rounded-full"
                       style={{ 
-                        left: `${(filters.priceRange[0] / maxPrice) * 100}%`, 
-                        width: `${((filters.priceRange[1] - filters.priceRange[0]) / maxPrice) * 100}%` 
+                        left: `${(effectiveRange[0] / maxPrice) * 100}%`,
+                        width: `${((effectiveRange[1] - effectiveRange[0]) / maxPrice) * 100}%`
                       }}
                     ></div>
                   </div>
@@ -723,12 +283,12 @@ const AllProducts = () => {
                 <div className="py-4">
                   <h3 className="text-sm font-medium text-gray-900 mb-3">Categories</h3>
                   <div className="max-h-60 overflow-y-auto space-y-2 scrollbar-thin">
-                    {filters.categories.options.map(category => (
+                    {categoryOptions.map(category => (
                       <div key={category} className="flex items-center">
                         <input
                           id={`category-${category}`}
                           type="checkbox"
-                          checked={filters.categories.selected.includes(category)}
+                          checked={selectedCategories.includes(category)}
                           onChange={() => toggleCategory(category)}
                           className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                         />
@@ -741,16 +301,16 @@ const AllProducts = () => {
                 </div>
 
                 {/* Variant Filters */}
-                {Object.entries(filters.variants).map(([variantName, variantData]) => (
+                {Object.entries(variantOptions).map(([variantName, options]) => (
                   <div key={variantName} className="py-4">
                     <h3 className="text-sm font-medium text-gray-900 mb-3 capitalize">{variantName}</h3>
                     <div className="space-y-2">
-                      {variantData.options.map(option => (
+                      {options.map(option => (
                         <div key={option} className="flex items-center">
                           <input
                             id={`variant-${variantName}-${option}`}
                             type="checkbox"
-                            checked={variantData.selected.includes(option)}
+                            checked={(selectedVariants[variantName] ?? []).includes(option)}
                             onChange={() => toggleVariantFilter(variantName, option)}
                             className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                           />
@@ -797,12 +357,12 @@ const AllProducts = () => {
                 <span className="text-sm text-gray-500">Active filters:</span>
                 
                 {/* Price filter tag */}
-                {(filters.priceRange[0] > 0 || filters.priceRange[1] < maxPrice) && (
+                {(effectiveRange[0] > 0 || effectiveRange[1] < maxPrice) && (
                   <span className="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700">
-                    Price: ${filters.priceRange[0]} - ${filters.priceRange[1]}
+                    Price: ${effectiveRange[0]} - ${effectiveRange[1]}
                     <button
                       type="button"
-                      onClick={() => setFilters(prev => ({...prev, priceRange: [0, maxPrice]}))}
+                      onClick={() => setPriceRange(null)}
                       className="ml-1 inline-flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full text-indigo-400 hover:bg-indigo-200 hover:text-indigo-500 focus:outline-none"
                     >
                       <FiX className="h-3 w-3" />
@@ -811,7 +371,7 @@ const AllProducts = () => {
                 )}
                 
                 {/* Category filters */}
-                {filters.categories.selected.map(category => (
+                {selectedCategories.map(category => (
                   <span 
                     key={category}
                     className="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700"
@@ -828,8 +388,8 @@ const AllProducts = () => {
                 ))}
                 
                 {/* Variant filters */}
-                {Object.entries(filters.variants).map(([variantName, variantData]) =>
-                  variantData.selected.map(option => (
+                {Object.entries(selectedVariants).map(([variantName, selected]) =>
+                  selected.map(option => (
                     <span 
                       key={`${variantName}-${option}`}
                       className="inline-flex items-center rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-700"
@@ -850,8 +410,22 @@ const AllProducts = () => {
             
             {/* Loading state */}
             {loading ? (
-              <div className="flex justify-center items-center h-64">
+              <div className="flex justify-center items-center h-64" role="status" aria-live="polite">
                 <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"></div>
+                <span className="sr-only">Loading products…</span>
+              </div>
+            ) : hasFailed ? (
+              /* FE-024 — a request that failed is not a catalog that is empty. */
+              <div className="bg-white rounded-lg shadow-sm p-8 text-center" role="alert">
+                <FiShoppingBag className="mx-auto h-12 w-12 text-gray-400" />
+                <h3 className="mt-4 text-lg font-medium text-gray-900">We could not load the catalog</h3>
+                <p className="mt-2 text-sm text-gray-500">{catalogError || 'Please try again in a moment.'}</p>
+                <button
+                  onClick={reloadCatalog}
+                  className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700"
+                >
+                  Try again
+                </button>
               </div>
             ) : sortedProducts.length === 0 ? (
               <div className="bg-white rounded-lg shadow-sm p-8 text-center">
@@ -870,12 +444,7 @@ const AllProducts = () => {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
                 {sortedProducts.map((product) => (
-                  <Link key={product._id} to={`/product/${product._id}`} className="block h-full">
-                    <ProductCard 
-                      product={product} 
-                      onClick={() => {}} 
-                    />
-                  </Link>
+                  <ProductCard key={product._id} product={product} variant="full" className="h-full" />
                 ))}
               </div>
             )}

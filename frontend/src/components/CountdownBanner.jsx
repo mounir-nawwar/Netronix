@@ -1,5 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import bannerImage from '../assets/all/macbook m4.png';
+import { useState, useEffect } from 'react';
+// PERF-004 — a 241 kB 1555×600 PNG became a 25 kB WebP, with an 11 kB copy
+// for narrow viewports. Explicit dimensions keep the strip from reflowing the
+// countdown that sits on top of it.
+import banner800 from '../assets/optimised/countdown-banner-800.webp';
+import banner1555 from '../assets/optimised/countdown-banner-1555.webp';
 
 const CountdownBanner = () => {
   const [timeLeft, setTimeLeft] = useState({
@@ -33,11 +37,16 @@ const CountdownBanner = () => {
     <div className="relative w-full overflow-hidden rounded-t-3xl">
       {/* Banner Image with Overlay */}
       <div className="relative w-full">
-        <img 
-          src={bannerImage} 
-          alt="MacBook M4" 
+        <img
+          src={banner1555}
+          srcSet={`${banner800} 800w, ${banner1555} 1555w`}
+          sizes="100vw"
+          alt="MacBook M4"
+          width={1555}
+          height={600}
           className="w-full"
           loading="lazy"
+          decoding="async"
         />
       </div>
 

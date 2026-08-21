@@ -1,164 +1,88 @@
-import React, { useState, useRef, useEffect, useContext } from 'react';
+import { useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { ShopContext } from '../context/ShopContext';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import mainImage from '../assets/ShopTheLook/ShopTheLook.jpeg';
-import productImage from '../assets/category_images/Speakers.jpg';
-import headphonesImage from '../assets/category_images/Headphones.jpg';
-import laptopImage from '../assets/category_images/Laptops category.png';
-import monitorImage from '../assets/category_images/pc pic 2.png';
+import { Link } from 'react-router-dom';
 
-// Define the specific product IDs as requested
-const productIds = {
-    macbook: '680897a3a9a5ffb06b2e52c8',
-    keyboard: '6808d7d6cb9e1085777db07c',
-    headset: '6808e09934c8892e5062bd3b',
-    monitor: '6809028550ea8406eae4b442'
-};
+import { ShopContext } from '../context/shopContext';
+import { defaultVariantSelection, isSoldOut } from '../lib/productSummary';
+// PERF-004 — the 2000×1125 editorial photograph, as WebP at two widths.
+import mainImage800 from '../assets/optimised/shop-the-look-800.webp';
+import mainImage1600 from '../assets/optimised/shop-the-look-1600.webp';
+
+// FE-004 / PORT-001 / FE-021 — the section that took the whole site down.
+//
+// It named four products by literal ObjectId. Against a fresh database all four
+// `.find()` calls returned `undefined`, and the code then did this:
+//
+//     { ...monitorProduct, position: productPositions[0] }
+//
+// `{ ...undefined }` is `{}`, which is truthy, so `.filter(Boolean)` kept four
+// nameless objects, `products.length > 0` was true, and `getProductImage` read
+// `product.name.toLowerCase()` on an object with no name — throwing during
+// render. With no error boundary anywhere (FE-021), that was not a blank
+// section: it was a blank *site*.
+//
+// The second failure mode was quieter and worse. While loading, and whenever the
+// lookups failed, it displayed four **invented products** — "Monitor", "$0",
+// rated 4.7 — that a visitor could not tell from real ones.
+//
+// Products now declare that they belong here, ordered, and an empty catalog
+// renders an empty state. There are no placeholder products left to invent.
+
+/** Where each hotspot sits on the photograph, in slot order. */
+const HOTSPOT_POSITIONS = [
+    { top: '38%', left: '50%' },
+    { top: '50%', left: '25%' },
+    { top: '45%', left: '70%' },
+    { top: '70%', left: '41%' },
+];
 
 const ShopTheLook = () => {
     const [activeProduct, setActiveProduct] = useState(0);
     const [imageHeight, setImageHeight] = useState(0);
-    const [products, setProducts] = useState([]);
-    const [loading, setLoading] = useState(true);
     const imageRef = useRef(null);
-    const { backendUrl, addToCart } = useContext(ShopContext);
-    const navigate = useNavigate();
+    const { showcase, catalogStatus, addToCart, formatPrice, getPriceMinor } = useContext(ShopContext);
 
-    // Initial positions for hotspots
-    const productPositions = [
-        { top: '38%', left: '50%' }, // Monitor
-        { top: '50%', left: '25%' }, // MacBook
-        { top: '45%', left: '70%' }, // Headset
-        { top: '70%', left: '41%' }  // Keyboard
-    ];
+    const loading = catalogStatus === 'loading';
 
-    // Fetch products from backend
+    /**
+     * The products on the photograph, in the order the hotspots are placed.
+     *
+     * Bounded by the number of hotspots, because a fifth product would have
+     * nowhere on the image to point at.
+     */
+    const products = useMemo(
+        () => showcase('shop-the-look', { limit: HOTSPOT_POSITIONS.length })
+            .map((product, index) => ({ ...product, position: HOTSPOT_POSITIONS[index] })),
+        [showcase],
+    );
+
+    // A shorter list must never leave the selection pointing past its end.
     useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                setLoading(true);
-                const response = await axios.get(`${backendUrl}/api/product/list`);
-                
-                if (response.data.success) {
-                    const allProducts = response.data.products;
-                    
-                    // Find the specific products by ID
-                    const monitorProduct = allProducts.find(p => p._id === productIds.monitor);
-                    const macbookProduct = allProducts.find(p => p._id === productIds.macbook);
-                    const headsetProduct = allProducts.find(p => p._id === productIds.headset);
-                    const keyboardProduct = allProducts.find(p => p._id === productIds.keyboard);
-                    
-                    // Create the product array with positions
-                    const productArray = [
-                        { ...monitorProduct, position: productPositions[0] },
-                        { ...macbookProduct, position: productPositions[1] },
-                        { ...headsetProduct, position: productPositions[2] },
-                        { ...keyboardProduct, position: productPositions[3] }
-                    ].filter(Boolean); // Remove any undefined products
-                    
-                    setProducts(productArray);
-                }
-            } catch (error) {
-                console.error("Error fetching products:", error);
-            } finally {
-                setLoading(false);
-            }
-        };
-        
-        fetchProducts();
-    }, [backendUrl]);
+        setActiveProduct((current) => (current < products.length ? current : 0));
+    }, [products.length]);
 
     // Update image height on resize
     useEffect(() => {
         const updateHeight = () => {
-            if (imageRef.current) {
-                setImageHeight(imageRef.current.clientHeight);
-            }
+            if (imageRef.current) setImageHeight(imageRef.current.clientHeight);
         };
 
-        // Initial height
         updateHeight();
-
-        // Update on resize
         window.addEventListener('resize', updateHeight);
-
-        // Cleanup
         return () => window.removeEventListener('resize', updateHeight);
     }, []);
 
-    // Handle adding product to cart
-    const handleAddToCart = (product, e) => {
-        e.stopPropagation();
-        if (!product) return;
-        
-        // Default to first variant option if available
-        let variantKey = '';
-        if (product.variants && product.variants.length > 0) {
-            variantKey = product.variants.map(v => v.options[0]).join('-');
-        }
-        
-        addToCart(product._id, variantKey || 'default', 1);
+    const handleAddToCart = (product, event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (!product?._id) return;
+        // DB-003 — the combination comes from the product's typed inventory
+        // rather than from `variants.map(v => v.options[0]).join('-')`, which
+        // produces a key that cannot be split back apart.
+        addToCart(product._id, defaultVariantSelection(product), 1);
     };
 
-    // Fallback placeholder products when loading
-    const placeholderProducts = [
-        {
-            _id: '1',
-            name: 'Monitor',
-            brand: 'Loading...',
-            price: 0,
-            rating: 5.0,
-            image: [monitorImage],
-            position: productPositions[0]
-        },
-        {
-            _id: '2',
-            name: 'MacBook',
-            brand: 'Loading...',
-            price: 0,
-            rating: 4.8,
-            image: [laptopImage],
-            position: productPositions[1]
-        },
-        {
-            _id: '3',
-            name: 'Headset',
-            brand: 'Loading...',
-            price: 0,
-            rating: 4.9,
-            image: [headphonesImage],
-            position: productPositions[2]
-        },
-        {
-            _id: '4',
-            name: 'Keyboard',
-            brand: 'Loading...',
-            price: 0,
-            rating: 4.7,
-            image: [laptopImage],
-            position: productPositions[3]
-        }
-    ];
-
-    // Use loaded products or placeholders if still loading
-    const displayProducts = products.length > 0 ? products : placeholderProducts;
-
-    // Get appropriate product image
-    const getProductImage = (product) => {
-        if (product.image && product.image.length > 0) {
-            return product.image[0];
-        }
-        
-        // Fallback images based on product name
-        if (product.name.toLowerCase().includes('monitor')) return monitorImage;
-        if (product.name.toLowerCase().includes('mac')) return laptopImage;
-        if (product.name.toLowerCase().includes('head')) return headphonesImage;
-        if (product.name.toLowerCase().includes('keyboard')) return productImage;
-        
-        return productImage; // Default fallback
-    };
+    const active = products[activeProduct] ?? null;
 
     return (
         <div className="w-full py-10 md:py-16 bg-white px-3 md:px-10">
@@ -184,16 +108,21 @@ const ShopTheLook = () => {
                     <div className="w-full lg:w-[65%]">
                         <div ref={imageRef} className="relative rounded-lg overflow-hidden shadow-md" style={{ aspectRatio: '16/9' }}>
                             <img
-                                src={mainImage}
+                                src={mainImage1600}
+                                srcSet={`${mainImage800} 800w, ${mainImage1600} 1600w`}
+                                sizes="(max-width: 1023px) 92vw, 60vw"
                                 alt="Premium workspace setup"
+                                width={1600}
+                                height={900}
                                 className="w-full h-full object-cover"
                                 loading="lazy"
+                                decoding="async"
                             />
 
                             {/* Hotspots with pulsing animation - Smaller on mobile */}
-                            {displayProducts.map((product, index) => (
+                            {products.map((product, index) => (
                                 <div
-                                    key={product._id || index}
+                                    key={product._id}
                                     className={`absolute w-6 h-6 md:w-8 md:h-8 rounded-full bg-white shadow-lg flex items-center justify-center cursor-pointer transition-all duration-300 ${activeProduct === index ? 'ring-2 ring-black scale-110' : ''}`}
                                     style={{
                                         ...product.position,
@@ -219,61 +148,75 @@ const ShopTheLook = () => {
                             maxWidth: window.innerWidth < 768 ? '280px' : window.innerWidth < 1024 ? '320px' : 'none'
                         }}
                     >
+                        {/* FE-004 — an empty catalog gets an empty state, not four
+                            invented products with invented prices and ratings. */}
+                        {!loading && products.length === 0 && (
+                            <div className="w-full flex-grow flex items-center justify-center">
+                                <p className="text-center text-gray-500 font-michroma text-sm">
+                                    No workspace picks yet.
+                                </p>
+                            </div>
+                        )}
+
                         {/* Active Product Card - Sized like FeaturedProducts */}
-                        {displayProducts.length > activeProduct && (
+                        {active && (
                             <div className="w-full flex-grow flex flex-col">
                                 <motion.div
-                                    className="product-card bg-[#f9f9f9] rounded-2xl overflow-hidden cursor-pointer group relative flex flex-col flex-grow shadow-md"
+                                    className="product-card bg-[#f9f9f9] rounded-2xl overflow-hidden group relative flex flex-col flex-grow shadow-md"
                                     whileHover={{ y: -5 }}
                                     transition={{ duration: 0.3 }}
-                                    onClick={() => displayProducts[activeProduct]?._id && navigate(`/product/${displayProducts[activeProduct]._id}`)}
                                 >
-                                    <div className="relative h-64 mb-3">
-                                        <img
-                                            src={getProductImage(displayProducts[activeProduct])}
-                                            alt={displayProducts[activeProduct].name}
-                                            className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-110"
-                                            loading="lazy"
-                                        />
-                                    </div>
-
-                                    <div className="px-3 md:px-4 pb-3 md:pb-4 flex-grow flex flex-col justify-between">
-                                        <div>
-                                            <div className="flex justify-between items-start mb-1">
-                                                <p className="text-xs md:text-sm text-gray-600 font-michroma">{displayProducts[activeProduct].brand || 'Brand'}</p>
-                                                <div className="flex items-center">
-                                                    <span className="text-[#6a5acd]">★</span>
-                                                    <span className="text-xs md:text-sm ml-1">{displayProducts[activeProduct].rating || 4.5}</span>
-                                                </div>
-                                            </div>
-                                            <h3 className="text-sm md:text-lg font-michroma text-gray-900 mb-1 md:mb-2 relative group-hover:after:w-full after:w-0 after:h-[2px] after:bg-[#6a5acd] after:absolute after:left-0 after:bottom-0 after:transition-all after:duration-300">
-                                                {displayProducts[activeProduct].name}
-                                            </h3>
-                                            <p className="text-base md:text-lg font-michroma text-[#6a5acd] mb-2 md:mb-3">
-                                                ${displayProducts[activeProduct].price}
-                                            </p>
+                                    <Link to={`/product/${active._id}`} aria-label={active.name} className="flex flex-col flex-grow">
+                                        <div className="relative h-64 mb-3">
+                                            <img
+                                                src={active.image?.[0]}
+                                                alt={active.name}
+                                                className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-110"
+                                                loading="lazy"
+                                            />
                                         </div>
 
-                                        {/* Add to Cart Button */}
+                                        <div className="px-3 md:px-4 pb-3 md:pb-4 flex-grow flex flex-col justify-between">
+                                            <div>
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <p className="text-xs md:text-sm text-gray-600 font-michroma">{active.brand || 'Brand'}</p>
+                                                    <div className="flex items-center">
+                                                        <span className="text-[#6a5acd]">★</span>
+                                                        <span className="text-xs md:text-sm ml-1">4.5</span>
+                                                    </div>
+                                                </div>
+                                                <h3 className="text-sm md:text-lg font-michroma text-gray-900 mb-1 md:mb-2 relative group-hover:after:w-full after:w-0 after:h-[2px] after:bg-[#6a5acd] after:absolute after:left-0 after:bottom-0 after:transition-all after:duration-300">
+                                                    {active.name}
+                                                </h3>
+                                                <p className="text-base md:text-lg font-michroma text-[#6a5acd] mb-2 md:mb-3">
+                                                    {formatPrice(getPriceMinor(active))}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </Link>
+
+                                    <div className="px-3 md:px-4 pb-3 md:pb-4">
                                         <button
+                                            type="button"
                                             className={`w-full py-2 md:py-2.5 px-3 md:px-4 rounded-[3px] font-michroma text-[10px] md:text-[12px] transition-all ${
-                                                loading || !displayProducts[activeProduct]._id
-                                                ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
-                                                : 'fill-button fill-button-purple'
+                                                isSoldOut(active)
+                                                    ? 'bg-gray-200 text-gray-600 cursor-not-allowed'
+                                                    : 'fill-button fill-button-purple'
                                             }`}
-                                            onClick={(e) => handleAddToCart(displayProducts[activeProduct], e)}
-                                            disabled={loading || !displayProducts[activeProduct]._id}
+                                            onClick={(event) => handleAddToCart(active, event)}
+                                            disabled={isSoldOut(active)}
                                         >
-                                            {loading ? 'LOADING...' : 'ADD TO CART'}
+                                            {isSoldOut(active) ? 'SOLD OUT' : 'ADD TO CART'}
                                         </button>
                                     </div>
                                 </motion.div>
 
                                 {/* Navigation Dots */}
                                 <div className="flex justify-center mt-3 md:mt-4 mb-2 gap-2">
-                                    {displayProducts.map((product, index) => (
+                                    {products.map((product, index) => (
                                         <button
-                                            key={product._id || index}
+                                            key={product._id}
+                                            type="button"
                                             className={`w-2 h-2 rounded-full transition-all duration-300 shadow-md ${activeProduct === index
                                                     ? 'bg-[#6a5acd] w-3 h-3 shadow-[#6a5acd]/50'
                                                     : 'bg-gray-300'

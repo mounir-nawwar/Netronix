@@ -1,0 +1,144 @@
+name: CI
+
+# Honesty policy for this pipeline
+# ---------------------------------
+# A green run must not imply the project is clean, so anything that is not
+# enforced says so in the job summary of every run.
+#
+# TEST-002 was resolved at Gate 4 (Phase 4, task 4.13). The storefront reported
+# 126 ESLint problems (117 errors, 9 warnings) and its lint step was
+# non-blocking; both apps are now at **zero errors and zero warnings**, both run
+# `eslint . --max-warnings 0`, and both lint steps are blocking. Nothing was
+# suppressed to get there: no rule was disabled, no authored source or test file
+# was excluded, and the two `react-refresh/only-export-components` warnings were
+# resolved by moving the non-component exports into their own modules rather
+# than by turning the rule off.
+#
+# Also added at Gate 4: a bundle budget step. It walks Vite's build manifest and
+# fails if the initial route JS exceeds its budget or if a Spline runtime chunk
+# reappears (PERF-001/PERF-003). The build alone would not catch either.
+#
+# SEC-015 was resolved at Gate 1 (Phase 1, task 1.11): the runtime dependency
+# audit is now **blocking** in all three packages, and all three pass with zero
+# high or critical advisories. Dev-only advisories are reported separately and
+# do not block, because they are not reachable by a deployed application — the
+# `vite` `server.fs.deny` family, for instance, affects a developer's local dev
+# server only.
+#
+# Everything else — install, tests, build — is blocking.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: ${{ matrix.app }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # The backend has no lint or build script of its own.
+          - app: backend
+            lint: none
+            build: false
+          # Lint-clean as of Phase 0.8, so a regression must fail the build.
+          - app: admin
+            lint: blocking
+            build: true
+            budget: true
+          # Lint-clean as of Gate 4 (TEST-002), with --max-warnings 0.
+          - app: frontend
+            lint: blocking
+            build: true
+            budget: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: ${{ matrix.app }}/package-lock.json
+
+      - name: Install
+        working-directory: ${{ matrix.app }}
+        run: npm ci
+
+      - name: Lint (blocking)
+        if: matrix.lint == 'blocking'
+        working-directory: ${{ matrix.app }}
+        run: npm run lint
+
+      - name: Test
+        working-directory: ${{ matrix.app }}
+        run: npm test
+
+      - name: Build
+        if: matrix.build
+        working-directory: ${{ matrix.app }}
+        run: npm run build
+
+      # PERF-001 / PERF-003 — measured from the build manifest, not guessed
+      # from file names and not summed over the whole of `dist/`. Fails if the
+      # initial route JS exceeds its gzip budget (500 kB storefront, 400 kB
+      # admin) or if a Spline runtime chunk is present at all.
+      - name: Bundle budget
+        if: matrix.budget
+        working-directory: ${{ matrix.app }}
+        run: npm run budget
+
+      # Runtime advisories only, and blocking since Gate 1 (SEC-015).
+      # Dev-only advisories are not reachable by a deployed application and
+      # would drown the signal, so they are reported in the step below instead.
+      - name: Runtime dependency audit (blocking — SEC-015)
+        id: audit
+        working-directory: ${{ matrix.app }}
+        run: npm audit --omit=dev --audit-level=high
+
+      - name: Dev-only dependency advisories (reported, not blocking)
+        if: always()
+        continue-on-error: true
+        working-directory: ${{ matrix.app }}
+        run: |
+          echo "Full tree, including build tooling that never ships:"
+          npm audit || true
+
+      - name: Record known debt in the job summary
+        if: always()
+        run: |
+          {
+            echo "## ${{ matrix.app }}"
+            echo ""
+            echo "All applicable install, lint, test, build, bundle-budget and"
+            echo "runtime-audit steps are blocking as of Gate 4; the backend"
+            echo "intentionally has no lint or build script."
+            echo ""
+            echo "| Step | Enforcement | Outcome | Becomes blocking |"
+            echo "|---|---|---|---|"
+            if [ "${{ matrix.lint }}" = "blocking" ]; then
+              echo "| Lint (\`--max-warnings 0\`) | **blocking** | enforced | already blocking |"
+            else
+              echo "| Lint | n/a | the backend has no lint script | not scheduled |"
+            fi
+            if [ "${{ matrix.budget }}" = "true" ]; then
+              echo "| Bundle budget (PERF-001/003) | **blocking** | enforced | already blocking (Gate 4) |"
+            fi
+            echo "| Runtime dependency audit (SEC-015) | **blocking** | \`${{ steps.audit.outcome }}\` | already blocking (Gate 1) |"
+            echo ""
+            echo "Dev-only advisories are printed by the step above and do not"
+            echo "block: they affect build tooling, not a deployed application."
+            echo ""
+            echo "Remaining known debt is tracked, not resolved. See the"
+            echo "\"Known limitations\" section of the README."
+          } >> "$GITHUB_STEP_SUMMARY"

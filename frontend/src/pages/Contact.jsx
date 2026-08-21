@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FiMapPin, FiPhone, FiMail, FiClock, FiSend, FiCheckCircle, FiAlertCircle, FiUsers, FiCode, FiCpu, FiHardDrive, FiServer, FiMonitor, FiHeadphones } from 'react-icons/fi';
+import Seo from '../components/Seo';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -75,7 +76,10 @@ const Contact = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 pt-[80px] md:pt-[100px]">
+
+      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 pt-[80px] md:pt-[100px]">
+
+        <Seo title="Contact" description="How to reach Netronix." />
       {/* Hero Section */}
       <div className="bg-[#6a5acd] relative overflow-hidden">
         <div className="absolute inset-0 w-full h-full">
@@ -501,7 +505,7 @@ const Contact = () => {
               <div className="md:w-2/3">
                 <h2 className="text-2xl font-bold text-gray-900 mb-4">Join Our Tech Team</h2>
                 <p className="text-gray-600 mb-6">
-                  We're always looking for talented tech enthusiasts to join our team. Explore current openings in sales, IT support, development, and more.
+                  We&apos;re always looking for talented tech enthusiasts to join our team. Explore current openings in sales, IT support, development, and more.
                 </p>
                 <motion.button 
                   className="fill-button px-6 py-3 border border-[#6a5acd] text-[#6a5acd] rounded-lg hover:bg-[#6a5acd] hover:text-white transition-colors"
