@@ -197,8 +197,17 @@ const isMain = process.argv[1] && resolve(process.argv[1]) === resolve(fileURLTo
 if (isMain) {
     const args = process.argv.slice(2)
     const appIndex = args.indexOf('--app')
-    const requested = appIndex === -1 ? ['frontend', 'admin'] : [args[appIndex + 1]]
     const asJson = args.includes('--json')
+
+    let requested;
+    if (appIndex !== -1) {
+        requested = [args[appIndex + 1]]
+    } else {
+        // Fall back to the app we are currently running inside, so `npm run budget`
+        // in frontend/ doesn't require admin/dist to exist when run in isolated CI jobs.
+        const cwdName = process.cwd().split('/').pop()
+        requested = APPS[cwdName] ? [cwdName] : ['frontend', 'admin']
+    }
 
     const results = requested.map((name) => report(name))
     if (asJson) console.log(JSON.stringify(results, null, 2))
