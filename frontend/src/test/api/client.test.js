@@ -11,7 +11,7 @@ describe('normalisePage — one shape, whichever the server sent (BE-009)', () =
         expect(normalisePage(
             { success: true, products: items, items, total: 2, page: 1, pages: 1, limit: 100 },
             'products',
-        )).toEqual({ items, total: 2, page: 1, pages: 1, limit: 100 })
+        )).toEqual({ items, total: 2, page: 1, pages: 1, limit: 100, metadataValid: true })
     })
 
     it('reads the legacy named array a deployed client still relies on', () => {
@@ -19,7 +19,7 @@ describe('normalisePage — one shape, whichever the server sent (BE-009)', () =
         // beside it. Dropping the named field server-side is a later step, so
         // this path has to keep working.
         expect(normalisePage({ success: true, products: items }, 'products'))
-            .toEqual({ items, total: 2, page: 1, pages: 1, limit: 2 })
+            .toEqual({ items, total: 2, page: 1, pages: 1, limit: 2, metadataValid: false })
     })
 
     it('normalises both envelopes to exactly the same result', () => {
@@ -28,12 +28,13 @@ describe('normalisePage — one shape, whichever the server sent (BE-009)', () =
             { success: true, orders: items, items, total: 2, page: 1, pages: 1, limit: 2 },
             'orders',
         )
-        expect(legacy).toEqual(additive)
+        // Additive has valid metadata, legacy does not
+        expect({ ...legacy, metadataValid: true }).toEqual(additive)
     })
 
     it('accepts a bare array from an older deployment', () => {
         expect(normalisePage(items, 'products'))
-            .toEqual({ items, total: 2, page: 1, pages: 1, limit: 2 })
+            .toEqual({ items, total: 2, page: 1, pages: 1, limit: 2, metadataValid: false })
     })
 
     it('derives the page count when the server does not send one', () => {
