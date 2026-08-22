@@ -54,7 +54,7 @@ const FeaturedProducts = () => {
     return TABS
       .map((tab) => ({
         ...tab,
-        products: featured.filter((product) => (product.tags ?? []).includes(tab.tag)),
+        products: featured.filter((product) => (product.tags ?? []).includes(tab.tag)).slice(0, 4),
       }))
       .filter((tab) => tab.products.length > 0);
   }, [showcase]);
