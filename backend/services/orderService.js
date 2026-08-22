@@ -124,12 +124,15 @@ function buildLine(product, item) {
         })
     }
 
-    const unitPriceMinor = readMinor(product, 'priceMinor', 'price')
-    if (unitPriceMinor === null) {
+    const basePriceMinor = readMinor(product, 'priceMinor', 'price')
+    if (basePriceMinor === null) {
         throw new ConflictError('One of the products in this order is not currently priced', {
             details: `product ${product._id} has no usable price`,
         })
     }
+
+    const priceDelta = entry.priceMinorDelta || 0;
+    const unitPriceMinor = basePriceMinor + priceDelta;
 
     const lineTotalMinor = multiplyMinor(unitPriceMinor, item.quantity)
 

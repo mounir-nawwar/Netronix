@@ -43,6 +43,7 @@ export const updateInventorySchema = {
             // The lossless form (DB-003). Preferred when both are sent.
             variantOptions: variantOptions.optional(),
             quantity: stockQuantity,
+            priceDelta: z.number().finite().optional(),
         })
         .strict()
         .refine((body) => body.variantKey !== undefined || body.variantOptions !== undefined, {
@@ -206,6 +207,7 @@ export const bulkInventorySchema = {
                             variantKey: variantKey.optional(),
                             variantOptions: variantOptions.optional(),
                             quantity: stockQuantity,
+                            priceDelta: z.number().finite().optional(),
                         })
                         .strict()
                         .refine((entry) => entry.variantKey !== undefined || entry.variantOptions !== undefined, {
@@ -281,6 +283,7 @@ export const inventoryV2Shape = z
                 options: variantOptions,
                 quantity: stockQuantity,
                 sku: z.string().trim().max(60).optional(),
+                priceDelta: z.number().finite().optional(),
             })
             .strict(),
     )

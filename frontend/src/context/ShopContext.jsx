@@ -357,7 +357,16 @@ const ShopContextProvider = (props) => {
      * Dual-read: a catalog document written after the migration carries
      * `priceMinor`; one written before carries only `price` (DB-004).
      */
-    const getPriceMinor = useCallback((product) => readMinor(product ?? {}, 'priceMinor', 'price') ?? 0, [])
+    const getPriceMinor = useCallback((product, variantKey = null) => {
+        let delta = 0;
+        if (variantKey && Array.isArray(product?.inventoryV2)) {
+            const variant = product.inventoryV2.find(v => v.variantId === variantKey || v.legacyKey === variantKey);
+            if (variant && Number.isFinite(variant.priceMinorDelta)) {
+                delta = variant.priceMinorDelta;
+            }
+        }
+        return (readMinor(product ?? {}, 'priceMinor', 'price') ?? 0) + delta;
+    }, [])
 
     /** Format for display. `Intl.NumberFormat`, never concatenation (FE-018). */
     const formatPrice = useCallback((minor) => formatMoney(minor, { currency: currencyCode }), [currencyCode])
@@ -713,10 +722,12 @@ const ShopContextProvider = (props) => {
             // unknown. Counting it as zero is how a cart quietly under-reports
             // its own total (FE-024); the caller is told instead.
             if (!itemInfo) continue;
-            const unit = getPriceMinor(itemInfo);
             for (const variantKey in cartItems[productId]) {
                 const quantity = Number(cartItems[productId][variantKey]) || 0;
-                if (quantity > 0) lines.push(multiplyMinor(unit, quantity));
+                if (quantity > 0) {
+                    const unit = getPriceMinor(itemInfo, variantKey);
+                    lines.push(multiplyMinor(unit, quantity));
+                }
             }
         }
         return sumMinor(lines);

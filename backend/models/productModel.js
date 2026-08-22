@@ -57,9 +57,18 @@ const inventoryEntrySchema = new mongoose.Schema({
     // were to get the arithmetic wrong, stock cannot be persisted negative.
     quantity: { type: Number, required: true, min: 0, default: 0 },
     sku: { type: String },
+    priceDelta: { type: Number, default: 0 },
+    priceMinorDelta: { type: Number, default: 0 },
     /** Set by the migration when a legacy key was ambiguous and was not guessed. */
     needsReview: { type: Boolean },
 }, { _id: false });
+
+// Derive the minor unit automatically so the two cannot drift.
+inventoryEntrySchema.pre('save', function syncPriceMinorDelta() {
+    if (this.isModified('priceDelta') && !this.isModified('priceMinorDelta')) {
+        this.priceMinorDelta = Number.isFinite(this.priceDelta) ? Math.round(this.priceDelta * 100) : 0
+    }
+})
 
 /**
  * One homepage surface this product is assigned to, and its position in it

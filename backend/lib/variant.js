@@ -248,6 +248,8 @@ export function makeEntry(variants, options, quantity = 0, extra = {}) {
         legacyKey: legacyVariantKey(variants, normalised),
         options: normalised,
         quantity: Number.isSafeInteger(quantity) && quantity >= 0 ? quantity : 0,
+        priceDelta: 0,
+        priceMinorDelta: 0,
         ...extra,
     }
 }
@@ -312,12 +314,16 @@ export function normaliseInventoryV2(variants, entries = []) {
             )
         }
 
-        byId.set(variantId, makeEntry(
-            variants,
-            options,
-            entry?.quantity,
-            entry?.sku ? { sku: entry.sku } : {},
-        ))
+        byId.set(variantId, {
+            ...makeEntry(
+                variants,
+                options,
+                entry?.quantity,
+                entry?.sku ? { sku: entry.sku } : {},
+            ),
+            priceDelta: Number.isFinite(entry?.priceDelta) ? entry.priceDelta : 0,
+            priceMinorDelta: Number.isFinite(entry?.priceDelta) ? Math.round(entry.priceDelta * 100) : 0,
+        })
     }
 
     // Complete the matrix, in the axes' own order, so the stored array is a
@@ -327,7 +333,7 @@ export function normaliseInventoryV2(variants, entries = []) {
     for (const options of buildCombinations(variants, undefined)) {
         const variantId = canonicalVariantId(options)
         seen.add(variantId)
-        complete.push(byId.get(variantId) ?? makeEntry(variants, options, 0))
+        complete.push(byId.get(variantId) ?? { ...makeEntry(variants, options, 0), priceDelta: 0, priceMinorDelta: 0 })
     }
 
     // Anything the caller sent that the axes do not generate has already been
@@ -372,11 +378,15 @@ export function deriveInventoryV2(variants, inventory = {}) {
         }
         const raw = legacy[key]
         const quantity = Number.isFinite(Number(raw)) ? Math.max(0, Math.trunc(Number(raw))) : 0
-        return makeEntry(variants, options, quantity)
+        const priceDelta = legacy[`${key}_priceDelta`] !== undefined ? Number(legacy[`${key}_priceDelta`]) : 0
+        return {
+            ...makeEntry(variants, options, quantity),
+            priceDelta: Number.isFinite(priceDelta) ? priceDelta : 0
+        }
     })
 
     const generated = new Set(entries.map((entry) => entry.legacyKey))
-    const orphanKeys = Object.keys(legacy).filter((key) => !generated.has(key))
+    const orphanKeys = Object.keys(legacy).filter((key) => !generated.has(key) && !key.endsWith('_priceDelta'))
 
     return { entries, ambiguousKeys, orphanKeys }
 }

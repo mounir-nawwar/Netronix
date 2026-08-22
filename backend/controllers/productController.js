@@ -308,6 +308,7 @@ const updateInventory = asyncHandler(async (req, res) => {
         legacyKey: candidate.legacyKey,
         options: candidate.options,
         quantity: candidate.variantId === entry.variantId ? quantity : candidate.quantity,
+        priceDelta: candidate.variantId === entry.variantId && req.validated.body.priceDelta !== undefined ? req.validated.body.priceDelta : candidate.priceDelta,
         ...(candidate.sku ? { sku: candidate.sku } : {}),
         ...(candidate.needsReview && candidate.variantId !== entry.variantId ? { needsReview: true } : {}),
     }))
@@ -614,14 +615,15 @@ const bulkUpdateInventory = asyncHandler(async (req, res) => {
                 fields: { entries: [`"${resolved.variantId}" is named more than once`] },
             });
         }
-        quantities.set(resolved.variantId, entry.quantity);
+        quantities.set(resolved.variantId, { quantity: entry.quantity, priceDelta: entry.priceDelta });
     }
 
     const nextInventoryV2 = current.map((candidate) => ({
         variantId: candidate.variantId,
         legacyKey: candidate.legacyKey,
         options: candidate.options,
-        quantity: quantities.has(candidate.variantId) ? quantities.get(candidate.variantId) : candidate.quantity,
+        quantity: quantities.has(candidate.variantId) ? quantities.get(candidate.variantId).quantity : candidate.quantity,
+        priceDelta: quantities.has(candidate.variantId) && quantities.get(candidate.variantId).priceDelta !== undefined ? quantities.get(candidate.variantId).priceDelta : candidate.priceDelta,
         ...(candidate.sku ? { sku: candidate.sku } : {}),
         // A quantity stated by a person supersedes the migration's "a human
         // must look at this": that is what looking at it produced.

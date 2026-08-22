@@ -189,7 +189,7 @@ const ShopTheLook = () => {
                                                     {active.name}
                                                 </h3>
                                                 <p className="text-base md:text-lg font-michroma text-[#6a5acd] mb-2 md:mb-3">
-                                                    {formatPrice(getPriceMinor(active))}
+                                                    {formatPrice(getPriceMinor(active, defaultVariantSelection(active)))}
                                                 </p>
                                             </div>
                                         </div>

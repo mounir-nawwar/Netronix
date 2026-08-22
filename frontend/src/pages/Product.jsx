@@ -214,6 +214,10 @@ const Product = () => {
     );
   }
 
+  // Generate the current exact variant ID to compute price display
+  const currentVariantId = Object.keys(selectedVariants).map(key => `${key}=${selectedVariants[key]}`).join(';');
+  const displayPrice = getPriceMinor(productData, currentVariantId);
+
   return productData ? (
     <div className="min-h-screen bg-white pt-[80px] md:pt-[100px] pb-16">
       {/* SEO-001 / SEO-002 / SEO-004 — every product page used to be titled
@@ -337,7 +341,7 @@ const Product = () => {
             
             {/* Price */}
             <div className="text-2xl md:text-3xl font-michroma text-[#6a5acd] mt-2 mb-4">
-              {formatPrice(getPriceMinor(productData))}
+              {formatPrice(displayPrice)}
             </div>
             
             {/* Description */}
