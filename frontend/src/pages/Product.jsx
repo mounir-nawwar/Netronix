@@ -1,3 +1,4 @@
+import { canonicalVariantId } from '../lib/variant';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ShopContext } from '../context/shopContext';
@@ -215,7 +216,7 @@ const Product = () => {
   }
 
   // Generate the current exact variant ID to compute price display
-  const currentVariantId = Object.keys(selectedVariants).map(key => `${key}=${selectedVariants[key]}`).join(';');
+  const currentVariantId = canonicalVariantId(selectedVariants);
   const displayPrice = getPriceMinor(productData, currentVariantId);
 
   return productData ? (

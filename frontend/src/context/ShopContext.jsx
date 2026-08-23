@@ -361,8 +361,12 @@ const ShopContextProvider = (props) => {
         let delta = 0;
         if (variantKey && Array.isArray(product?.inventoryV2)) {
             const variant = product.inventoryV2.find(v => v.variantId === variantKey || v.legacyKey === variantKey);
-            if (variant && Number.isFinite(variant.priceMinorDelta)) {
-                delta = variant.priceMinorDelta;
+            if (variant) {
+                if (Number.isFinite(variant.priceMinorDelta) && variant.priceMinorDelta !== 0) {
+                    delta = variant.priceMinorDelta;
+                } else if (Number.isFinite(variant.priceDelta)) {
+                    delta = Math.round(variant.priceDelta * 100);
+                }
             }
         }
         return (readMinor(product ?? {}, 'priceMinor', 'price') ?? 0) + delta;
