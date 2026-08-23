@@ -184,6 +184,18 @@ const ProductForm = ({ mode = 'add', product = null, onSubmit, isSubmitting = fa
   }
   const [quantities, setQuantities] = useState(initialQuantities)
 
+  const initialPriceDeltas = () => {
+    const initial = {}
+    const entries = product?.inventoryV2?.length
+      ? product.inventoryV2
+      : deriveInventoryV2(initialVariants, legacyInventoryOf(product)).entries
+    for (const entry of entries) {
+      if (entry.priceDelta) initial[entry.variantId ?? canonicalVariantId(entry.options)] = entry.priceDelta
+    }
+    return initial
+  }
+  const [priceDeltas, setPriceDeltas] = useState(initialPriceDeltas)
+
   const [showcase, setShowcase] = useState(
     () => (product?.showcase ?? []).map((entry) => entry.slot),
   )
@@ -197,6 +209,7 @@ const ProductForm = ({ mode = 'add', product = null, onSubmit, isSubmitting = fa
   const combinations = useMemo(() => combinationsOf(variants), [variants])
 
   const quantityFor = (combination) => quantities[canonicalVariantId(combination)] ?? ''
+  const priceDeltaFor = (combination) => priceDeltas[canonicalVariantId(combination)] ?? ''
 
   // ---------------------------------------------------------------- variants
   //
@@ -249,6 +262,12 @@ const ProductForm = ({ mode = 'add', product = null, onSubmit, isSubmitting = fa
     const key = canonicalVariantId(combination)
     setInventoryDirty(true)
     setQuantities((previous) => ({ ...previous, [key]: Math.max(0, parseInt(value, 10) || 0) }))
+  }
+
+  const setPriceDelta = (combination, value) => {
+    const key = canonicalVariantId(combination)
+    setInventoryDirty(true)
+    setPriceDeltas((previous) => ({ ...previous, [key]: value === '' ? '' : parseFloat(value) }))
   }
 
   // -------------------------------------------------------------------- tags
@@ -330,10 +349,15 @@ const ProductForm = ({ mode = 'add', product = null, onSubmit, isSubmitting = fa
     // Only the combinations that currently exist are sent. A removed one is not
     // "set to zero", it is absent — which is what makes pruning correct rather
     // than merely tidy.
-    const inventoryV2 = combinations.map((combination) => ({
-      options: combination,
-      quantity: Number(quantities[canonicalVariantId(combination)]) || 0,
-    }))
+    const inventoryV2 = combinations.map((combination) => {
+      const key = canonicalVariantId(combination)
+      const pd = Number(priceDeltas[key])
+      return {
+        options: combination,
+        quantity: Number(quantities[key]) || 0,
+        ...(Number.isFinite(pd) && pd !== 0 ? { priceDelta: pd } : {})
+      }
+    })
     const inventory = Object.fromEntries(combinations.map((combination) => [
       legacyVariantKey(variants, combination),
       Number(quantities[canonicalVariantId(combination)]) || 0,
@@ -671,16 +695,27 @@ const ProductForm = ({ mode = 'add', product = null, onSubmit, isSubmitting = fa
                     return (
                       <div key={canonicalVariantId(combination)} className='flex items-center gap-3 p-3 border border-gray-200 rounded-lg hover:border-[#6a5acd] transition-colors'>
                         <span className='font-medium text-gray-700 flex-1'>{label}:</span>
-                        <input
-                          type="number"
-                          min="0"
-                          value={quantityFor(combination)}
-                          onChange={(e) => setQuantity(combination, e.target.value)}
-                          aria-label={`Quantity for ${label}`}
-                          className='w-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6a5acd] focus:border-transparent transition-all'
-                          placeholder="Qty"
-                          required
-                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            step="0.01"
+                            value={priceDeltaFor(combination)}
+                            onChange={(e) => setPriceDelta(combination, e.target.value)}
+                            aria-label={`Price delta for ${label}`}
+                            className='w-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6a5acd] focus:border-transparent transition-all'
+                            placeholder="+ Price"
+                          />
+                          <input
+                            type="number"
+                            min="0"
+                            value={quantityFor(combination)}
+                            onChange={(e) => setQuantity(combination, e.target.value)}
+                            aria-label={`Quantity for ${label}`}
+                            className='w-24 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6a5acd] focus:border-transparent transition-all'
+                            placeholder="Qty"
+                            required
+                          />
+                        </div>
                       </div>
                     )
                   })}
@@ -728,6 +763,7 @@ const ProductForm = ({ mode = 'add', product = null, onSubmit, isSubmitting = fa
                 onClick={() => {
                   setVariants(initialVariants)
                   setQuantities(initialQuantities())
+                  setPriceDeltas(initialPriceDeltas())
                   setInventoryDirty(false)
                   setResolutionAcknowledged(false)
                   setResolvingInventory(false)
