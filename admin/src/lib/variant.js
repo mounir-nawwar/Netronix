@@ -401,18 +401,40 @@ export function legacyInventoryFrom(entries, existing = {}) {
     return out
 }
 
-/** Normalise whatever shape came off a document into plain entries. */
+/**
+ * Normalise whatever shape came off a document into plain entries.
+ *
+ * The price delta is carried, and it has to be. This function is the single
+ * read path for typed inventory: `presentProduct` serves its result to both
+ * clients, and `updateInventory` and `bulkUpdateInventory` rebuild the stored
+ * matrix from it. Dropping a field here therefore does two different kinds of
+ * damage at once — the storefront cannot see the value, and the next admin
+ * stock edit writes `undefined` over it, so the schema default silently resets
+ * every row the edit did not name.
+ *
+ * `priceMinorDelta` is derived when it is absent rather than defaulted to zero,
+ * because a document written before the field existed carries only the major
+ * unit, and reading that as "no difference" would misprice it.
+ */
 export function entriesOf(product) {
     const raw = product?.inventoryV2
     if (!Array.isArray(raw) || raw.length === 0) return []
-    return raw.map((entry) => ({
-        variantId: entry.variantId ?? canonicalVariantId(entry.options),
-        legacyKey: entry.legacyKey ?? '',
-        options: toOptionsObject(entry.options),
-        quantity: Number(entry.quantity ?? 0),
-        sku: entry.sku ?? undefined,
-        needsReview: Boolean(entry.needsReview),
-    }))
+    return raw.map((entry) => {
+        const priceDelta = Number.isFinite(Number(entry.priceDelta)) ? Number(entry.priceDelta) : 0
+        const storedMinor = Number(entry.priceMinorDelta)
+        return {
+            variantId: entry.variantId ?? canonicalVariantId(entry.options),
+            legacyKey: entry.legacyKey ?? '',
+            options: toOptionsObject(entry.options),
+            quantity: Number(entry.quantity ?? 0),
+            priceDelta,
+            priceMinorDelta: Number.isFinite(storedMinor) && storedMinor !== 0
+                ? storedMinor
+                : Math.round(priceDelta * 100),
+            sku: entry.sku ?? undefined,
+            needsReview: Boolean(entry.needsReview),
+        }
+    })
 }
 
 export class VariantResolutionError extends Error {

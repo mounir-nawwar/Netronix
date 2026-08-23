@@ -1,4 +1,3 @@
-import { canonicalVariantId } from '../lib/variant';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ShopContext } from '../context/shopContext';
@@ -215,9 +214,50 @@ const Product = () => {
     );
   }
 
-  // Generate the current exact variant ID to compute price display
-  const currentVariantId = canonicalVariantId(selectedVariants);
-  const displayPrice = getPriceMinor(productData, currentVariantId);
+  /**
+   * The price for the combination currently selected, in minor units.
+   *
+   * Matching is on the option **pairs**, never on the hyphen-joined legacy key,
+   * for the same reason everything else here is (DB-003): `16-inch` and
+   * `RTX-4090` make that string ambiguous.
+   *
+   * A complete selection matches exactly one combination. A partial one matches
+   * several, and the cheapest of them is the honest thing to show — it is the
+   * price the visitor can still reach by choosing the remaining options. Taking
+   * whichever entry happened to come first in the array, as this did before,
+   * quoted an arbitrary member of that set and changed answer whenever the
+   * matrix was reordered.
+   */
+  const displayPrice = (() => {
+    const basePriceMinor = Number.isFinite(productData?.priceMinor)
+      ? productData.priceMinor
+      : Math.round((productData?.price || 0) * 100);
+
+    const entries = Array.isArray(productData?.inventoryV2) ? productData.inventoryV2 : [];
+    const selectedKeys = Object.keys(selectedVariants).filter((key) => selectedVariants[key] !== '');
+    if (entries.length === 0 || selectedKeys.length === 0) return basePriceMinor;
+
+    // The minor unit is authoritative when it is stored; a document written
+    // before that field existed carries only the major one.
+    const deltaOf = (entry) => {
+      const minor = Number(entry.priceMinorDelta);
+      if (Number.isFinite(minor) && minor !== 0) return minor;
+      const major = Number(entry.priceDelta);
+      return Number.isFinite(major) ? Math.round(major * 100) : 0;
+    };
+
+    const matches = entries.filter((entry) => {
+      // Accept a plain object or a Mongoose Map.
+      const raw = entry.options;
+      const options = raw && typeof raw.entries === 'function'
+        ? Object.fromEntries(raw.entries())
+        : (raw || {});
+      return selectedKeys.every((key) => options[key] === selectedVariants[key]);
+    });
+    if (matches.length === 0) return basePriceMinor;
+
+    return basePriceMinor + Math.min(...matches.map(deltaOf));
+  })();
 
   return productData ? (
     <div className="min-h-screen bg-white pt-[80px] md:pt-[100px] pb-16">
