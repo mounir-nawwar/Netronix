@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FiMessageSquare, FiX } from 'react-icons/fi';
+import { matchPath, useLocation } from 'react-router-dom';
 
 import ChatInterface from './ChatInterface'
 import { onOpenSupportChat } from '../../lib/supportChat.js'
@@ -25,6 +26,8 @@ import { onOpenSupportChat } from '../../lib/supportChat.js'
 
 const ChatBotWidget = () => {
   const [isOpen, setIsOpen] = useState(false)
+  const { pathname } = useLocation()
+  const contactOwnsChatEntry = Boolean(matchPath({ path: '/contact', end: true }, pathname))
 
   const close = useCallback(() => setIsOpen(false), [])
   const toggle = useCallback(() => setIsOpen((open) => !open), [])
@@ -41,21 +44,23 @@ const ChatBotWidget = () => {
         {isOpen && <ChatInterface onClose={close} />}
       </AnimatePresence>
 
-      <motion.button
-        type="button"
-        onClick={toggle}
-        aria-expanded={isOpen}
-        aria-label={isOpen ? 'Close support chat' : 'Open support chat'}
-        aria-haspopup="dialog"
-        className="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-r from-[#6a5acd] to-[#8470ff] rounded-full shadow-lg flex items-center justify-center text-white z-40"
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: "spring", stiffness: 400, damping: 20 }}
-      >
-        {isOpen ? <FiX aria-hidden="true" className="w-6 h-6" /> : <FiMessageSquare aria-hidden="true" className="w-6 h-6" />}
-      </motion.button>
+      {(!contactOwnsChatEntry || isOpen) && (
+        <motion.button
+          type="button"
+          onClick={toggle}
+          aria-expanded={isOpen}
+          aria-label={isOpen ? 'Close support chat' : 'Open support chat'}
+          aria-haspopup="dialog"
+          className="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-r from-[#6a5acd] to-[#8470ff] rounded-full shadow-lg flex items-center justify-center text-white z-40"
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: "spring", stiffness: 400, damping: 20 }}
+        >
+          {isOpen ? <FiX aria-hidden="true" className="w-6 h-6" /> : <FiMessageSquare aria-hidden="true" className="w-6 h-6" />}
+        </motion.button>
+      )}
     </>
   )
 }

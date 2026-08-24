@@ -312,7 +312,7 @@ describe('Contact', () => {
         expect(screen.getByRole('status').textContent).not.toMatch(/\bsent\b/i)
     })
 
-    it('gives the three support cards truthful destinations', () => {
+    it('keeps truthful customer-support destinations', () => {
         const { container } = withRouter(<Contact />)
 
         // Resources: relabelled to what actually exists — the catalogue.
@@ -329,12 +329,11 @@ describe('Contact', () => {
         expect(container.textContent).not.toMatch(/knowledge base/i)
     })
 
-    it('turns the careers call to action into a real enquiry', () => {
-        withRouter(<Contact />)
+    it('does not advertise careers or claim unsolicited CVs are read', () => {
+        const { container } = withRouter(<Contact />)
 
-        const careers = screen.getByRole('link', { name: /careers/i })
-        expect(careers.getAttribute('href')).toContain('mailto:')
-        expect(careers.getAttribute('href')).toMatch(/subject=/)
+        expect(screen.queryByRole('link', { name: /careers/i })).toBeNull()
+        expect(container.textContent).not.toMatch(/working here|openings board|CV is still read/i)
     })
 })
 
