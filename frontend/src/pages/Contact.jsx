@@ -330,7 +330,7 @@ const Contact = () => {
             <li data-testid="support-route" className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
               <div className="min-w-0">
                 <h3 className="text-base font-medium">Repairs</h3>
-                <p className="mt-0.5 text-sm text-[#6e6e73]">Send the device details; support replies by email.</p>
+                <p className="mt-0.5 text-sm text-[#6e6e73]">Prepare an email with the device details.</p>
               </div>
               <a href={REPAIR_MAILTO} data-testid="support-route-action" className={ACTION_CLASS}>
                 Book a repair

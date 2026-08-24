@@ -214,6 +214,7 @@ describe('what the page must not claim', () => {
         expect(container.textContent).not.toMatch(/team of (experts|specialists|professionals)/i)
         expect(container.textContent).not.toMatch(/perfect (tech )?solution/i)
         expect(container.textContent).not.toMatch(/fastest way/i)
+        expect(container.textContent).not.toMatch(/support replies by email/i)
         expect(container.textContent).not.toMatch(/get in touch/i)
     })
 })
