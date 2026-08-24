@@ -109,11 +109,11 @@ const Testimonials = () => {
                 </div>
             </div>
 
-            <div className="mt-8 sm:mt-12 text-center">
-                <a href="#" className="bg-gradient-to-r from-[#6a5acd] to-[#353332] bg-clip-text text-transparent underline font-michroma text-xs sm:text-sm hover:text-black transition-colors">
-                    Read All 2,482 Reviews
-                </a>
-            </div>
+            {/* FE-014 — "Read All 2,482 Reviews" linked to `#`. There is no
+                reviews route to send anyone to, and there are no 2,482 reviews:
+                the eight quotes above this line are the whole set, hard-coded
+                in this file. Removing the link is the only change that does not
+                require inventing one of the two. */}
         </section>
     );
 };

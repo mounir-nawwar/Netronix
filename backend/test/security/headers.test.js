@@ -104,9 +104,12 @@ describe('SEC-011 — the JSON body limit is 100 KB', () => {
 })
 
 describe('DEVOPS-004 — the CORS allowlist is env-driven and validated', () => {
-    it('falls back to the previously hardcoded list when CORS_ORIGINS is unset', () => {
+    it('falls back to MINN production domains and local development when CORS_ORIGINS is unset', () => {
         expect(parseCorsOrigins(undefined).origins).toEqual(DEFAULT_CORS_ORIGINS)
         expect(parseCorsOrigins('').origins).toEqual(DEFAULT_CORS_ORIGINS)
+        expect(DEFAULT_CORS_ORIGINS).toContain('https://netronix.minnagency.com')
+        expect(DEFAULT_CORS_ORIGINS).toContain('https://admin.netronix.minnagency.com')
+        expect(DEFAULT_CORS_ORIGINS.join(',')).not.toMatch(/netronix(?:store|-admin)\.vercel\.app/)
     })
 
     it('parses a comma-separated list and drops anything that is not an absolute http(s) URL', () => {

@@ -1,18 +1,35 @@
 import { useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
+import { Link } from 'react-router-dom';
+
+import { MINN_NAME, MINN_SOCIAL_LINKS, MINN_URL } from '../lib/minn.js';
+
+// FE-014 — every default this component shipped with was a dead end. The three
+// social icons defaulted to `url: '#'`, and `App.jsx` renders `<NewsLetterBar />`
+// with no props at all, so the bar that is fixed to the side of every page on
+// the site had three icons that scrolled you to the top. The heading defaulted
+// to "Newsletter" over an `onClick` of `() => { }`, so the one button in the
+// bar did nothing at all, on every route.
+//
+// The defaults are now the real MINN accounts and a visibly branded link to
+// MINN's website, so sighted visitors are not sent to another company without
+// context.
+// Both remain overridable, and `onClick` still wins when a caller passes one:
+// with a handler this is a button, without one it is a link, so the control is
+// always something a keyboard and a screen reader can name and operate.
+
+const BUTTON_CLASS =
+  'newsletter-bar__button flex items-center justify-center text-xs tracking-wider uppercase rounded-full cursor-pointer transition-all duration-300 ease-out hover:bg-black/10';
 
 const NewsLetterBar = ({
   position = 'left-0',
-  heading = 'Newsletter',
+  heading = MINN_NAME,
   showSocial = true,
-  socialLinks = [
-    { platform: 'facebook', url: '#', icon: 'facebook' },
-    { platform: 'instagram', url: '#', icon: 'instagram' },
-    { platform: 'twitter', url: '#', icon: 'twitter' }
-  ],
-  mobileDisabled = false,
+  socialLinks = MINN_SOCIAL_LINKS,
+  mobileDisabled = true,
   mobileHideSocial = true,
-  onClick = () => { }
+  to = MINN_URL,
+  onClick = null
 }) => {
   const socialIconsRef = useRef([]);
 
@@ -118,7 +135,7 @@ const NewsLetterBar = ({
                   className="social_platform text-black transition-all duration-300 ease-out"
                   target="_blank"
                   rel="noopener noreferrer"
-                  aria-label={`Follow us on ${link.platform}`}
+                  aria-label={link.label ?? `Follow us on ${link.platform}`}
                 >
                   {renderSocialIcon(link.platform)}
                 </a>
@@ -129,12 +146,29 @@ const NewsLetterBar = ({
       )}
 
       {heading && (
-        <button
-          onClick={onClick}
-          className="newsletter-bar__button flex items-center justify-center text-xs tracking-wider uppercase rounded-full cursor-pointer transition-all duration-300 ease-out hover:bg-black/10"
-        >
-          <span className="transform transition-transform duration-300">{heading}</span>
-        </button>
+        onClick ? (
+          <button
+            type="button"
+            onClick={onClick}
+            className={BUTTON_CLASS}
+          >
+            <span className="transform transition-transform duration-300">{heading}</span>
+          </button>
+        ) : /^https?:\/\//i.test(to) ? (
+          <a
+            href={to}
+            className={BUTTON_CLASS}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`${heading} website`}
+          >
+            <span className="transform transition-transform duration-300">{heading}</span>
+          </a>
+        ) : (
+          <Link to={to} className={BUTTON_CLASS}>
+            <span className="transform transition-transform duration-300">{heading}</span>
+          </Link>
+        )
       )}
     </div>
   );
@@ -148,9 +182,11 @@ NewsLetterBar.propTypes = {
     platform: PropTypes.string,
     url: PropTypes.string,
     icon: PropTypes.string,
+    label: PropTypes.string,
   })),
   mobileDisabled: PropTypes.bool,
   mobileHideSocial: PropTypes.bool,
+  to: PropTypes.string,
   onClick: PropTypes.func,
 };
 

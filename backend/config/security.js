@@ -8,10 +8,10 @@
 // passes an environment in — so importing the application still requires no
 // configuration at all (B-0).
 
-/** Used when CORS_ORIGINS is not set. Identical to the pre-Phase-1 hardcoded list. */
+/** Safe production and local-development fallback when CORS_ORIGINS is unset. */
 export const DEFAULT_CORS_ORIGINS = [
-    'https://netronixstore.vercel.app',
-    'https://netronix-admin.vercel.app',
+    'https://netronix.minnagency.com',
+    'https://admin.netronix.minnagency.com',
     'http://localhost:5173',
     'http://localhost:5174',
 ]

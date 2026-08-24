@@ -6,22 +6,22 @@ const features = [
     {
         icon: FiHeadphones,
         title: "Customer service",
-        description: "It's not actually free we just price it into the products."
+        description: "Get help with products, orders, delivery, and returns."
     },
     {
         icon: FiTruck,
-        title: "Fast Free Shipping",
-        description: "Get free shipping on orders of $150 or more"
+        title: "Delivery support",
+        description: "Confirm delivery availability and timing before placing an order."
     },
     {
         icon: HiOutlineUserGroup,
-        title: "Refer a friend",
-        description: "Refer a friend and get 15% off each other."
+        title: "Product guidance",
+        description: "Compare options and find the right technology for your setup."
     },
     {
         icon: HiOutlineShieldCheck,
-        title: "Secure payment",
-        description: "Your payment information is processed securely"
+        title: "Flexible checkout",
+        description: "Choose from the payment methods available at checkout."
     }
 ];
 

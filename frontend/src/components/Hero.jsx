@@ -27,9 +27,9 @@ import useReducedMotion from '../lib/useReducedMotion';
 // — and the continuously animating third-party scene is never requested at
 // all, which is the point of the preference.
 //
-// The "Shop Now" href is still `#`. It is one of the thirteen dead
-// interactions in FE-014 / PORT-002, and resolving those is Phase 5's job, not
-// this one's.
+// FE-014 / PORT-002 — "Shop Now" pointed at `#`. It is the primary call to
+// action of the homepage, above the fold, and it scrolled you to the top of the
+// page you were already at the top of. It goes to the catalogue.
 
 const HEADLINE = 'Next-Gen Tech, Delivered.'
 const SUBHEAD =
@@ -71,7 +71,7 @@ const HeroContent = ({ animated }) => (
                 {SUBHEAD}
             </p>
             <Link
-                to="#"
+                to="/products"
                 className="hidden md:inline-block mt-[25px] px-[20px] py-[15px] bg-[#6a5acd] text-[#f4f4f4] text-[14px] leading-[20px] rounded-lg font-michroma fill-button fill-button-hero"
             >
                 Shop Now

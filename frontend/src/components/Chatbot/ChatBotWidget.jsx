@@ -1,8 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FiMessageSquare, FiX } from 'react-icons/fi';
 
 import ChatInterface from './ChatInterface'
+import { onOpenSupportChat } from '../../lib/supportChat.js'
 
 // FE-027 — one widget, one owner of `isOpen`, one `ChatInterface`.
 //
@@ -27,6 +28,12 @@ const ChatBotWidget = () => {
 
   const close = useCallback(() => setIsOpen(false), [])
   const toggle = useCallback(() => setIsOpen((open) => !open), [])
+
+  // FE-014 — Contact's "Live Tech Support" card promised a chat and linked to
+  // `#`, while the chat it was promising sat one component away with its open
+  // state private to this file. The card asks for it by event now; the button
+  // below remains the only other way in.
+  useEffect(() => onOpenSupportChat(() => setIsOpen(true)), [])
 
   return (
     <>

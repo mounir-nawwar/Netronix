@@ -8,7 +8,6 @@ import HeroVideo from '../components/HeroVideo'
 import FeaturedProduct from '../components/FeaturedProduct'
 import ShopTheLook from '../components/ShopTheLook'
 import CountdownBanner from '../components/CountdownBanner'
-import Testimonials from '../components/Testimonials'
 import Seo from '../components/Seo'
 import { organizationLd, websiteLd } from '../lib/seo'
 
@@ -71,9 +70,6 @@ const Home = () => {
       </div>
       <div className="paint-on-approach" style={{ '--approach-height': '900px' }}>
         <ShopTheLook/>
-      </div>
-      <div className="paint-on-approach" style={{ '--approach-height': '1190px' }}>
-        <Testimonials />
       </div>
     </div>
   )
