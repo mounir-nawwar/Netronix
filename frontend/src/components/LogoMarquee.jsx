@@ -90,10 +90,10 @@ const LogoMarquee = () => {
           }
         `}
       </style>
-      <section className="overflow-visible py-4 md:py-8 -mt-6 md:-mt-24 relative">
+      <section className="overflow-visible py-4 md:py-8 mt-0 md:-mt-12 relative">
         {/* First marquee - rotated counterclockwise and moving right */}
-        <div className="relative transform -rotate-[3deg] z-20 py-3 md:py-6 overflow-hidden bg-[#f9f9f9] shadow-md -mx-1 mb-8 md:mb-14 w-[110%]">
-          <div className={`flex whitespace-nowrap ${reducedMotion ? '' : 'animate-marquee-right'}`}>
+        <div className="relative transform -rotate-[3deg] z-20 py-4 md:py-8 overflow-hidden bg-[#f9f9f9] shadow-md -mx-1 mb-8 md:mb-14 w-[110%]">
+          <div className={`flex w-max whitespace-nowrap ${reducedMotion ? '' : 'animate-marquee-right'}`}>
             {allLogos.map((logo, index) => (
               <div 
                 key={`top-${logo.id}-${index}`} 
@@ -127,8 +127,8 @@ const LogoMarquee = () => {
         </div>
         
         {/* Second marquee - rotated clockwise and moving left */}
-        <div className="relative transform rotate-[4deg] -mt-6 md:-mt-12 py-3 md:py-6 bg-[#6a5acd] z-10 overflow-hidden w-[110%]">
-          <div className={`flex whitespace-nowrap ${reducedMotion ? '' : 'animate-marquee-left'}`}>
+        <div className="relative transform rotate-[4deg] -mt-2 md:-mt-4 py-4 md:py-8 bg-[#6a5acd] z-10 overflow-hidden w-[110%]">
+          <div className={`flex w-max whitespace-nowrap ${reducedMotion ? '' : 'animate-marquee-left'}`}>
             {allLogos.map((logo, index) => (
               <div 
                 key={`bottom-${logo.id}-${index}`} 

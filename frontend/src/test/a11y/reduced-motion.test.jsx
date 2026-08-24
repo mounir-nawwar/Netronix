@@ -124,6 +124,27 @@ describe('LogoMarquee', () => {
         expect(container.querySelector('.animate-marquee-right')).not.toBeNull()
     })
 
+    it('uses duplicated max-content tracks and leaves safe vertical room for both tapes', async () => {
+        setReducedMotion(false)
+        const { default: LogoMarquee } = await import('../../components/LogoMarquee.jsx')
+        const { container } = render(<LogoMarquee />)
+        const rightTrack = container.querySelector('.animate-marquee-right')
+        const leftTrack = container.querySelector('.animate-marquee-left')
+
+        for (const track of [rightTrack, leftTrack]) {
+            expect(track).toHaveClass('w-max')
+            expect(track.children).toHaveLength(18)
+            const sources = [...track.querySelectorAll('img')].map((image) => image.getAttribute('src'))
+            expect(sources.slice(0, 9)).toEqual(sources.slice(9))
+        }
+
+        const section = rightTrack.closest('section')
+        expect(section).toHaveClass('mt-0', 'md:-mt-12')
+        expect(section).not.toHaveClass('-mt-6', 'md:-mt-24')
+        expect(rightTrack.parentElement).toHaveClass('py-4', 'md:py-8')
+        expect(leftTrack.parentElement).toHaveClass('-mt-2', 'md:-mt-4', 'py-4', 'md:py-8')
+    })
+
     it('drops the animation classes under reduce, keeping the logos', async () => {
         setReducedMotion(true)
         const { default: LogoMarquee } = await import('../../components/LogoMarquee.jsx')
