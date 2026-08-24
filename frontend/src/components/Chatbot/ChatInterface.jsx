@@ -257,7 +257,7 @@ const ChatInterface = ({ onClose }) => {
       role="dialog"
       aria-modal="true"
       aria-labelledby="chat-dialog-title"
-      className="fixed bottom-8 right-8 w-80 md:w-96 h-[500px] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden z-50"
+      className="fixed bottom-4 left-4 right-4 h-[min(500px,calc(100dvh-2rem))] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden z-50 sm:bottom-8 sm:left-auto sm:right-8 sm:w-80 md:w-96"
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.95 }}

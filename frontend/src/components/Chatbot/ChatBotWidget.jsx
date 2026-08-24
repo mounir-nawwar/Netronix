@@ -44,7 +44,7 @@ const ChatBotWidget = () => {
         {isOpen && <ChatInterface onClose={close} />}
       </AnimatePresence>
 
-      {(!contactOwnsChatEntry || isOpen) && (
+      {!contactOwnsChatEntry && (
         <motion.button
           type="button"
           onClick={toggle}

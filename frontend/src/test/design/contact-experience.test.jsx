@@ -31,6 +31,7 @@ import ChatBotWidget from '../../components/Chatbot/ChatBotWidget.jsx'
 import { reset } from '../../lib/head.js'
 import {
     PHONE_DISPLAY,
+    PHONE_HREF,
     SALES_EMAIL,
     SUPPORT_EMAIL,
     buildContactMailto,
@@ -120,7 +121,7 @@ describe('what the page still has to do', () => {
     it('keeps the phone, sales and support routes actionable', () => {
         const { container } = withRouter()
 
-        expect(container.querySelector('a[href="tel:+96181995653"]')).not.toBeNull()
+        expect(container.querySelector(`a[href="${PHONE_HREF}"]`)).not.toBeNull()
         expect(container.textContent).toContain(PHONE_DISPLAY)
         expect(container.querySelector(`a[href="mailto:${SALES_EMAIL}"]`)).not.toBeNull()
         expect(container.querySelector(`a[href="mailto:${SUPPORT_EMAIL}"]`)).not.toBeNull()
@@ -155,8 +156,17 @@ describe('what the page still has to do', () => {
         )
 
         expect(screen.queryByRole('button', { name: /open support chat/i })).toBeNull()
-        await userEvent.click(screen.getByRole('button', { name: /start chat/i }))
-        expect(await screen.findByRole('button', { name: /close support chat/i })).toBeInTheDocument()
+        const startChat = screen.getByRole('button', { name: /start chat/i })
+        await userEvent.click(startChat)
+        const dialog = screen.getByRole('dialog')
+        const endChat = within(dialog).getByRole('button', { name: /end chat/i })
+        expect(screen.queryByRole('button', { name: /close support chat/i })).toBeNull()
+        expect(dialog.className).toContain('left-4')
+        expect(dialog.className).toContain('right-4')
+        expect(dialog.className).toContain('sm:left-auto')
+        expect(dialog.className).toContain('sm:w-80')
+        await userEvent.click(endChat)
+        await waitFor(() => expect(startChat).toHaveFocus())
       },
     )
 
