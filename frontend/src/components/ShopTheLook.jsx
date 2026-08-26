@@ -61,6 +61,30 @@ const ShopTheLook = () => {
         setActiveProduct((current) => (current < products.length ? current : 0));
     }, [products.length]);
 
+    // Warm the four primary product images as soon as the data-backed showcase
+    // is available. Previously each first hover initiated a cold request to a
+    // different manufacturer CDN, so the card appeared to lag even though the
+    // product selection itself was immediate. `Image` uses the normal browser
+    // cache without adding hidden DOM or blocking the workspace photograph.
+    useEffect(() => {
+        const preloaded = products
+            .map((product) => product.image?.[0])
+            .filter(Boolean)
+            .map((src) => {
+                const image = new Image();
+                image.decoding = 'async';
+                image.src = src;
+                return image;
+            });
+
+        return () => {
+            for (const image of preloaded) {
+                image.onload = null;
+                image.onerror = null;
+            }
+        };
+    }, [products]);
+
     // Update image height on resize
     useEffect(() => {
         const updateHeight = () => {

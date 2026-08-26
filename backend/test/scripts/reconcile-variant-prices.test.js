@@ -25,7 +25,7 @@ describe('reviewed catalog price plan', () => {
         expect(PLAN).toHaveLength(10)
         expect(PLAN.find((p) => p.name === 'Razer Cobra Gaming Mouse').finals)
             .toEqual({ Standard: 39.99, 'Pro (Wireless)': 129.99 })
-        expect(PLAN.find((p) => p.name === 'Apple MacBook M4').finals)
+        expect(PLAN.find((p) => p.name === 'Apple MacBook Pro 14-inch (M4)').finals)
             .toEqual({ '512GB': 1599, '1TB': 1799, '2TB': 2199 })
         expect(PLAN.find((p) => p.name === 'Apple iPhone Charger').finals)
             .toEqual({ '20W USB-C': 19, '35W Dual USB-C': 59 })

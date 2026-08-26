@@ -40,7 +40,7 @@ export const PLAN = [
         basis: '13-inch M3 MacBook Air launch configurations: $1,099 / $1,299.',
     },
     {
-        _id: '6a89ab116111a5cf6e199bf6', name: 'Apple MacBook M4', axis: 'Storage', basePrice: 1599,
+        _id: '6a89ab116111a5cf6e199bf6', name: 'Apple MacBook Pro 14-inch (M4)', axis: 'Storage', basePrice: 1599,
         finals: { '512GB': 1599, '1TB': 1799, '2TB': 2199 },
         basis: '14-inch base-M4 MacBook Pro configuration pricing.',
     },
