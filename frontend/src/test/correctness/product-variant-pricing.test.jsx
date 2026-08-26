@@ -17,9 +17,11 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import PropTypes from 'prop-types'
 
 import Product from '../../pages/Product.jsx'
+import ShopContextProvider from '../../context/ShopContext.jsx'
 import { ShopContext } from '../../context/shopContext.js'
 import { formatMoney } from '../../lib/money.js'
 import { entriesOf } from '../../lib/variant.js'
+import { setCatalog } from '../msw/handlers.js'
 
 /** Two priced axes, so a partial selection has more than one match. */
 const laptop = {
@@ -156,6 +158,24 @@ describe('Product page variant pricing', () => {
         await user.click(screen.getByRole('button', { name: '16 GB' }))
         await user.click(screen.getByRole('button', { name: '1 TB' }))
         expect(shownPrice()).toBe('$1,424.00')
+    })
+
+    it('reprices the production response shape through the real shop context', async () => {
+        const user = userEvent.setup()
+        setCatalog([mouse])
+
+        render(
+            <MemoryRouter initialEntries={[`/product/${mouse._id}`]}>
+                <ShopContextProvider>
+                    <Routes>
+                        <Route path="/product/:productId" element={<Product />} />
+                    </Routes>
+                </ShopContextProvider>
+            </MemoryRouter>,
+        )
+
+        await user.click(await screen.findByRole('button', { name: 'Pro (Wireless)' }))
+        expect(shownPrice()).toBe('$129.99')
     })
 
     it('derives the delta from the major unit when only that was stored', async () => {
