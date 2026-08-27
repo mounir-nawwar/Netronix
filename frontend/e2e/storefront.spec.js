@@ -282,7 +282,7 @@ test.describe('flow 10 — wishlist (FE-005, FE-013)', () => {
 
 // ---------------------------------------------------------------------------
 test.describe('flow 16 — the chatbot (FE-027, FE-028, FE-029, BE-001)', () => {
-    test('opens one widget, sends a message, and ends its session on close', async ({ page }) => {
+    test('opens one widget, reports itself offline, and ends its session on close', async ({ page }) => {
         const ends = []
         page.on('request', (request) => {
             if (request.url().includes('/api/chatbot/end')) ends.push(request.url())
@@ -299,18 +299,26 @@ test.describe('flow 16 — the chatbot (FE-027, FE-028, FE-029, BE-001)', () => 
         await expect(page.getByRole('log')).toHaveCount(1)
         await expect(page.getByRole('log')).toBeVisible()
 
-        // The greeting arrives from the API. No OpenAI key is configured, so it
-        // is the structured offline fallback — still `{ text, links[] }`, and
-        // still plain text with no markup.
+        // The greeting arrives from the API — still `{ text, links[] }`, still
+        // plain text with no markup.
         await expect(page.getByRole('log').getByText(/\S/).first()).toBeVisible()
 
-        // `getByLabel` matches substrings, and Phase 4 named the send button
-        // "Send message" (A11Y-009), so the unanchored name now matches two
-        // controls. Anchored to the input's exact name.
-        const chatInput = page.getByLabel('Message', { exact: true })
-        await chatInput.fill('Do you sell laptops?')
-        await chatInput.press('Enter')
-        await expect(page.getByText('Do you sell laptops?')).toBeVisible()
+        // This harness configures no `OPENAI_API_KEY`, so the assistant cannot
+        // answer, and the API says so: HTTP 200 carrying `degraded: true`.
+        //
+        // This test used to send a message here and watch it appear, and it
+        // passed — because the canned "temporarily unavailable" reply was
+        // indistinguishable from a real one. That is precisely the defect the
+        // `degraded` flag exists to fix, so the send path can no longer be
+        // exercised in an environment with no key: the composer is disabled on
+        // purpose. A healthy conversation is covered against a mocked API in
+        // `src/test/characterisation/chat-interface.test.jsx`, which can supply
+        // a working assistant; a browser without a key cannot.
+        await expect(page.getByRole('status').filter({ hasText: /assistant is offline/i }))
+            .toBeVisible()
+        await expect(page.getByLabel('Message', { exact: true }))
+            .toHaveAttribute('aria-disabled', 'true')
+        await expect(page.getByRole('button', { name: /send message/i })).toBeDisabled()
 
         // FE-028 — closing ends the real session, exactly once.
         await page.getByRole('button', { name: /end chat/i }).click()

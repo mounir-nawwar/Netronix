@@ -7,6 +7,7 @@ import { FiX, FiMessageSquare } from "react-icons/fi";
 
 import * as chatApi from '../../api/chat';
 import useDialog from '../../lib/useDialog';
+import { SUPPORT_EMAIL, buildMailto } from '../../lib/contact';
 
 // SEC-004 — the XSS sink that used to live here is gone.
 //
@@ -76,6 +77,16 @@ const ChatInterface = ({ onClose }) => {
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
+  /**
+   * The assistant is reachable but not answering.
+   *
+   * The API returns HTTP 200 with a canned sentence whenever the model cannot
+   * be reached — no key, an expired one, a 429 from the provider — so without
+   * this the widget rendered a total outage as one unhelpful reply, repeated
+   * for every question asked. That is the shape the failure was reported in:
+   * "the chatbot isn't working", from a chat that looked like it was.
+   */
+  const [unavailable, setUnavailable] = useState(false);
   const [lastActivity, setLastActivity] = useState(Date.now());
   const chatEndRef = useRef(null);
   const inputRef = useRef(null);
@@ -143,7 +154,7 @@ const ChatInterface = ({ onClose }) => {
     const initialise = async () => {
       setIsTyping(true);
       try {
-        const { sessionId, greeting } = await chatApi.startChat();
+        const { sessionId, greeting, degraded } = await chatApi.startChat();
         if (cancelled) {
           // Unmounted mid-flight: end the session we just opened rather than
           // leaving it for the TTL index.
@@ -152,6 +163,7 @@ const ChatInterface = ({ onClose }) => {
         }
 
         sessionIdRef.current = sessionId;
+        setUnavailable(degraded);
         setMessages([{
           type: 'bot',
           text: greeting?.text || GREETING_FALLBACK,
@@ -163,6 +175,12 @@ const ChatInterface = ({ onClose }) => {
         console.error('Could not start the chat session', error);
         // Honest about what happened, and without a session id, so nothing
         // later tries to send into a conversation that was never opened.
+        //
+        // Marking it unavailable is what stops the composer accepting input
+        // it cannot send: `handleSendMessage` returns early when there is no
+        // session, so before this the Send button did *nothing at all* — no
+        // bubble, no error, the typed text just sat in the box.
+        setUnavailable(true);
         setMessages([{
           type: 'bot',
           text: 'Support chat is unavailable right now. Please try again in a moment.',
@@ -200,6 +218,7 @@ const ChatInterface = ({ onClose }) => {
   };
 
   const handleSendMessage = async () => {
+    if (unavailable) return;          // nothing is going to answer it
     if (message.trim() === '') return;
     if (!sessionIdRef.current) return;   // no session, nothing to send into
 
@@ -215,6 +234,7 @@ const ChatInterface = ({ onClose }) => {
         sessionId: sessionIdRef.current,
         message: messageToSend,
       });
+      if (reply.degraded) setUnavailable(true);
       setMessages(prev => [...prev, {
         type: 'bot',
         text: reply.text || 'I received your message.',
@@ -367,7 +387,13 @@ const ChatInterface = ({ onClose }) => {
         </AnimatePresence>
       </div>
 
-      {/* Quick Replies */}
+      {/* Quick Replies.
+          Hidden entirely when the assistant is offline. Leaving them up would
+          be the same defect the notice below fixes, in a smaller frame: a
+          prompt to ask a question nothing is going to answer. Disabling them
+          would be honest too, but a row of dead chips is clutter — there is
+          nothing to suggest. */}
+      {!unavailable && (
       <div className="px-4 py-2 border-t border-gray-100 bg-white">
         <p className="text-xs font-michroma text-gray-500 mb-2">Suggested questions:</p>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
@@ -387,17 +413,51 @@ const ChatInterface = ({ onClose }) => {
           ))}
         </div>
       </div>
+      )}
 
       {/* Input Area */}
       <div className="p-3 border-t border-gray-200 bg-white">
+        {unavailable && (
+          /* Said once, plainly, instead of answering every question with the
+             same sentence. `role="status"` so it is announced rather than
+             merely drawn — a visitor who cannot see the panel would otherwise
+             keep typing into a composer that has stopped working. */
+          <p
+            role="status"
+            className="mb-3 border-l-2 border-[#6a5acd] bg-gray-50 px-3 py-2 text-xs text-gray-700"
+          >
+            The assistant is offline right now, so it cannot answer questions.
+            Email{' '}
+            <a
+              href={buildMailto({ to: SUPPORT_EMAIL, subject: 'Support request' })}
+              className="underline decoration-[#6a5acd]/40 underline-offset-2"
+            >
+              {SUPPORT_EMAIL}
+            </a>{' '}
+            and a person will reply.
+          </p>
+        )}
+
         <div className="flex items-center gap-2">
+          {/* `readOnly` + `aria-disabled` below, deliberately not `disabled`.
+              An effect focuses this input on mount, and the offline state
+              arrives a moment later when `/init` answers — so `disabled` would
+              remove the element that currently holds focus, dropping focus to
+              `<body>`, outside the panel. That breaks the focus trap A11Y-002
+              exists to guarantee, and the browser suite caught it. Read-only
+              keeps it in the tab order and reachable, so a keyboard or
+              screen-reader user lands on it and is told why it is not
+              accepting anything. */}
           <input
             ref={inputRef}
             type="text"
             value={message}
             maxLength={MESSAGE_MAX_LENGTH}
             aria-label="Message"
+            readOnly={unavailable}
+            aria-disabled={unavailable}
             onChange={(e) => {
+              if (unavailable) return;
               setMessage(e.target.value);
               setLastActivity(Date.now());
             }}
@@ -407,17 +467,19 @@ const ChatInterface = ({ onClose }) => {
               }
               setLastActivity(Date.now());
             }}
-            placeholder="Type your message..."
-            className="flex-1 border border-gray-200 rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-[#6a5acd] text-sm"
+            placeholder={unavailable ? 'The assistant is offline' : 'Type your message...'}
+            className={`flex-1 border border-gray-200 rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-[#6a5acd] text-sm ${
+              unavailable ? 'cursor-not-allowed bg-gray-50 text-gray-500' : ''
+            }`}
           />
           <motion.button
             type="button"
             onClick={handleSendMessage}
             aria-label="Send message"
-            className="w-10 h-10 rounded-full bg-[#6a5acd] text-white flex items-center justify-center"
+            className="w-10 h-10 rounded-full bg-[#6a5acd] text-white flex items-center justify-center disabled:cursor-not-allowed disabled:bg-gray-300"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            disabled={message.trim() === '' || isTyping}
+            disabled={unavailable || message.trim() === '' || isTyping}
           >
             <IoMdSend aria-hidden="true" className="w-5 h-5" />
           </motion.button>

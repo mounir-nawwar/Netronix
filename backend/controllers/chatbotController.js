@@ -37,6 +37,27 @@ const structuredReply = (aiResponse, fallbackText) => {
     return {
         text: typeof text === 'string' ? text : fallbackText,
         links: Array.isArray(aiResponse?.links) ? aiResponse.links : [],
+        // Whether the assistant actually answered.
+        //
+        // `processChatMessage` has always returned `success: false` from its
+        // `fallback()` path — a missing key, a 401, a 429, a network error — and
+        // this function has always thrown it away, so every one of those was
+        // delivered as a healthy `200 { success: true }` carrying a canned
+        // sentence. Two consequences, and the second is the worse one:
+        //
+        //   * nothing could alert. An error-rate dashboard watching this
+        //     endpoint sees a hundred percent success while the assistant
+        //     answers every question with the same line;
+        //   * the client could not tell either, so the widget rendered the
+        //     failure as an ordinary reply. The chat *looked* like it was
+        //     working, which is why it was reported as "not working" rather
+        //     than as "returning an error".
+        //
+        // Reported as `degraded` on the 200 rather than by flipping the
+        // envelope's `success` to false, deliberately: `assertSuccess` in
+        // `frontend/src/api/client.js` throws on `success: false`, so that
+        // would discard the very message the client needs to show.
+        degraded: aiResponse?.success === false,
     };
 };
 
@@ -73,7 +94,7 @@ const initializeChat = asyncHandler(async (req, res) => {
     const sessionId = uuidv4();
 
     const aiResponse = await processChatMessage('Hello', { history: [] });
-    const { text, links } = structuredReply(aiResponse, GREETING_FALLBACK);
+    const { text, links, degraded } = structuredReply(aiResponse, GREETING_FALLBACK);
     const timestamp = new Date();
 
     await chatSessionModel.create({
@@ -89,6 +110,7 @@ const initializeChat = asyncHandler(async (req, res) => {
         success: true,
         sessionId,
         greeting: { text, links, timestamp },
+        degraded,
     });
 });
 
@@ -103,7 +125,7 @@ const handleMessage = asyncHandler(async (req, res) => {
     const history = session.messages.slice(-PROMPT_HISTORY_TURNS);
 
     const aiResponse = await processChatMessage(message, { history });
-    const { text, links } = structuredReply(aiResponse, REPLY_FALLBACK);
+    const { text, links, degraded } = structuredReply(aiResponse, REPLY_FALLBACK);
     const timestamp = new Date();
 
     // Commit the complete turn in one database operation after the external
@@ -144,6 +166,7 @@ const handleMessage = asyncHandler(async (req, res) => {
         message: text,
         text,
         links,
+        degraded,
     });
 });
 

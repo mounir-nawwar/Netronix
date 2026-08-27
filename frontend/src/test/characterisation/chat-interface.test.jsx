@@ -25,7 +25,7 @@ import { join } from 'node:path'
 
 import ShopContextProvider from '../../context/ShopContext.jsx'
 import ChatInterface from '../../components/Chatbot/ChatInterface.jsx'
-import { setChatGreeting, requestLog } from '../msw/handlers.js'
+import { setChatDegraded, setChatGreeting, requestLog } from '../msw/handlers.js'
 
 const renderChat = () =>
     render(
@@ -275,5 +275,60 @@ describe('chat session lifecycle (FE-028, FE-029 — FIXED)', () => {
         }
         walk(join(process.cwd(), 'src'))
         expect(mounts).toEqual(['ChatBotWidget.jsx'])
+    })
+})
+
+// ---------------------------------------------------------------------------
+describe('an assistant that cannot answer says so (SEC/FE — degraded chat)', () => {
+    // The failure this covers was reported as "the chatbot isn't working", and
+    // the reason it was described that way rather than as an error is that it
+    // did not look like one. `/api/chatbot/init` and `/message` return HTTP 200
+    // with `success: true` even when the model is unreachable — no key, an
+    // expired one, a 429 from the provider — carrying a canned sentence that
+    // the widget rendered as an ordinary reply. Every question got the same
+    // answer, forever, and nothing on the server or the client could tell that
+    // anything had gone wrong.
+    it('renders a plain notice and stops accepting messages', async () => {
+        setChatDegraded(true)
+        renderChat()
+
+        expect(await screen.findByRole('status')).toHaveTextContent(/assistant is offline/i)
+        // And it points at something that does work.
+        expect(screen.getByRole('link', { name: /support@/i })).toHaveAttribute(
+            'href', expect.stringContaining('mailto:'),
+        )
+
+        // Read-only rather than `disabled`, and this matters: an effect focuses
+        // this input on mount, so disabling it when the offline state arrives
+        // would drop focus out of the dialog and break the focus trap. It stays
+        // reachable and announces itself as unavailable.
+        const composer = screen.getByLabelText('Message')
+        expect(composer).toHaveAttribute('readonly')
+        expect(composer).toHaveAttribute('aria-disabled', 'true')
+        expect(composer).not.toBeDisabled()
+        expect(screen.getByRole('button', { name: /send message/i })).toBeDisabled()
+
+        // And nothing invites a question that will not be answered.
+        expect(screen.queryByText(/suggested questions/i)).not.toBeInTheDocument()
+    })
+
+    it('behaves normally when the assistant is answering', async () => {
+        setChatDegraded(false)
+        renderChat()
+
+        await screen.findByText(/welcome/i)
+        expect(screen.queryByText(/assistant is offline/i)).not.toBeInTheDocument()
+        expect(screen.getByLabelText('Message')).not.toHaveAttribute('readonly')
+        expect(screen.getByText(/suggested questions/i)).toBeInTheDocument()
+    })
+
+    it('treats a response with no flag at all as healthy', async () => {
+        // A backend that predates the field sends no `degraded`. The widget must
+        // behave exactly as it did before rather than declaring an outage.
+        setChatDegraded(null)
+        renderChat()
+
+        await screen.findByText(/welcome/i)
+        expect(screen.getByLabelText('Message')).not.toHaveAttribute('readonly')
     })
 })

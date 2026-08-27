@@ -189,6 +189,7 @@ const DEFAULT_GREETING = 'Hello! Welcome to Netronix support chat. How can I hel
 
 let chatGreeting = DEFAULT_GREETING
 let chatLinks = []
+let chatDegraded = false
 
 /**
  * Set the greeting the chatbot API returns.
@@ -205,7 +206,27 @@ export function setChatGreeting(text, links = []) {
 export function resetChatGreeting() {
     chatGreeting = DEFAULT_GREETING
     chatLinks = []
+    chatDegraded = false
 }
+
+/**
+ * Make the assistant answer without answering.
+ *
+ * Pass `null` to omit the field entirely, which is what a backend deployed
+ * before this flag existed sends.
+ *
+ * The real API returns HTTP 200 with a canned sentence and `degraded: true`
+ * whenever the model is unreachable — no key, an expired one, a 429 from the
+ * provider. Modelling it as a *successful* response is the point: an error
+ * status would be a different code path, and the reason this failure went
+ * unnoticed in production is precisely that it does not use one.
+ */
+export function setChatDegraded(degraded = true) {
+    chatDegraded = degraded
+}
+
+/** `degraded: false` and an absent key mean the same thing to the client. */
+const degradedField = () => (chatDegraded === null ? {} : { degraded: chatDegraded })
 
 /** Counts every request the handlers see, so tests can assert on fetch volume. */
 export const requestLog = []
@@ -388,13 +409,20 @@ export const handlers = [
                 links: chatLinks,
                 timestamp: new Date('2026-08-10T09:30:00Z').toISOString(),
             },
+            ...degradedField(),
         })
     }),
 
     http.post(`${BACKEND_URL}/api/chatbot/message`, async ({ request }) => {
         record('POST', '/api/chatbot/message')
         const { message } = await request.json()
-        return HttpResponse.json({ success: true, message: `echo: ${message}`, text: `echo: ${message}`, links: chatLinks })
+        return HttpResponse.json({
+            success: true,
+            message: `echo: ${message}`,
+            text: `echo: ${message}`,
+            links: chatLinks,
+            ...degradedField(),
+        })
     }),
 
     http.post(`${BACKEND_URL}/api/chatbot/end`, () => {
