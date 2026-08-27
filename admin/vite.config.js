@@ -1,6 +1,16 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+import { stripVercelEnv } from './scripts/stripVercelEnv.js'
+
+// SEC — Vercel injects its build metadata already `VITE_`-prefixed, and Vite
+// inlines every `VITE_*` variable into the client bundle whether or not anything
+// reads it. Nineteen keys were shipping, including the full commit message and
+// the commit author's name. Stripped at module scope, above `defineConfig`,
+// because Vite has read the environment by the time any plugin hook runs.
+// See `scripts/stripVercelEnv.js`.
+stripVercelEnv()
+
 // PERF-003 — the admin built as a single 965 kB chunk (283 kB gzip) and
 // Recharts was the bulk of it, for the benefit of exactly one route. Route
 // splitting in `App.jsx` moves the chart page out of the entry; this puts the

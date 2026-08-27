@@ -39,7 +39,7 @@ export default [
   },
   {
     // Tests and tooling config run in Node, not in the browser.
-    files: ['src/test/**/*.{js,jsx}', '**/*.test.{js,jsx}', 'vitest.config.js', 'vite.config.js', 'eslint.config.js', 'postcss.config.js', 'tailwind.config.js'],
+    files: ['src/test/**/*.{js,jsx}', '**/*.test.{js,jsx}', 'scripts/**/*.{js,mjs}', 'vitest.config.js', 'vite.config.js', 'eslint.config.js', 'postcss.config.js', 'tailwind.config.js'],
     languageOptions: {
       globals: { ...globals.node },
     },

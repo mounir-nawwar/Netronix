@@ -1,6 +1,16 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+import { stripVercelEnv } from './scripts/stripVercelEnv.js'
+
+// SEC — Vercel injects its build metadata already `VITE_`-prefixed, and Vite
+// inlines every `VITE_*` variable into the client bundle whether or not anything
+// reads it. Nineteen keys were shipping, including the full commit message and
+// the commit author's name. Stripped at module scope, above `defineConfig`,
+// because Vite has read the environment by the time any plugin hook runs.
+// See `scripts/stripVercelEnv.js`.
+stripVercelEnv()
+
 // PERF-003 — this file used to be eight lines with no `build` section at all.
 //
 // Route splitting (`React.lazy` in `App.jsx`) is half the fix; the other half
