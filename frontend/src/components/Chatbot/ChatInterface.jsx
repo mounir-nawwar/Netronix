@@ -8,6 +8,7 @@ import { FiX, FiMessageSquare } from "react-icons/fi";
 import * as chatApi from '../../api/chat';
 import useDialog from '../../lib/useDialog';
 import { CONTACT_EMAIL, buildMailto } from '../../lib/contact';
+import Button from '../Button';
 
 // SEC-004 — the XSS sink that used to live here is gone.
 //
@@ -287,38 +288,48 @@ const ChatInterface = ({ onClose }) => {
       role="dialog"
       aria-modal="true"
       aria-labelledby="chat-dialog-title"
-      className="fixed bottom-4 left-4 right-4 h-[min(500px,calc(100dvh-2rem))] bg-white rounded-xl shadow-2xl flex flex-col overflow-hidden z-50 sm:bottom-8 sm:left-auto sm:right-8 sm:w-80 md:w-96"
+      // Square now, `bg-plate` and a hairline `border-rule` in place of
+      // `rounded-xl bg-white`, matching `AccountMenu` — the other floating
+      // panel on the site with the same spring entrance. The panel-anchoring
+      // classes (`left-4 right-4 … sm:left-auto sm:w-80`) are unchanged: a
+      // design test pins them literally, and they are not a colour or shape
+      // decision, only a position and a width.
+      className="fixed bottom-4 left-4 right-4 z-50 flex h-[min(500px,calc(100dvh-2rem))] flex-col overflow-hidden border border-rule bg-plate shadow-[0_8px_24px_rgba(18,18,20,0.14)] sm:bottom-8 sm:left-auto sm:right-8 sm:w-80 md:w-96"
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: 20, scale: 0.95 }}
       transition={{ type: "spring", stiffness: 400, damping: 20 }}
     >
-      {/* Header */}
-      <div className="bg-gradient-to-r from-[#6a5acd] to-[#8470ff] px-4 py-3 text-white flex items-center justify-between">
+      {/* Header — solid `ink`, not a purple-to-lavender gradient. The same
+          fill `Button`'s `solid` variant and the launcher use, so the panel
+          reads as the same product as the tile that opened it. */}
+      <div className="flex items-center justify-between bg-ink px-4 py-3.5 text-paper">
         <div className="flex items-center gap-2">
-          <FiMessageSquare aria-hidden="true" className="w-5 h-5" />
-          <h2 id="chat-dialog-title" className="font-michroma text-sm">Netronix Support</h2>
+          <FiMessageSquare aria-hidden="true" className="h-4 w-4" />
+          <h2 id="chat-dialog-title" className="font-michroma text-[10px] uppercase tracking-[0.18em]">
+            Netronix Support
+          </h2>
         </div>
         <div className="flex items-center gap-2">
           {/* Named, because it is the control that ends the session (FE-028)
               and a test has to be able to find it the way a person does. The
               wider dialog semantics — role, modality, focus trap — are A11Y-002
-              in Phase 4. */}
-          <motion.button
+              in Phase 4. Plain `<button>`, not `motion.button`: no control on
+              the site scales on hover any more (`Button.jsx`), and this one
+              should not be the exception. */}
+          <button
             type="button"
             onClick={handleEndChat}
             aria-label="End chat"
-            className="p-1 rounded-full hover:bg-white/10 transition-colors"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+            className="p-1.5 transition-colors hover:bg-paper/10"
           >
-            <FiX aria-hidden="true" className="w-5 h-5" />
-          </motion.button>
+            <FiX aria-hidden="true" className="w-4 h-4" />
+          </button>
         </div>
       </div>
 
       {/* Chat Messages */}
-      <div className="flex-1 p-4 overflow-y-auto bg-gray-50" role="log" aria-live="polite" aria-label="Chat transcript">
+      <div className="flex-1 p-4 overflow-y-auto bg-wash" role="log" aria-live="polite" aria-label="Chat transcript">
         <AnimatePresence>
           {messages.map((msg, index) => (
             <motion.div
@@ -329,11 +340,18 @@ const ChatInterface = ({ onClose }) => {
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
             >
+              {/* Square, like every other surface on the site now — no
+                  `rounded-xl`, so no cut corner to name `rounded-tr/tl-none`
+                  against either. `ink`/`paper` for a customer's own message,
+                  the same solid fill the header, the launcher and every
+                  primary button on the site share; `plate` with a hairline
+                  `border-rule` for the assistant's, matching `AccountMenu`
+                  and the products dropdown. */}
               <div
-                className={`max-w-[80%] rounded-xl p-3 ${
+                className={`max-w-[80%] p-3 ${
                   msg.type === 'user'
-                    ? 'bg-[#6a5acd] text-white rounded-tr-none'
-                    : 'bg-white border border-gray-200 shadow-sm rounded-tl-none'
+                    ? 'bg-ink text-paper'
+                    : 'border border-rule bg-plate'
                 }`}
               >
                 {/* Both halves render through JSX, so text is escaped whoever
@@ -351,7 +369,11 @@ const ChatInterface = ({ onClose }) => {
                         // while the assistant has no key: `links` is always
                         // `[]` in that state, so this never rendered where any
                         // scan could find it — until the day the key arrives.
-                        className="text-statepurp font-medium text-sm hover:underline bg-wash px-2 py-0.5 rounded-md transition-colors"
+                        // Square now, and inverts to `ink`/`paper` on hover —
+                        // the same filled-on-hover the site's tags and
+                        // buttons already use — rather than a rounded pill
+                        // that only ever underlined.
+                        className="bg-wash px-2 py-0.5 text-sm font-medium text-statepurp transition-colors hover:bg-ink hover:text-paper"
                       >
                         {link.label}
                       </Link>
@@ -362,11 +384,11 @@ const ChatInterface = ({ onClose }) => {
                 {/* `ink-40`, not `text-gray-500` (#6b7280 ≈ 4.8:1 on white,
                     close enough to the 4.5:1 line that a mid-fade axe scan
                     caught it as a violation on other pages before). This
-                    bubble is `bg-white`, one of the three surfaces
-                    `tailwind.config.js` verifies `ink-40` against — 5.2:1
-                    here. */}
+                    bubble is `bg-plate` (`#ffffff`, the same white by name),
+                    one of the three surfaces `tailwind.config.js` verifies
+                    `ink-40` against — 5.2:1 here. */}
                 <p className={`text-[10px] mt-1 text-right ${
-                  msg.type === 'user' ? 'text-white/70' : 'text-ink-40'
+                  msg.type === 'user' ? 'text-paper/70' : 'text-ink-40'
                 }`}>
                   {formatTime(msg.timestamp)}
                 </p>
@@ -383,20 +405,28 @@ const ChatInterface = ({ onClose }) => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <div className="bg-white border border-gray-200 shadow-sm rounded-xl rounded-tl-none p-3">
+              {/* Square bubble, matching the assistant's message bubbles above
+                  — the dots inside stay circular. That is a legitimate,
+                  narrow exception to the site's hard edges: a bouncing square
+                  reads as a glitch, not as "typing", and this is the one
+                  universally-understood shape for it. Recoloured from the raw
+                  `#6a5acd` to `ink-40`: this is a processing state, not a
+                  resting accent fill, the same distinction the toasts and the
+                  offline notice below already draw. */}
+              <div className="border border-rule bg-plate p-3">
                 <div className="flex space-x-1">
                   <motion.div
-                    className="w-2 h-2 bg-[#6a5acd] rounded-full"
+                    className="w-2 h-2 bg-ink-40 rounded-full"
                     animate={{ y: [0, -5, 0] }}
                     transition={{ repeat: Infinity, duration: 1, delay: 0 }}
                   />
                   <motion.div
-                    className="w-2 h-2 bg-[#6a5acd] rounded-full"
+                    className="w-2 h-2 bg-ink-40 rounded-full"
                     animate={{ y: [0, -5, 0] }}
                     transition={{ repeat: Infinity, duration: 1, delay: 0.2 }}
                   />
                   <motion.div
-                    className="w-2 h-2 bg-[#6a5acd] rounded-full"
+                    className="w-2 h-2 bg-ink-40 rounded-full"
                     animate={{ y: [0, -5, 0] }}
                     transition={{ repeat: Infinity, duration: 1, delay: 0.4 }}
                   />
@@ -415,19 +445,26 @@ const ChatInterface = ({ onClose }) => {
           would be honest too, but a row of dead chips is clutter — there is
           nothing to suggest. */}
       {!unavailable && (
-      <div className="px-4 py-2 border-t border-gray-100 bg-white">
-        {/* `ink-40` and `statepurp`, not `text-gray-500` and the raw
-            `#6a5acd` — this row is hidden whenever `unavailable` is true, so
-            it never rendered where the E2E harness (no API key, always
-            degraded) could scan it, but it is the first thing a working
-            assistant shows. */}
-        <p className="text-xs font-michroma text-ink-40 mb-2">Suggested questions:</p>
+      <div className="border-t border-rule bg-plate px-4 py-3">
+        {/* `ink-40` and the eyebrow treatment, not `text-gray-500` in the body
+            face — this row is hidden whenever `unavailable` is true, so it
+            never rendered where the E2E harness (no API key, always degraded)
+            could scan it, but it is the first thing a working assistant
+            shows. */}
+        <p className="mb-2 font-michroma text-[10px] uppercase tracking-[0.14em] text-ink-40">
+          Suggested questions
+        </p>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {/* Outline chips, not filled purple pills with a raw-hex hover —
+              the same `border-rule` / `hover:border-ink` recipe every quiet
+              action on the site uses now. A resting `statepurp` fill here was
+              the one thing left treating the accent as decoration rather
+              than as an interaction colour. */}
           {quickReplies.map((reply, index) => (
             <button
               key={`reply-${index}`}
               type="button"
-              className="px-3 py-1.5 bg-wash text-statepurp text-xs rounded-full whitespace-nowrap hover:bg-[#f5f3ff] transition-colors"
+              className="whitespace-nowrap border border-rule bg-plate px-3 py-1.5 text-xs text-ink transition-colors hover:border-ink hover:bg-wash"
               onClick={() => {
                 setMessage(reply);
                 inputRef.current?.focus();
@@ -442,21 +479,25 @@ const ChatInterface = ({ onClose }) => {
       )}
 
       {/* Input Area */}
-      <div className="p-3 border-t border-gray-200 bg-white">
+      <div className="border-t border-rule bg-plate p-3">
         {unavailable && (
           /* Said once, plainly, instead of answering every question with the
              same sentence. `role="status"` so it is announced rather than
              merely drawn — a visitor who cannot see the panel would otherwise
-             keep typing into a composer that has stopped working. */
+             keep typing into a composer that has stopped working.
+
+             `border-ink`, not `statepurp` — the same call Contact's own
+             hand-off notice makes and for the same reason: the accent is for
+             interaction, and a status line sitting there at rest is not one. */
           <p
             role="status"
-            className="mb-3 border-l-2 border-[#6a5acd] bg-gray-50 px-3 py-2 text-xs text-gray-700"
+            className="mb-3 border-l-2 border-ink bg-wash px-3 py-2 text-xs text-ink-60"
           >
             The assistant is offline right now, so it cannot answer questions.
             Written questions go to{' '}
             <a
               href={buildMailto({ to: CONTACT_EMAIL, subject: 'Netronix enquiry' })}
-              className="underline decoration-[#6a5acd]/40 underline-offset-2"
+              className="text-statepurp underline decoration-statepurp/30 underline-offset-2"
             >
               {CONTACT_EMAIL}
             </a>
@@ -494,34 +535,44 @@ const ChatInterface = ({ onClose }) => {
               setLastActivity(Date.now());
             }}
             placeholder={unavailable ? 'The assistant is offline' : 'Type your message...'}
-            // A11Y — `bg-gray-50 text-gray-500` measured ~4.6:1, close enough
-            // to 4.5:1 that a scan catching it half a frame into the fade the
-            // offline notice arrives with could tip it under. `unavailable`
-            // is always true in the E2E harness (no API key), so this is the
-            // one pair here guaranteed to render on every run. `ink-40` on
-            // `paper` is the pairing `tailwind.config.js` verifies at 5.0:1.
-            className={`flex-1 border border-gray-200 rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-[#6a5acd] text-sm ${
-              unavailable ? 'cursor-not-allowed bg-paper text-ink-40' : ''
+            // Square, `border-rule`/`bg-paper`/`focus:border-ink` — the same
+            // `FIELD_CLASS` idiom `PlaceOrder` and `LogIn` use, not a rounded
+            // pill with a ring focus that answered to nothing else on the
+            // site. The disabled state was already `bg-paper text-ink-40`
+            // (A11Y — `bg-gray-50 text-gray-500` measured ~4.6:1, close
+            // enough to 4.5:1 that a scan catching it half a frame into the
+            // offline notice's fade could tip it under; `ink-40` on `paper`
+            // is verified at 5.0:1) — the base state now shares the same
+            // `bg-paper`, so only the text colour and cursor change between
+            // the two.
+            className={`flex-1 border border-rule bg-paper px-4 py-2.5 text-sm text-ink placeholder:text-ink-40 transition-colors focus:border-ink focus:outline-none ${
+              unavailable ? 'cursor-not-allowed text-ink-40' : ''
             }`}
           />
-          <motion.button
+          {/* The shared button again — square, inverts to `statepurp` on
+              hover, fades to 40% opacity when disabled rather than switching
+              to a flat grey. Same reasoning as the launcher: one recipe. */}
+          <Button
             type="button"
+            variant="solid"
             onClick={handleSendMessage}
             aria-label="Send message"
-            className="w-10 h-10 rounded-full bg-[#6a5acd] text-white flex items-center justify-center disabled:cursor-not-allowed disabled:bg-gray-300"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            className="flex h-10 w-10 items-center justify-center"
             disabled={unavailable || message.trim() === '' || isTyping}
           >
-            <IoMdSend aria-hidden="true" className="w-5 h-5" />
-          </motion.button>
+            <IoMdSend aria-hidden="true" className="w-4 h-4" />
+          </Button>
         </div>
         <div className="mt-2 text-center">
-          {/* A11Y — `text-gray-400` (#9ca3af) on white is 2.6:1, well under
-              the 4.5:1 AA threshold, and at 10px. The audit called this one out
-              by name; axe confirmed it. `text-gray-600` is 7.6:1 and the line
-              still reads as fine print. */}
-          <p className="text-[10px] text-gray-600">Powered by Netronix AI</p>
+          {/* A11Y — this was `text-gray-400` (#9ca3af), 2.6:1 on white, well
+              under the 4.5:1 AA threshold at 10px; the audit called it out by
+              name and axe confirmed it, fixed onto `text-gray-600` (7.6:1).
+              `ink-40` now, for the token rather than for the contrast — that
+              contrast fight is already won at 7.6:1, this is only bringing
+              the colour itself into the same family as every other small
+              label on the site. `ink-40` clears 4.5:1 on every surface this
+              panel uses regardless (`tailwind.config.js`). */}
+          <p className="text-[10px] text-ink-40">Powered by Netronix AI</p>
         </div>
       </div>
     </motion.div>

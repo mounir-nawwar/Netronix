@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { FiMessageSquare, FiX } from 'react-icons/fi';
 import { matchPath, useLocation } from 'react-router-dom';
 
 import ChatInterface from './ChatInterface'
+import Button from '../Button'
 import { onOpenSupportChat } from '../../lib/supportChat.js'
 
 // FE-027 — one widget, one owner of `isOpen`, one `ChatInterface`.
@@ -45,21 +46,34 @@ const ChatBotWidget = () => {
       </AnimatePresence>
 
       {!contactOwnsChatEntry && (
-        <motion.button
+        // The shared button, not a sixth hand-typed copy of its own recipe.
+        // This was a purple-to-lavender gradient circle with its own
+        // `whileHover`/`whileTap` scale spring — the one control on the site
+        // that still announced itself as a different product. `Button`'s
+        // `solid` variant carries no scale transform anywhere it is used
+        // (`components/Button.jsx`'s own comment: colour and border were the
+        // part actually duplicated eight times, motion never was), so none is
+        // added here either.
+        //
+        // Still `isOpen ? <FiX> : <FiMessageSquare>` — not hidden while the
+        // dialog is open, even though the dialog visually covers it at this
+        // exact position. `useDialog`'s focus restoration
+        // (`ChatInterface.jsx`) returns focus to *this element*, by reference,
+        // when the dialog closes; unmounting it while open would swap in a new
+        // DOM node on remount, `document.contains()` the old reference would
+        // report false, and a keyboard user closing the chat would lose focus
+        // to the document instead of landing back here.
+        <Button
           type="button"
+          variant="solid"
           onClick={toggle}
           aria-expanded={isOpen}
           aria-label={isOpen ? 'Close support chat' : 'Open support chat'}
           aria-haspopup="dialog"
-          className="fixed bottom-8 right-8 w-14 h-14 bg-gradient-to-r from-[#6a5acd] to-[#8470ff] rounded-full shadow-lg flex items-center justify-center text-white z-40"
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ type: "spring", stiffness: 400, damping: 20 }}
+          className="fixed bottom-8 right-8 z-40 flex h-14 w-14 items-center justify-center"
         >
           {isOpen ? <FiX aria-hidden="true" className="w-6 h-6" /> : <FiMessageSquare aria-hidden="true" className="w-6 h-6" />}
-        </motion.button>
+        </Button>
       )}
     </>
   )
