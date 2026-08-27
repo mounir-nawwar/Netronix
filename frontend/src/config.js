@@ -26,7 +26,7 @@
 
 /**
  * Names that must never be exposed to a browser. Matched against the whole
- * variable name, so `VITE_OPENAI_API_KEY` is caught as readily as `JWT_SECRET`.
+ * variable name, so `VITE_GROQ_API_KEY` is caught as readily as `JWT_SECRET`.
  */
 const SERVER_ONLY_PATTERNS = [
     /SECRET/i,
@@ -35,7 +35,7 @@ const SERVER_ONLY_PATTERNS = [
     /\bJWT\b/i,
     /MONGO/i,
     /CLOUDINARY/i,
-    /OPENAI/i,
+    /GROQ/i,
     /API_KEY/i,
     /ACCESS_KEY/i,
     /PRIVATE/i,

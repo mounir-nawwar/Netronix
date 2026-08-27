@@ -23,7 +23,7 @@ const SERVER_ONLY_PATTERNS = [
     /\bJWT\b/i,
     /MONGO/i,
     /CLOUDINARY/i,
-    /OPENAI/i,
+    /GROQ/i,
     /API_KEY/i,
     /ACCESS_KEY/i,
     /PRIVATE/i,

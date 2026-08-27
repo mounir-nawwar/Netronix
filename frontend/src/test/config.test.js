@@ -65,7 +65,7 @@ describe('no server secret may reach the browser bundle', () => {
     it.each([
         'VITE_JWT_SECRET',
         'VITE_ADMIN_PASSWORD',
-        'VITE_OPENAI_API_KEY',
+        'VITE_GROQ_API_KEY',
         'VITE_MONGODB_URI',
         'VITE_CLOUDINARY_SECRET_KEY',
         'VITE_AWS_ACCESS_KEY_ID',
@@ -96,7 +96,7 @@ describe('no server secret may reach the browser bundle', () => {
         // developer prefixing a secret. This walks the real source tree.
         const root = join(process.cwd(), 'src')
         const offenders = []
-        const forbidden = /import\.meta\.env\.VITE_\w*(SECRET|PASSWORD|JWT|MONGO|CLOUDINARY|OPENAI|API_KEY|PRIVATE)\w*/i
+        const forbidden = /import\.meta\.env\.VITE_\w*(SECRET|PASSWORD|JWT|MONGO|CLOUDINARY|GROQ|API_KEY|PRIVATE)\w*/i
 
         const walk = (dir) => {
             for (const entry of readdirSync(dir)) {

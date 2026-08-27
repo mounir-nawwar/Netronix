@@ -249,7 +249,7 @@ test.describe('axe — zero critical or serious violations', () => {
         // in, the quick-replies block unmounts, the offline notice mounts.
         // `settleAnimations` is a floor, not a fence: it cannot wait out an
         // animation that starts after it returns. The harness carries no
-        // `OPENAI_API_KEY` (`storefront.spec.js:309`), so `unavailable` is
+        // `GROQ_API_KEY` (`storefront.spec.js:309`), so `unavailable` is
         // always `true` and this notice always arrives — waiting for it is
         // waiting for the state the scan actually needs to be looking at.
         await expect(dialog.getByRole('status')).toBeVisible()

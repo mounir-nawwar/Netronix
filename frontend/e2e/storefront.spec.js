@@ -351,7 +351,7 @@ test.describe('flow 16 — the chatbot (FE-027, FE-028, FE-029, BE-001)', () => 
         // plain text with no markup.
         await expect(page.getByRole('log').getByText(/\S/).first()).toBeVisible()
 
-        // This harness configures no `OPENAI_API_KEY`, so the assistant cannot
+        // This harness configures no `GROQ_API_KEY`, so the assistant cannot
         // answer, and the API says so: HTTP 200 carrying `degraded: true`.
         //
         // This test used to send a message here and watch it appear, and it

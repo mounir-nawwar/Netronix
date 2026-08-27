@@ -47,10 +47,10 @@ try {
     throw error
 }
 
-if (!config.OPENAI_API_KEY) {
-    logger.warn({ event: 'boot.openai_absent' }, 'OPENAI_API_KEY is not set — the chatbot will return its unavailable reply')
+if (!config.GROQ_API_KEY) {
+    logger.warn({ event: 'boot.groq_absent' }, 'GROQ_API_KEY is not set — the chatbot will return its unavailable reply')
 } else {
-    logger.info({ event: 'boot.openai_configured' }, 'OpenAI API key is configured')
+    logger.info({ event: 'boot.groq_configured' }, 'Groq API key is configured')
 }
 
 // DEVOPS-005 — off unless an operator sets SENTRY_DSN *and* supplies an SDK.

@@ -7,7 +7,7 @@
 // serverless target the *next request* could land on an invocation that had
 // never seen the session. One of the two Maps had no expiry at all.
 //
-// Nothing here contacts OpenAI. `test/setup.js` deletes `OPENAI_API_KEY`, so
+// Nothing here contacts Groq. `test/setup.js` deletes `GROQ_API_KEY`, so
 // `AIclient.getClient()` returns null and every turn takes the structured
 // fallback path — deterministic, offline, and still exercising the whole
 // session lifecycle, which is what these tests are about.

@@ -20,7 +20,7 @@ import { z } from 'zod'
 /** Secrets: never echo the value, only the variable name. */
 const SECRET_KEYS = new Set([
     'JWT_SECRET',
-    'OPENAI_API_KEY',
+    'GROQ_API_KEY',
     'CLOUDINARY_API_KEY',
     'CLOUDINARY_SECRET_KEY',
     'MONGODB_URI', // carries credentials in the userinfo component
@@ -82,7 +82,10 @@ const schema = z.object({
     // environment to compare against, and therefore none to sign into a token.
 
     // Optional — the features that use them degrade rather than crash.
-    OPENAI_API_KEY: z.string().trim().min(1).optional(),
+    // Groq, not OpenAI — the chatbot moved onto Groq's free tier through the
+    // OpenAI-compatible endpoint `services/AIclient.js` calls; the variable
+    // name follows.
+    GROQ_API_KEY: z.string().trim().min(1).optional(),
     CLOUDINARY_NAME: z.string().trim().min(1).optional(),
     CLOUDINARY_API_KEY: z.string().trim().min(1).optional(),
     CLOUDINARY_SECRET_KEY: z.string().trim().min(1).optional(),
@@ -117,7 +120,7 @@ const schema = z.object({
 
 /** Variables that make a feature work but are not required to boot. */
 const OPTIONAL_FEATURE_VARS = [
-    { variable: 'OPENAI_API_KEY', feature: 'the AI chatbot (falls back to a canned reply)' },
+    { variable: 'GROQ_API_KEY', feature: 'the AI chatbot (falls back to a canned reply)' },
     { variable: 'CLOUDINARY_NAME', feature: 'product image upload' },
     { variable: 'CLOUDINARY_API_KEY', feature: 'product image upload' },
     { variable: 'CLOUDINARY_SECRET_KEY', feature: 'product image upload' },

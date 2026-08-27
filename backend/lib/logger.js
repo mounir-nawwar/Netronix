@@ -62,7 +62,7 @@ export const REDACT_PATHS = [
     '*.jwt',
     '*.accessToken',
     '*.refreshToken',
-    '*.OPENAI_API_KEY',
+    '*.GROQ_API_KEY',
     '*.JWT_SECRET',
     '*.CLOUDINARY_API_KEY',
     '*.CLOUDINARY_SECRET_KEY',

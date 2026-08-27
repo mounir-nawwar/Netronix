@@ -19,7 +19,7 @@ import { asyncHandler } from '../errors/AppError.js';
 // the life of the process.
 //
 // A session is now one document with a TTL index. The trade is one database
-// round trip per turn — against an OpenAI call that already dominates the
+// round trip per turn — against a model call that already dominates the
 // latency of the same request — for a conversation that survives a deploy.
 
 /**

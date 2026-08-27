@@ -56,9 +56,9 @@ async function main() {
     || 'http://localhost:5173,http://localhost:5174';
   const frontendUrl = (await ask('Storefront URL [http://localhost:5173]: ')).trim() || 'http://localhost:5173';
 
-  const apiKey = (await ask('OpenAI API key (optional, press enter to skip): ')).trim();
-  if (apiKey && !apiKey.startsWith('sk-')) {
-    console.log('⚠️  That does not look like an OpenAI key (they start with "sk-"). Writing it anyway.');
+  const apiKey = (await ask('Groq API key, for the chatbot (optional, press enter to skip — get one free at console.groq.com/keys): ')).trim();
+  if (apiKey && !apiKey.startsWith('gsk_')) {
+    console.log('⚠️  That does not look like a Groq key (they start with "gsk_"). Writing it anyway.');
   }
 
   const cloudName = (await ask('Cloudinary cloud name (optional): ')).trim();
@@ -80,7 +80,7 @@ async function main() {
     `FRONTEND_URL=${frontendUrl}`,
     '',
     '# Optional. The features that use them degrade rather than crash.',
-    `OPENAI_API_KEY=${apiKey}`,
+    `GROQ_API_KEY=${apiKey}`,
     `CLOUDINARY_NAME=${cloudName}`,
     `CLOUDINARY_API_KEY=${cloudKey}`,
     `CLOUDINARY_SECRET_KEY=${cloudSecret}`,

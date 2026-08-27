@@ -6,7 +6,7 @@
 // Verification-suite item 4. The storefront half of the same finding is
 // frontend/src/test/characterisation/chat-interface.test.jsx.
 //
-// No request reaches OpenAI: `test/setup.js` deletes OPENAI_API_KEY, so the
+// No request reaches Groq: `test/setup.js` deletes GROQ_API_KEY, so the
 // client is null and `processChatMessage` short-circuits. The parser is
 // exercised directly, which is where the security property actually lives.
 

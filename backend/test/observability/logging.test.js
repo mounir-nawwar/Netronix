@@ -84,7 +84,7 @@ describe('redaction', () => {
                 NODE_ENV: 'production',
                 PORT: 4000,
                 JWT_SECRET: 'a'.repeat(64),
-                OPENAI_API_KEY: 'sk-live-abcdef',
+                GROQ_API_KEY: 'sk-live-abcdef',
                 MONGODB_URI: 'mongodb+srv://admin:hunter2@cluster0.mongodb.net',
                 CLOUDINARY_API_KEY: '123456',
                 CLOUDINARY_SECRET_KEY: 'shhh',

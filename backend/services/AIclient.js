@@ -123,55 +123,69 @@ export function parseModelReply(raw, catalogIndex = new Map()) {
 }
 
 // ---------------------------------------------------------------------------
-// OpenAI client
+// Model client — Groq, through the OpenAI-compatible SDK
 // ---------------------------------------------------------------------------
+//
+// This used to call OpenAI directly, on a paid key, and the chatbot's real
+// production failure was a 429 — a billing/quota state on that account, not a
+// bug this code could fix. Groq's chat-completions endpoint is
+// OpenAI-compatible (same request/response shape, same `openai` npm client,
+// only a different `baseURL`), and its free tier is a real free tier — rate
+// limits, not a trial that expires — so the swap is a `baseURL`, a key and a
+// model name, not a rewrite. Everything downstream of `getClient()` — the
+// prompt, the marker-parsing contract, the error handling — is unchanged.
+
+/** Groq's free-tier flagship at time of writing. Override with `GROQ_MODEL`
+ *  if it is ever retired — providers rotate free-tier model names faster than
+ *  this file gets edited. */
+const DEFAULT_MODEL = 'llama-3.3-70b-versatile'
 
 /**
- * Build the OpenAI client, or null when no key is configured.
+ * Build the Groq client, or null when no key is configured.
  *
- * Two things changed here in Phase 1. The key is no longer read out of `.env`
- * from disk by hand — `server.js` owns configuration — and, more importantly,
- * **no part of the key is ever printed**. The previous version logged its first
- * seven characters on every boot, which is secret material in a log file
- * (SEC-016). A key is either configured or it is not; that is all a log line
- * needs to say.
+ * Two things carried over from the OpenAI version of this function, and both
+ * still matter here. The key is not read out of `.env` from disk by hand —
+ * `server.js` owns configuration — and, more importantly, **no part of the
+ * key is ever printed**. A key is either configured or it is not; that is all
+ * a log line needs to say.
  */
-const initializeOpenAI = () => {
-  const apiKey = process.env.OPENAI_API_KEY;
+const initializeGroqClient = () => {
+  const apiKey = process.env.GROQ_API_KEY;
 
   if (!apiKey) {
-    logger.warn({ event: 'openai.disabled' }, 'OPENAI_API_KEY is not set — the chatbot returns its offline reply');
+    logger.warn({ event: 'groq.disabled' }, 'GROQ_API_KEY is not set — the chatbot returns its offline reply');
     return null;
   }
 
-  if (!apiKey.startsWith('sk-')) {
-    logger.warn({ event: 'openai.key_format' }, 'OPENAI_API_KEY does not have the expected format — the chatbot returns its offline reply');
+  if (!apiKey.startsWith('gsk_')) {
+    logger.warn({ event: 'groq.key_format' }, 'GROQ_API_KEY does not have the expected format — the chatbot returns its offline reply');
     return null;
   }
 
   try {
     const client = new OpenAI({
       apiKey: apiKey,
+      baseURL: 'https://api.groq.com/openai/v1',
       dangerouslyAllowBrowser: false, // Only used server-side
     });
-    logger.info({ event: 'openai.ready' }, 'OpenAI client initialised');
+    logger.info({ event: 'groq.ready' }, 'Groq client initialised');
     return client;
   } catch (error) {
-    logger.error({ event: 'openai.init_failed', name: error?.name }, 'failed to initialise the OpenAI client');
+    logger.error({ event: 'groq.init_failed', name: error?.name }, 'failed to initialise the Groq client');
     return null;
   }
 };
 
-let openaiClient
+let groqClient
 /** Lazily built so importing this module needs no configuration (B-0). */
 function getClient() {
-    if (openaiClient === undefined) openaiClient = initializeOpenAI()
-    return openaiClient
+    if (groqClient === undefined) groqClient = initializeGroqClient()
+    return groqClient
 }
 
 /** Test seam: forget the memoised client so a later env change is picked up. */
-export function resetOpenAIClient() {
-    openaiClient = undefined
+export function resetGroqClient() {
+    groqClient = undefined
 }
 
 // ---------------------------------------------------------------------------
@@ -281,7 +295,7 @@ async function processChatMessage(message, { history = [] } = {}) {
 
     const completion = await openai.chat.completions.create({
       messages: apiMessages,
-      model: "gpt-4o-mini",
+      model: process.env.GROQ_MODEL || DEFAULT_MODEL,
       max_tokens: 200
     });
 

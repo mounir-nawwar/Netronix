@@ -177,13 +177,13 @@ describe('loadEnv: weak JWT secrets (SEC-014)', () => {
 describe('loadEnv: optional feature variables', () => {
     it('boots without them but says which features are off', () => {
         const { warnings } = load(validEnv())
-        expect(warnings.some((w) => w.startsWith('OPENAI_API_KEY'))).toBe(true)
+        expect(warnings.some((w) => w.startsWith('GROQ_API_KEY'))).toBe(true)
         expect(warnings.some((w) => w.startsWith('CLOUDINARY_NAME'))).toBe(true)
     })
 
     it('stops warning once they are supplied', () => {
         const { warnings } = load(validEnv({
-            OPENAI_API_KEY: 'sk-proj-placeholder',
+            GROQ_API_KEY: 'gsk_placeholder',
             CLOUDINARY_NAME: 'demo',
             CLOUDINARY_API_KEY: 'placeholder',
             CLOUDINARY_SECRET_KEY: 'placeholder',
@@ -200,7 +200,7 @@ describe('no secret value ever leaves the validator', () => {
         try {
             // FRONTEND_URL is invalid, so the whole object is rejected while
             // the secret-bearing values are present.
-            load(validEnv({ FRONTEND_URL: 'nope', JWT_SECRET: secretValue, OPENAI_API_KEY: secretValue }))
+            load(validEnv({ FRONTEND_URL: 'nope', JWT_SECRET: secretValue, GROQ_API_KEY: secretValue }))
         } catch (error) {
             message = error.message
         }
@@ -222,7 +222,7 @@ describe('no secret value ever leaves the validator', () => {
     it('redacts every secret-bearing variable in describeEnv', () => {
         const { config } = load(validEnv({
             JWT_SECRET: secretValue,
-            OPENAI_API_KEY: secretValue,
+            GROQ_API_KEY: secretValue,
             CLOUDINARY_API_KEY: secretValue,
             CLOUDINARY_SECRET_KEY: secretValue,
             CLOUDINARY_NAME: 'demo-cloud',
@@ -231,7 +231,7 @@ describe('no secret value ever leaves the validator', () => {
 
         expect(JSON.stringify(described)).not.toContain(secretValue)
         expect(described.JWT_SECRET).toBe('(set, redacted)')
-        expect(described.OPENAI_API_KEY).toBe('(set, redacted)')
+        expect(described.GROQ_API_KEY).toBe('(set, redacted)')
         expect(described.MONGODB_URI).toBe('(set, redacted)')
         // Non-secret values stay legible.
         expect(described.NODE_ENV).toBe('test')

@@ -6,7 +6,7 @@ This document provides instructions for setting up the Netronix AI Chatbot servi
 
 - Node.js 18+ installed
 - MongoDB database
-- OpenAI API key (starting with `sk-proj-`)
+- Groq API key (starting with `gsk_`), free at console.groq.com/keys
 
 ## Setup Instructions
 
@@ -24,12 +24,12 @@ Run the setup script to configure your environment variables:
 npm run setup
 ```
 
-This script will prompt you for your OpenAI API key and create a `.env` file.
+This script will prompt you for your Groq API key (free at console.groq.com/keys) and create a `.env` file.
 
 Alternatively, you can manually create a `.env` file with the following variables:
 
 ```
-OPENAI_API_KEY=your_openai_api_key
+GROQ_API_KEY=your_groq_api_key
 PORT=4000
 JWT_SECRET=your_jwt_secret
 ```
@@ -82,7 +82,7 @@ await axios.post(
 
 ## Troubleshooting
 
-- **API Key Issues**: Make sure your OpenAI API key is valid and starts with `sk-proj-`.
+- **API Key Issues**: Make sure your Groq API key is valid and starts with `gsk_`.
 - **Session Timeout**: Chat sessions automatically close after 5 minutes of inactivity.
 - **Database Connection**: Ensure your MongoDB connection is properly configured.
 

@@ -11,7 +11,8 @@
 // The tests below are the same scenarios, re-pointed at the fixed behaviour, so
 // the diff of this file *is* the behavioural change.
 //
-// These tests run entirely in jsdom against MSW. No OpenAI request is made.
+// These tests run entirely in jsdom against MSW. No request reaches the model
+// provider (Groq).
 // jsdom does not load image resources, so an injected `onerror` would never
 // fire here anyway — which is why the assertions are about whether the element
 // reaches the DOM at all, not about whether script ran.

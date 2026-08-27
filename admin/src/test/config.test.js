@@ -48,7 +48,7 @@ describe('no server secret may reach the console bundle', () => {
         'VITE_ADMIN_EMAIL',
         'VITE_MONGODB_URI',
         'VITE_CLOUDINARY_SECRET_KEY',
-        'VITE_OPENAI_API_KEY',
+        'VITE_GROQ_API_KEY',
     ])('refuses to build a configuration containing %s', (variable) => {
         expect(() => readClientConfig({ VITE_BACKEND_URL: 'http://localhost:4000', [variable]: 'anything' }))
             .toThrow(/server-only value/)
@@ -77,7 +77,7 @@ describe('no server secret may reach the console bundle', () => {
     it('no source file reads a server-only variable from the client environment', () => {
         const root = join(process.cwd(), 'src')
         const offenders = []
-        const forbidden = /import\.meta\.env\.VITE_\w*(SECRET|PASSWORD|JWT|MONGO|CLOUDINARY|OPENAI|API_KEY|PRIVATE|ADMIN_EMAIL)\w*/i
+        const forbidden = /import\.meta\.env\.VITE_\w*(SECRET|PASSWORD|JWT|MONGO|CLOUDINARY|GROQ|API_KEY|PRIVATE|ADMIN_EMAIL)\w*/i
 
         const walk = (dir) => {
             for (const entry of readdirSync(dir)) {

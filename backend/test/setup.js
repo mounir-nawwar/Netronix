@@ -21,7 +21,7 @@ process.env.PORT = '0'
 // Explicitly unset anything that could point at a real service. A test that
 // needs one of these sets it itself.
 delete process.env.MONGODB_URI
-delete process.env.OPENAI_API_KEY
+delete process.env.GROQ_API_KEY
 delete process.env.CLOUDINARY_NAME
 delete process.env.CLOUDINARY_API_KEY
 delete process.env.CLOUDINARY_SECRET_KEY

@@ -52,7 +52,7 @@ describe('B-0: importing app.js has no startup side effects', () => {
     })
 
     it('does not require any environment variable to be set', () => {
-        // test/setup.js deletes MONGODB_URI and the Cloudinary/OpenAI keys
+        // test/setup.js deletes MONGODB_URI and the Cloudinary/Groq keys
         // before any module loads. Reaching this point at all proves app.js
         // reads no configuration at module scope.
         expect(process.env.MONGODB_URI).toBeUndefined()
