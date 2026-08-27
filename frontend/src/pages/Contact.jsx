@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Seo from '../components/Seo';
+import Button from '../components/Button';
 import openMailto from '../lib/openMailto.js';
 import { openSupportChat } from '../lib/supportChat.js';
 import { MINN_SOCIAL_LINKS } from '../lib/minn.js';
@@ -23,10 +24,27 @@ import {
 // they already know they want — a number, an address, the catalogue — and a
 // destination needs a row and a rule under it, not a card and a shadow.
 //
-// `paper` behind, white for the one surface that takes input, `ink` type.
-// `statepurp` is kept, but only where the page answers a pointer or a keyboard:
-// links, focus rings. Nothing is filled with it, so nothing competes with the
-// submit button for the eye.
+// `paper` behind, `ink` type, one accent. `statepurp` is kept, but only where
+// the page answers a pointer or a keyboard: links, focus rings. Nothing is
+// filled with it, so nothing competes with the submit button for the eye.
+//
+// Rebuilt again onto the site's *type*, not just its colours. This page was
+// already on the tokens — `paper`/`rule`/`ink-40` in place of the three raw
+// hex values a design test used to pin — and stayed there. What had not
+// happened yet was everything else that makes a page read as part of this
+// site: `max-w-[980px]` and `pt-12` rather than the `max-w-[1200px]` and
+// `pt-[104px]` every other page shares; a sentence-case grey eyebrow with no
+// rule where every other page runs a Michroma eyebrow beside a hairline that
+// draws to the edge; a 32–44px system-sans `<h1>` where every other page runs
+// Michroma uppercase; a `rounded-xl bg-white` card where every other bordered
+// region on the site — `PlaceOrder`'s own form among them — is a square
+// `border-rule` box on the page's own `paper`, with no card behind it at all.
+// Contact stayed a page that happened to share a palette with the rest of the
+// site rather than one that reads as part of it. `<h1>` and the container
+// follow `Orders`/`Wishlist`'s scale, not `About`'s — this is a utility page,
+// not a landing one. Unlike those, nothing here animates on entrance: the
+// design test in this file has always required that, and still does, so
+// nothing below reaches for the animation library the rest of the site uses.
 
 /** Platform names for MINN's accounts; the label names MINN for a11y. */
 const PLATFORM_NAMES = {
@@ -63,10 +81,14 @@ const SUBJECTS = [
   'Other',
 ];
 
+// Square now, and `focus:border-ink` rather than a ring — the same field
+// idiom `PlaceOrder.jsx` and `LogIn.jsx` already use. `text-base`, not `text-sm`
+// like theirs: 16px keeps iOS Safari from zooming the page in on focus, which
+// is worth keeping even where it is the one field class that does not match.
 const FIELD_CLASS =
-  'w-full min-h-[44px] rounded-lg border border-rule bg-white px-3.5 py-2.5 text-base ' +
+  'w-full min-h-[44px] border border-rule bg-paper px-4 py-3 text-base ' +
   'text-ink placeholder:text-ink-40 transition-colors ' +
-  'focus:border-ink focus:outline-none focus:ring-2 focus:ring-statepurp/40';
+  'focus:border-ink focus:outline-none';
 
 const LABEL_CLASS = 'block text-sm font-medium text-ink-60';
 
@@ -121,16 +143,30 @@ const Contact = () => {
   };
 
   return (
-    <div className="min-h-screen bg-paper text-ink pt-[80px] md:pt-[100px]">
+    <div className="min-h-screen bg-paper px-4 pb-24 text-ink sm:px-[5vw] md:px-[7vw] lg:px-[9vw]">
       <Seo title="Contact" description="How to reach Netronix." />
 
-      <div className="mx-auto w-full max-w-[980px] px-5 sm:px-6 lg:px-8">
-        <header data-testid="contact-header" className="max-w-[42rem] pt-12 pb-9 md:pt-16 md:pb-12">
-          <p className="text-sm font-medium tracking-wide text-ink-40">Contact</p>
-          <h1 className="mt-3 text-[2rem] font-semibold leading-[1.1] tracking-tight sm:text-[2.75rem]">
+      <div className="mx-auto max-w-[1200px]">
+        {/* A plain `<header>`, not the animated entrance every other page's
+            header gets — this file is the one the animation ban applies to,
+            so the fade-and-rise every other page opens on is deliberately
+            absent here. */}
+        <header data-testid="contact-header" className="pt-[104px] md:pt-[132px]">
+          <div className="flex items-center gap-3">
+            <span className="font-michroma text-[9px] uppercase tracking-[0.22em] text-statepurp md:text-[10px]">
+              Netronix / Contact
+            </span>
+            <span className="h-px flex-1 bg-rule" />
+          </div>
+
+          <h1
+            className="mt-5 font-michroma uppercase leading-[0.95] tracking-tight text-ink"
+            style={{ fontSize: 'clamp(2rem, 6vw, 4rem)' }}
+          >
             Write to Netronix.
           </h1>
-          <p className="mt-4 text-lg leading-relaxed text-ink-60">
+
+          <p className="mt-8 max-w-[60ch] text-base leading-relaxed text-ink-60">
             Say what you need below and this page assembles the email for you. If you would
             rather go straight to the address, it is further down the page.
           </p>
@@ -139,11 +175,14 @@ const Contact = () => {
         <section
           data-testid="configure-surface"
           aria-labelledby="configure-heading"
-          className="rounded-xl border border-rule bg-white p-6 sm:p-9"
+          className="mt-16 border border-rule bg-paper p-6 sm:p-9 md:mt-20"
         >
-          <h2 id="configure-heading" className="text-xl font-semibold tracking-tight">
-            Compose a message
-          </h2>
+          <div className="flex items-center gap-3">
+            <h2 id="configure-heading" className="font-michroma text-[10px] uppercase tracking-[0.2em] text-ink">
+              Compose a message
+            </h2>
+            <span className="h-px flex-1 bg-rule" />
+          </div>
 
           <p
             id="contact-form-disclosure"
@@ -160,7 +199,11 @@ const Contact = () => {
 
           <div role="status" aria-live="polite" className="mt-6 empty:mt-0">
             {handedOff && (
-              <div className="rounded-lg border border-rule bg-paper p-4">
+              // An `ink` accent, not the purple one every other page's status
+              // panels use — this file's own design test holds the accent to
+              // pointer and keyboard states only, at rest nowhere, and a
+              // status panel is neither.
+              <div className="border-l-2 border-ink bg-wash p-4">
                 <p className="font-medium">Your email app should now be open.</p>
                 <p className="mt-1 text-sm leading-relaxed text-ink-60">
                   The message is waiting there as a draft to {CONTACT_EMAIL}. If nothing
@@ -251,20 +294,31 @@ const Contact = () => {
               </div>
             </dl>
 
-            <button
+            {/* The one filled button on the page, and now the same component
+                every other primary action on the site renders — square,
+                Michroma, inverts to `statepurp` on hover — rather than a
+                `rounded-lg` button in the system sans that answered to nothing
+                else on the site. `min-h-[44px]` is kept explicitly, since
+                `Button` does not bake in a target size and the test below
+                requires it on every action here. */}
+            <Button
               type="submit"
+              variant="solid"
               aria-describedby="contact-form-disclosure"
-              className="mt-7 inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-ink px-6 py-3 text-base font-medium text-white transition-colors hover:bg-statepurp focus:outline-none focus-visible:ring-2 focus-visible:ring-statepurp focus-visible:ring-offset-2 sm:w-auto"
+              className="mt-7 min-h-[44px] w-full px-8 py-3.5 text-[10px] tracking-[0.18em] sm:w-auto"
             >
               Open email draft
-            </button>
+            </Button>
           </form>
         </section>
 
-        <section aria-labelledby="routes-heading" className="mt-12 md:mt-16">
-          <h2 id="routes-heading" className="text-xl font-semibold tracking-tight">
-            Or go direct
-          </h2>
+        <section aria-labelledby="routes-heading" className="mt-16 md:mt-20">
+          <div className="flex items-center gap-3">
+            <h2 id="routes-heading" className="font-michroma text-[10px] uppercase tracking-[0.2em] text-ink">
+              Or go direct
+            </h2>
+            <span className="h-px flex-1 bg-rule" />
+          </div>
 
           <ul
             data-testid="support-routes"
@@ -336,9 +390,11 @@ const Contact = () => {
           </ul>
         </section>
 
-        <section aria-labelledby="minn-heading" className="mt-12 border-t border-rule pt-8 pb-16 md:pb-24">
-          <h2 id="minn-heading" className="text-base font-semibold">Connect With MINN</h2>
-          <p className="mt-1 text-sm text-ink-40">Follow the agency behind this storefront.</p>
+        <section aria-labelledby="minn-heading" className="mt-16 border-t border-rule pt-10 pb-16 md:pb-24">
+          <h2 id="minn-heading" className="font-michroma text-[10px] uppercase tracking-[0.2em] text-ink">
+            Connect With MINN
+          </h2>
+          <p className="mt-2 text-sm text-ink-40">Follow the agency behind this storefront.</p>
           <ul className="mt-1 flex flex-wrap gap-x-7">
             {MINN_SOCIAL_LINKS.map(({ platform, url, label }) => (
               <li key={platform}>
