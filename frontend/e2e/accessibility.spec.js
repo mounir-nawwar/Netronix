@@ -16,7 +16,7 @@
 import AxeBuilder from '@axe-core/playwright'
 
 import { test, expect } from './test.js'
-import { ADDRESS, DEMO_CUSTOMER, scrollThroughPage, state, visibleLink } from './fixtures.js'
+import { ADDRESS, DEMO_CUSTOMER, revealAllProducts, scrollThroughPage, state, visibleLink } from './fixtures.js'
 
 /**
  * Gate 4 fails on critical and serious violations.
@@ -188,6 +188,7 @@ test.describe('axe — zero critical or serious violations', () => {
 
     test('a seeded product page', async ({ page }) => {
         await page.goto('/products')
+        await revealAllProducts(page)
         await visibleLink(page, 'MacBook Pro 16" M4 Pro').click()
         await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
 
@@ -197,6 +198,7 @@ test.describe('axe — zero critical or serious violations', () => {
 
     test('cart, with something in it', async ({ page }) => {
         await page.goto('/products')
+        await revealAllProducts(page)
         await visibleLink(page, 'MacBook Pro 16" M4 Pro').click()
         const cta = page.getByRole('button', { name: /^(ADD TO CART|SELECT OPTIONS|OUT OF STOCK)$/ })
         await expect(cta).toBeVisible()

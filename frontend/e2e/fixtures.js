@@ -88,6 +88,49 @@ export const visibleLink = (page, name) =>
     page.getByRole('link', { name }).locator('visible=true').first()
 
 /**
+ * Reveal the whole catalog on a paged grid.
+ *
+ * The products grid shows twelve at a time behind a "Load more" button, so a
+ * product further down the result set is not in the DOM until it is asked for.
+ * Every spec that reaches for a *specific* product by name has to do this
+ * first, or it is asserting against page one and calling the product missing.
+ *
+ * A no-op anywhere there is no pager — the homepage, a product page, a
+ * collection that fits in one page — so it is safe to call defensively.
+ *
+ * Bounded rather than `while (true)`: a pager that never disappears is a bug in
+ * the grid, and a helper that spins for ever on it turns that bug into a
+ * timeout with no message. Twenty presses is 240 products, well past any
+ * seeded catalog.
+ */
+export async function revealAllProducts(page, { maxPresses = 20 } = {}) {
+    // Wait for the grid before looking for its pager.
+    //
+    // This is the whole bug the first version of this helper had. Until the
+    // catalog request lands the page renders a skeleton — no cards, and no
+    // "Load more" — so a helper that checks the button's count immediately
+    // finds zero, concludes everything is already shown, and returns. The
+    // caller then waits two minutes for a product that was never revealed, and
+    // the failure surfaces as a click timeout on the product rather than as
+    // anything to do with paging.
+    await page.locator('.product-card').first()
+        .waitFor({ state: 'attached', timeout: 30_000 })
+        .catch(() => { /* an empty collection has no cards and no pager either */ })
+
+    const loadMore = page.getByRole('button', { name: /load more/i })
+
+    for (let press = 0; press < maxPresses; press += 1) {
+        if (await loadMore.count() === 0) return press
+        await loadMore.first().click()
+        // The grid animates the new cards in; the button re-renders with a new
+        // remaining count or unmounts.
+        await page.waitForTimeout(250)
+    }
+
+    throw new Error(`"Load more" was still present after ${maxPresses} presses`)
+}
+
+/**
  * Open a product from a listing and put one in the cart.
  *
  * The order matters. `getByRole('heading', { level: 1 })` was the readiness
@@ -99,6 +142,9 @@ export const visibleLink = (page, name) =>
  * the state machine, and it only appears once the product has loaded.
  */
 export async function addFirstAvailableToCart(page, productName) {
+    // The grid pages at twelve. Several of the products these journeys buy —
+    // Sonos Era 300, Anker Prime, Sony WH-1000XM6 — sort past the first page.
+    await revealAllProducts(page)
     await visibleLink(page, productName).click()
 
     // One locator across all three labels, so it keeps resolving as the state

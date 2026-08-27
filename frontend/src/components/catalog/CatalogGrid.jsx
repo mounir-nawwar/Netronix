@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import PropTypes from 'prop-types'
 import { AnimatePresence, motion } from 'framer-motion'
 
@@ -86,8 +86,26 @@ function interleave(products) {
     return items
 }
 
+/** How many products a page of the grid reveals. */
+const PAGE = 12
+
 const CatalogGrid = ({ products, density, status, error, onRetry, onClearFilters, hasFilters }) => {
-    const items = useMemo(() => interleave(products), [products])
+    const [visibleCount, setVisibleCount] = useState(PAGE)
+
+    // Reset on the *identity* of the result set, not its length: two different
+    // filters can return the same number of products, and a visitor who has
+    // pressed "Load more" four times and then narrows the collection should get
+    // the first page of the new result, not page five of it.
+    const identity = useMemo(() => products.map((product) => product._id).join(','), [products])
+    useEffect(() => { setVisibleCount(PAGE) }, [identity])
+
+    const visible = useMemo(() => products.slice(0, visibleCount), [products, visibleCount])
+    const remaining = products.length - visible.length
+
+    // Interleaved over the *visible* slice, so the editorial tiles keep their
+    // one-every-eight cadence as pages are revealed rather than all arriving at
+    // once when the last page loads.
+    const items = useMemo(() => interleave(visible), [visible])
     const columns = DENSITIES[density] ?? DENSITIES.comfortable
 
     if (status === 'loading') {
@@ -150,6 +168,7 @@ const CatalogGrid = ({ products, density, status, error, onRetry, onClearFilters
     }
 
     return (
+        <>
         <div className={`grid ${columns} gap-x-5 gap-y-12 py-12 md:gap-x-6 md:gap-y-16`}>
             {/* `popLayout` takes a leaving card out of flow immediately, so the
                 cards that remain glide to their new positions instead of waiting
@@ -183,6 +202,43 @@ const CatalogGrid = ({ products, density, status, error, onRetry, onClearFilters
                 ))}
             </AnimatePresence>
         </div>
+
+        {/* Pagination, deliberately a button rather than a scroll sentinel.
+            jsdom's `IntersectionObserver` stub reports `intersecting` once on
+            the next microtask (`src/test/setup.js`) — honestly, because every
+            element in jsdom is laid out at the origin with no viewport to be
+            outside of. An infinite-scroll sentinel would therefore fire
+            immediately in every unit test and reveal the whole catalog, and the
+            paging would be untestable in the suite that is supposed to protect
+            it. A button is deterministic, reachable by keyboard, and announces
+            what it does.
+
+            The count is not decoration: it is the only thing telling a visitor
+            that there is more below, and it is what makes "Load more" a
+            described control rather than a mystery. */}
+        {products.length > PAGE && (
+            <div className="border-t border-rule pt-8 text-center">
+                <p className="text-xs text-ink-40 tnum" aria-live="polite">
+                    Showing {visible.length} of {products.length}
+                </p>
+
+                {remaining > 0 && (
+                    <button
+                        type="button"
+                        onClick={() => setVisibleCount((current) => current + PAGE)}
+                        className="mt-5 border border-rule px-10 py-3.5 font-michroma text-[9px] uppercase tracking-[0.18em] text-ink transition-colors duration-300 hover:border-ink hover:bg-ink hover:text-paper md:text-[10px]"
+                    >
+                        Load more
+                        {/* `opacity`, not a colour: the button inverts to ink on
+                            hover, and a fixed grey would disappear into it. */}
+                        <span className="tnum ml-2 opacity-50" aria-hidden="true">
+                            {Math.min(PAGE, remaining)}
+                        </span>
+                    </button>
+                )}
+            </div>
+        )}
+        </>
     )
 }
 

@@ -1,4 +1,6 @@
 import { useContext, useEffect, useState } from 'react'
+import { Link } from 'react-router-dom';
+import PropTypes from 'prop-types';
 import { ShopContext } from '../context/shopContext';
 import { lineIdOf } from '../lib/cartLines';
 import { toast } from '../lib/toast';
@@ -7,6 +9,32 @@ import { FiShoppingCart, FiTrash2, FiMinus, FiPlus, FiAlertCircle, FiArrowRight 
 import CartTotal from '../components/CartTotal';
 import BackButton from '../components/BackButton';
 import Seo from '../components/Seo';
+
+const SOLID_BUTTON = 'border border-ink bg-ink px-8 py-3 font-michroma text-[9px] uppercase tracking-[0.16em] text-paper transition-colors duration-300 hover:border-statepurp hover:bg-statepurp'
+
+/**
+ * The empty, failed and loading-failed states, which are the same shape.
+ *
+ * Declared at module scope rather than inside `Cart`. A component defined in a
+ * render body is a *new component type* on every render, so React unmounts and
+ * remounts the whole subtree each time — which throws away focus and restarts
+ * any animation inside it. Harmless for a static panel today, and exactly the
+ * kind of thing that stops being harmless the moment someone puts a field in one.
+ */
+const Panel = ({ role, heading, body, action }) => (
+    <div className="border border-rule px-6 py-20 text-center" role={role}>
+        <h2 className="font-michroma text-sm uppercase tracking-[0.16em] text-ink">{heading}</h2>
+        <p className="mx-auto mt-4 max-w-[42ch] text-sm text-ink-60">{body}</p>
+        {action}
+    </div>
+)
+
+Panel.propTypes = {
+    role: PropTypes.string,
+    heading: PropTypes.node.isRequired,
+    body: PropTypes.node,
+    action: PropTypes.node,
+}
 
 // FE-012 — the cart said "empty" while it was still loading.
 //
@@ -110,320 +138,304 @@ const Cart = () => {
     }
   };
 
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
+  // One entrance for the page, and a spring for lines arriving or leaving.
+  // The chained `delay: 0.2` on the heading and `delay: 0.3` on the summary are
+  // gone: a page that assembles itself over half a second is a page that looks
+  // slow on a fast connection and broken on a slow one.
+  const itemVariants = {
+    hidden: { opacity: 0, y: 16 },
+    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 26 } },
+    exit: { opacity: 0, x: -16, transition: { duration: 0.2 } },
   };
 
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 24
-      }
-    },
-    exit: {
-      opacity: 0,
-      x: -20,
-      transition: {
-        duration: 0.2
-      }
+  /**
+   * The warnings a line carries, in the order they are shown.
+   *
+   * A list rather than a single string, because two of these are independently
+   * true and both need saying: a line at zero stock usually *also* has a
+   * quantity warning, and collapsing them to whichever matched first dropped
+   * "Out of stock. Please remove this item." — which is the only one that tells
+   * the customer the line can never be bought rather than merely reduced.
+   *
+   * Identity comes first and suppresses the stock notice: a line whose
+   * combination cannot be resolved has no stock figure to be wrong about
+   * (FE-024, DB-003).
+   */
+  const warningsFor = (item) => {
+    if (isUnidentifiable(item.id)) {
+      return ['This option cannot be identified any more. Please remove it and choose again.'];
     }
+
+    const warnings = [];
+    const available = item.available ?? 0;
+    if (hasInventoryWarning(item.id)) {
+      warnings.push(`Only ${available} item(s) in stock. Please adjust your quantity.`);
+    }
+    if (available === 0) warnings.push('Out of stock. Please remove this item.');
+    return warnings;
   };
+
+  const blocked = Object.keys(inventoryWarnings).length > 0;
 
   return (
+    <div className="min-h-screen bg-paper px-4 pb-24 text-ink sm:px-[5vw] md:px-[7vw] lg:px-[9vw]">
+      <Seo title="Your Cart" description="Review the items in your Netronix cart before checkout." />
 
-      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 px-4 sm:px-6 lg:px-8 py-12 pt-[80px] md:pt-[100px]">
+      <div className="mx-auto max-w-[1200px]">
+        <div className="pt-[104px] md:pt-[132px]">
+          <div className="flex items-center gap-3">
+            <BackButton showLabel={false} />
+            <span className="font-michroma text-[9px] uppercase tracking-[0.22em] text-statepurp md:text-[10px]">
+              Netronix / Bag
+            </span>
+            <span className="h-px flex-1 bg-rule" />
+          </div>
 
-        <Seo title="Your Cart" description="Review the items in your Netronix cart before checkout." />
-      <motion.div 
-        className="max-w-5xl mx-auto"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-      >
-        <div className="flex items-center mb-6">
-          <BackButton showLabel={false} className="mr-3" />
-          <motion.h1 
-            className="text-3xl font-bold text-gray-900"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+          <h1
+            className="mt-5 font-michroma uppercase leading-[0.95] tracking-tight text-ink"
+            style={{ fontSize: 'clamp(2rem, 6vw, 4rem)' }}
           >
             Shopping Cart
-          </motion.h1>
+          </h1>
         </div>
 
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64" role="status" aria-live="polite">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a5acd]"></div>
-            <span className="sr-only">Loading your cart…</span>
-          </div>
-        ) : hasFailed ? (
-          <motion.div
-            className="bg-white rounded-xl shadow-md p-10 text-center"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            role="alert"
-          >
-            <FiAlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">We could not load your cart</h2>
-            <p className="text-gray-600 mb-6">{catalogError || 'Please try again in a moment.'}</p>
-            <button
-              onClick={reloadCatalog}
-              className="px-6 py-3 rounded-lg text-white bg-[#6a5acd] hover:bg-[#5a4cbb] transition-colors fill-button"
-            >
-              Try again
-            </button>
-          </motion.div>
-        ) : cartData.length === 0 ? (
-          <motion.div 
-            className="bg-white rounded-xl shadow-md p-10 text-center"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            <FiShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">Your cart is empty</h2>
-            <p className="text-gray-600 mb-6">Add items to get started</p>
-            <button 
-              onClick={() => navigate('/collections/all')} 
-              className="px-6 py-3 rounded-lg text-white bg-[#6a5acd] hover:bg-[#5a4cbb] transition-colors fill-button fill-button-hero"
-            >
-              Start Shopping
-            </button>
-          </motion.div>
-        ) : (
-          <>
-            {unpricedLines.length > 0 && (
-              /* FE-024 — a line whose product the catalog cannot produce is not
-                 worth zero, it is unknown. It used to be skipped silently, so
-                 the total was simply wrong with nothing to show for it. */
-              <div
-                className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800 flex items-start gap-3"
-                role="alert"
-              >
-                <FiAlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <span>
-                  {unpricedLines.length === 1 ? 'One item is' : `${unpricedLines.length} items are`} no longer
-                  in the catalog, so {unpricedLines.length === 1 ? 'it is' : 'they are'} not included in the total below.
-                </span>
+        <div className="pt-10">
+          {isLoading ? (
+            /* FE-012 — present synchronously on the first render. "Your cart is
+               empty" is a claim about the cart; while the catalog is still in
+               flight the page has no basis for making it. */
+            <div role="status" aria-live="polite">
+              <div aria-hidden="true" className="grid gap-4">
+                {[0, 1].map((row) => (
+                  <div key={row} className="flex gap-5 border-b border-rule pb-6">
+                    <div className="h-24 w-24 animate-plate-sheen bg-wash" />
+                    <div className="flex-1 pt-2">
+                      <div className="h-3 w-2/5 bg-wash" />
+                      <div className="mt-3 h-2 w-1/4 bg-wash" />
+                      <div className="mt-6 h-8 w-28 bg-wash" />
+                    </div>
+                  </div>
+                ))}
               </div>
-            )}
-          <div className="flex flex-col lg:flex-row gap-8">
-            {/* Cart Items */}
-            <motion.div 
-              className="lg:w-2/3"
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-            >
-              <AnimatePresence>
-                {cartData.map((item) => {
-                  const productData = products.find((product) => product._id === item._id);
-                  const hasWarning = hasInventoryWarning(item.id);
-                  const unidentifiable = isUnidentifiable(item.id);
-                  const availableInventory = item.available ?? 0;
-                  // The line names its own combination, so the label is read
-                  // from the options rather than reconstructed from the key.
-                  const variantDisplay = item.variantLabel
-                    || getVariantDisplayName(productData, item.variantKey);
-                  
-                  if (!productData) return null;
-                  
-                  return (
-                    <motion.div 
-                      key={item.id}
-                      className="bg-white rounded-xl shadow-sm mb-4 overflow-hidden transition-all hover:shadow-md"
-                      variants={itemVariants}
-                      exit="exit"
-                    >
-                      <div className="p-4 sm:p-6">
-                        <div className="flex flex-col sm:flex-row gap-4">
-                          {/* Product Image */}
-                          <div className="relative w-full sm:w-24 h-40 sm:h-24 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
-                            {productData.image && Array.isArray(productData.image) && productData.image[0] ? (
-                              <img 
-                                className="w-full h-full object-cover" 
-                                src={productData.image[0]} 
-                                alt={productData.name || 'Product'} 
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                                <FiShoppingCart className="w-10 h-10 text-gray-400" />
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Product Details */}
-                          <div className="flex-grow">
-                            <div className="flex justify-between items-start">
-                              <h3 className="text-lg font-semibold text-gray-900">{productData.name || 'Product'}</h3>
-                              <button 
-                                onClick={() => updateQuantity(item._id, lineRefOf(item), 0)}
-                                className="p-1 text-gray-400 hover:text-[#6a5acd] transition-colors"
-                                aria-label="Remove item"
-                              >
-                                <FiTrash2 className="w-5 h-5" />
-                              </button>
-                            </div>
-                            
-                            <div className="mt-1 text-sm text-gray-500">
-                              {/* ARCH-003 — `variantDisplay` already names its
-                                  axes ("Storage: 1TB"), so the hardcoded
-                                  "Size:" prefix rendered "Size: Storage: 1TB"
-                                  and was simply wrong on any product whose
-                                  axis is not called Size. */}
-                              {variantDisplay || 'One Size'}
-                            </div>
-                            
-                            <div className="mt-2 text-lg font-medium text-[#6a5acd]">
-                              {formatPrice(getPriceMinor(productData))}
-                            </div>
-                            
-                            <div className="mt-4 flex justify-between items-center">
-                              <div className="flex items-center border border-gray-300 rounded-lg overflow-hidden">
-                                {/* A11Y-009 — axe reported these two as
-                                    *critical* "Buttons must have discernible
-                                    text": an icon-only stepper announced as
-                                    "button", twice per line, with no way to
-                                    tell which was which or what it acted on. */}
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuantityChange(item, Math.max(1, item.quantity - 1))}
-                                  aria-label={`Decrease the quantity of ${productData.name}`}
-                                  className="px-3 py-1 hover:bg-gray-100 transition-colors"
-                                  disabled={item.quantity <= 1}
-                                >
-                                  <FiMinus aria-hidden="true" className={`w-4 h-4 ${item.quantity <= 1 ? 'text-gray-300' : 'text-[#6a5acd]'}`} />
-                                </button>
-                                <span className="px-3 py-1 min-w-[40px] text-center">{item.quantity}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuantityChange(item, item.quantity + 1)}
-                                  aria-label={`Increase the quantity of ${productData.name}`}
-                                  className="px-3 py-1 hover:bg-gray-100 transition-colors"
-                                  disabled={item.quantity >= availableInventory}
-                                >
-                                  <FiPlus aria-hidden="true" className={`w-4 h-4 ${item.quantity >= availableInventory ? 'text-gray-300' : 'text-[#6a5acd]'}`} />
-                                </button>
-                              </div>
-                              
-                              <div className="text-lg font-semibold text-[#6a5acd]">
-                                {formatPrice(getPriceMinor(productData) * item.quantity)}
-                              </div>
-                            </div>
-                            
-                            {/* Inventory Warning */}
-                            {hasWarning && (
-                              <motion.div 
-                                className="mt-3 p-2 bg-red-50 border border-red-100 rounded-md flex items-start gap-2"
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                transition={{ duration: 0.3 }}
-                              >
-                                <FiAlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                                <div className="text-sm text-red-600">
-                                  {unidentifiable ? (
-                                    <>
-                                      This option cannot be identified any more.
-                                      Please remove it and choose again.
-                                    </>
-                                  ) : (
-                                    <>
-                                      Only {availableInventory} item(s) in stock.
-                                      Please adjust your quantity.
-                                    </>
-                                  )}
-                                </div>
-                              </motion.div>
-                            )}
-                            
-                            {availableInventory === 0 && !unidentifiable && (
-                              <motion.div 
-                                className="mt-3 p-2 bg-red-50 border border-red-100 rounded-md flex items-start gap-2"
-                                initial={{ opacity: 0, height: 0 }}
-                                animate={{ opacity: 1, height: 'auto' }}
-                                transition={{ duration: 0.3 }}
-                              >
-                                <FiAlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                                <div className="text-sm text-red-600">
-                                  Out of stock. Please remove this item.
-                                </div>
-                              </motion.div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </AnimatePresence>
-            </motion.div>
-            
-            {/* Cart Summary */}
-            <motion.div 
-              className="lg:w-1/3"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.5 }}
-            >
-              <div className="bg-white rounded-xl shadow-md p-6">
-                <h2 className="text-xl font-bold text-gray-900 mb-6">Order Summary</h2>
-                
-                <CartTotal />
-                
-                <button 
-                  onClick={() => {
-                    // Check if any items have inventory warnings before proceeding
-                    if (Object.keys(inventoryWarnings).length > 0) {
-                      toast.error('Please resolve inventory issues before checkout');
-                      return;
-                    }
-                    navigate('/placeorder');
-                  }}
-                  disabled={Object.keys(inventoryWarnings).length > 0}
-                  className={`mt-6 w-full flex justify-center items-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-colors 
-                    ${Object.keys(inventoryWarnings).length > 0 
-                      ? 'bg-gray-400 cursor-not-allowed' 
-                      : 'bg-[#6a5acd] hover:bg-[#5a4cbb] fill-button'
-                    }`}
-                >
-                  Proceed to Checkout
-                  <FiArrowRight className="w-4 h-4" />
+              <span className="sr-only">Loading your cart…</span>
+            </div>
+          ) : hasFailed ? (
+            <Panel
+              role="alert"
+              heading="We could not load your cart"
+              body={catalogError || 'Please try again in a moment.'}
+              action={
+                <button type="button" onClick={reloadCatalog} className={`mt-8 ${SOLID_BUTTON}`}>
+                  Try again
                 </button>
-                
-                {Object.keys(inventoryWarnings).length > 0 && (
-                  <p className="mt-3 text-sm text-red-500 text-center">
-                    Please resolve inventory issues before checkout
-                  </p>
-                )}
-                
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <button 
-                    onClick={() => navigate('/collections/all')}
-                    className="w-full text-center text-[#6a5acd] hover:text-[#5a4cbb] transition-colors text-sm underline"
-                  >
-                    Continue Shopping
-                  </button>
+              }
+            />
+          ) : cartData.length === 0 ? (
+            <Panel
+              heading="Your cart is empty"
+              body="Add items to get started"
+              action={
+                <button
+                  type="button"
+                  onClick={() => navigate('/collections/all')}
+                  className={`mt-8 ${SOLID_BUTTON}`}
+                >
+                  Start Shopping
+                </button>
+              }
+            />
+          ) : (
+            <>
+              {unpricedLines.length > 0 && (
+                /* FE-024 — a line whose product the catalog cannot produce is not
+                   worth zero, it is unknown. It used to be skipped silently, so
+                   the total was simply wrong with nothing to show for it. */
+                <p
+                  className="mb-8 flex items-start gap-3 border-l-2 border-statepurp bg-wash px-4 py-3 text-sm text-ink-60"
+                  role="alert"
+                >
+                  <FiAlertCircle aria-hidden="true" className="mt-0.5 h-4 w-4 flex-shrink-0 text-statepurp" />
+                  <span>
+                    {unpricedLines.length === 1 ? 'One item is' : `${unpricedLines.length} items are`} no longer
+                    in the catalog, so {unpricedLines.length === 1 ? 'it is' : 'they are'} not included in the total below.
+                  </span>
+                </p>
+              )}
+
+              <div className="flex flex-col gap-12 lg:flex-row lg:gap-16">
+                <div className="lg:w-[62%]">
+                  <AnimatePresence initial={false}>
+                    {cartData.map((item) => {
+                      const productData = products.find((product) => product._id === item._id);
+                      if (!productData) return null;
+
+                      const availableInventory = item.available ?? 0;
+                      // The line names its own combination, so the label is read
+                      // from the options rather than reconstructed from the key.
+                      const variantDisplay = item.variantLabel
+                        || getVariantDisplayName(productData, item.variantKey);
+                      const warnings = warningsFor(item);
+
+                      return (
+                        <motion.div
+                          key={item.id}
+                          layout
+                          variants={itemVariants}
+                          initial="hidden"
+                          animate="visible"
+                          exit="exit"
+                          className="border-b border-rule py-7 first:pt-0"
+                        >
+                          <div className="flex gap-5">
+                            <Link
+                              to={`/product/${item._id}`}
+                              className="h-24 w-24 flex-shrink-0 overflow-hidden bg-plate sm:h-28 sm:w-28"
+                              aria-label={productData.name || 'Product'}
+                            >
+                              {productData.image?.[0] ? (
+                                <img
+                                  className="h-full w-full object-contain p-2"
+                                  src={productData.image[0]}
+                                  alt=""
+                                  loading="lazy"
+                                  decoding="async"
+                                />
+                              ) : (
+                                <span className="flex h-full w-full items-center justify-center">
+                                  <FiShoppingCart aria-hidden="true" className="h-8 w-8 text-ink-40" />
+                                </span>
+                              )}
+                            </Link>
+
+                            <div className="min-w-0 flex-grow">
+                              <div className="flex items-start justify-between gap-4">
+                                <div className="min-w-0">
+                                  {productData.brand && (
+                                    <p className="font-michroma text-[9px] uppercase tracking-[0.18em] text-ink-40">
+                                      {productData.brand}
+                                    </p>
+                                  )}
+                                  <h3 className="mt-1.5 text-[15px] leading-snug text-ink">
+                                    {productData.name || 'Product'}
+                                  </h3>
+                                  {/* ARCH-003 — `variantDisplay` already names its
+                                      axes ("Storage: 1TB"), so the hardcoded
+                                      "Size:" prefix rendered "Size: Storage: 1TB"
+                                      and was simply wrong on any product whose
+                                      axis is not called Size. */}
+                                  <p className="mt-1.5 text-xs text-ink-60">{variantDisplay || 'One Size'}</p>
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => updateQuantity(item._id, lineRefOf(item), 0)}
+                                  className="flex-shrink-0 p-1 text-ink-40 transition-colors hover:text-ink"
+                                  aria-label="Remove item"
+                                >
+                                  <FiTrash2 aria-hidden="true" className="h-4 w-4" />
+                                </button>
+                              </div>
+
+                              <div className="mt-5 flex flex-wrap items-center justify-between gap-4">
+                                <div className="flex items-center border border-rule">
+                                  {/* A11Y-009 — axe reported these two as
+                                      *critical* "Buttons must have discernible
+                                      text": an icon-only stepper announced as
+                                      "button", twice per line, with no way to
+                                      tell which was which or what it acted on. */}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuantityChange(item, Math.max(1, item.quantity - 1))}
+                                    aria-label={`Decrease the quantity of ${productData.name}`}
+                                    disabled={item.quantity <= 1}
+                                    className="flex h-10 w-10 items-center justify-center text-ink transition-colors hover:bg-wash disabled:cursor-not-allowed disabled:text-ink-40 disabled:hover:bg-transparent"
+                                  >
+                                    <FiMinus aria-hidden="true" className="h-3.5 w-3.5" />
+                                  </button>
+                                  <span className="tnum flex h-10 w-11 items-center justify-center border-x border-rule text-sm">
+                                    {item.quantity}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleQuantityChange(item, item.quantity + 1)}
+                                    aria-label={`Increase the quantity of ${productData.name}`}
+                                    disabled={item.quantity >= availableInventory}
+                                    className="flex h-10 w-10 items-center justify-center text-ink transition-colors hover:bg-wash disabled:cursor-not-allowed disabled:text-ink-40 disabled:hover:bg-transparent"
+                                  >
+                                    <FiPlus aria-hidden="true" className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+
+                                <p className="tnum text-[15px] text-ink">
+                                  {formatPrice(getPriceMinor(productData) * item.quantity)}
+                                  <span className="ml-2 text-xs text-ink-40">
+                                    {formatPrice(getPriceMinor(productData))} each
+                                  </span>
+                                </p>
+                              </div>
+
+                              {warnings.map((warning) => (
+                                <p
+                                  key={warning}
+                                  className="mt-4 flex items-start gap-2 border-l-2 border-ink bg-wash px-3 py-2 text-xs text-ink-60"
+                                >
+                                  <FiAlertCircle aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-ink" />
+                                  <span>{warning}</span>
+                                </p>
+                              ))}
+                            </div>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
+
+                <div className="lg:w-[38%]">
+                  <div className="sticky top-[132px] border border-rule p-7">
+                    <CartTotal heading="Order summary" />
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        // Check if any items have inventory warnings before proceeding
+                        if (blocked) {
+                          toast.error('Please resolve inventory issues before checkout');
+                          return;
+                        }
+                        navigate('/placeorder');
+                      }}
+                      disabled={blocked}
+                      className={`mt-8 flex w-full items-center justify-center gap-2 py-4 font-michroma text-[10px] uppercase tracking-[0.18em] transition-colors duration-300 ${
+                        blocked
+                          ? 'cursor-not-allowed bg-wash text-ink-40'
+                          : 'bg-ink text-paper hover:bg-statepurp'
+                      }`}
+                    >
+                      Proceed to Checkout
+                      <FiArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+                    </button>
+
+                    {blocked && (
+                      <p className="mt-3 text-center text-xs text-ink-60">
+                        Please resolve inventory issues before checkout
+                      </p>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => navigate('/collections/all')}
+                      className="rule-draw mt-7 block w-full pb-1 text-center text-xs text-ink-60 transition-colors hover:text-ink"
+                    >
+                      Continue Shopping
+                    </button>
+                  </div>
                 </div>
               </div>
-            </motion.div>
-          </div>
-          </>
-        )}
-      </motion.div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   )
 }

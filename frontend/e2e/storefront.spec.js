@@ -5,7 +5,7 @@
 
 import { test, expect } from './test.js'
 
-import { addFirstAvailableToCart, authenticate, catalogCeiling, fillAddress, scrollThroughPage, signIn, visibleLink } from './fixtures.js'
+import { addFirstAvailableToCart, authenticate, catalogCeiling, fillAddress, revealAllProducts, scrollThroughPage, signIn, visibleLink } from './fixtures.js'
 
 // ---------------------------------------------------------------------------
 test.describe('flow 1/2 — startup and the catalog (FE-001, FE-006, PERF-005)', () => {
@@ -82,6 +82,9 @@ test.describe('flow 8 — the homepage renders from seeded data (FE-004, PORT-00
 test.describe('flow 4 — browse, filter, sort (FE-003, FE-010)', () => {
     test('/collections/all shows products above $1,000', async ({ page }) => {
         await page.goto('/collections/all')
+        // The grid pages at twelve; these two are named explicitly, so the whole
+        // result has to be on screen before they can be called missing.
+        await revealAllProducts(page)
         // Seeded laptops start at $1,149 and the most expensive is $3,299 —
         // every one of them was hidden by the hardcoded ceiling.
         await expect(visibleLink(page, 'MacBook Pro 16" M4 Pro')).toBeVisible()
@@ -90,6 +93,7 @@ test.describe('flow 4 — browse, filter, sort (FE-003, FE-010)', () => {
 
     test('the price slider reaches the top of the catalog', async ({ page }) => {
         await page.goto('/collections/all')
+        await revealAllProducts(page)
         // Wait for the catalog to land: the ceiling is derived from it, so
         // asserting before it arrives measures the default, not the fix.
         await expect(visibleLink(page, 'Netronix Apex Battlestation')).toBeVisible()
@@ -123,6 +127,7 @@ test.describe('flow 4 — browse, filter, sort (FE-003, FE-010)', () => {
 
     test('a typed collection filters by tag', async ({ page }) => {
         await page.goto('/collections/macbooks')
+        await revealAllProducts(page)
         await expect(visibleLink(page, 'MacBook Pro 16" M4 Pro')).toBeVisible()
         await expect(page.getByText('Netronix Apex Battlestation')).toHaveCount(0)
     })
@@ -142,6 +147,7 @@ test.describe('flow 4 — browse, filter, sort (FE-003, FE-010)', () => {
 
     test('search narrows the product list', async ({ page }) => {
         await page.goto('/products?search=MacBook')
+        await revealAllProducts(page)
         await expect(visibleLink(page, 'MacBook Pro 16" M4 Pro')).toBeVisible()
         await expect(page.getByText('Sonos Era 300')).toHaveCount(0)
     })

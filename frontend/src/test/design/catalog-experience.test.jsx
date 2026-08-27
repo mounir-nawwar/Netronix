@@ -341,3 +341,77 @@ describe('the redesign kept the behaviour it inherited', () => {
         })
     })
 })
+
+// ---------------------------------------------------------------------------
+describe('the grid pages rather than rendering the whole catalog', () => {
+    // Every filtered product used to render at once, each inside a
+    // framer-motion `layout` wrapper — so a filter change animated the layout of
+    // every node in the result. Fine at eighteen products, not at two hundred.
+    //
+    // The control is a button, not a scroll sentinel, and that is a testability
+    // decision as much as a design one: jsdom's `IntersectionObserver` stub
+    // reports `intersecting` once on the next microtask (`src/test/setup.js`),
+    // so a sentinel would fire immediately here and reveal everything, and this
+    // whole describe block could not exist.
+    const many = (count) => Array.from({ length: count }, (unused, index) => makeProduct({
+        _id: `5eed${String(index).padStart(20, '0')}`,
+        name: `Paged Product ${String(index).padStart(3, '0')}`,
+        // Descending date, so "newest" ordering matches the array order and the
+        // assertions below can name the first and last product deterministically.
+        date: 1785585700000 - index,
+        tags: index % 2 === 0 ? ['Laptops'] : ['Accessories'],
+    }))
+
+    it('shows the first page, and says how much of the result it is showing', async () => {
+        setCatalog(many(30))
+        renderCollections('all')
+
+        expect(await screen.findByText('Paged Product 000')).toBeInTheDocument()
+        expect(screen.getByText(/showing 12 of 30/i)).toBeInTheDocument()
+        // The thirteenth is real, and is not rendered yet.
+        expect(screen.queryByText('Paged Product 012')).not.toBeInTheDocument()
+    })
+
+    it('reveals the next page on Load more, and stops offering it at the end', async () => {
+        const user = userEvent.setup()
+        setCatalog(many(20))
+        renderCollections('all')
+
+        await screen.findByText('Paged Product 000')
+        await user.click(screen.getByRole('button', { name: /load more/i }))
+
+        expect(screen.getByText('Paged Product 012')).toBeInTheDocument()
+        expect(screen.getByText(/showing 20 of 20/i)).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: /load more/i })).toBeNull()
+    })
+
+    it('offers no pager at all when everything already fits', async () => {
+        setCatalog(many(9))
+        renderCollections('all')
+
+        await screen.findByText('Paged Product 000')
+        expect(screen.queryByRole('button', { name: /load more/i })).toBeNull()
+        expect(screen.queryByText(/showing/i)).not.toBeInTheDocument()
+    })
+
+    it('resets to the first page when the result set changes', async () => {
+        const user = userEvent.setup()
+        setCatalog(many(30))
+        renderCollections('all')
+
+        await screen.findByText('Paged Product 000')
+        await user.click(screen.getByRole('button', { name: /load more/i }))
+        expect(screen.getByText(/showing 24 of 30/i)).toBeInTheDocument()
+
+        // Narrowing to a tag returns 15 products. Without a reset the grid would
+        // still be showing an offset of 24 into a 15-item list — i.e. all of it,
+        // with no pager — which is page five of a result the visitor has only
+        // just asked for.
+        await user.click(screen.getByLabelText('Accessories'))
+
+        await waitFor(() => {
+            expect(screen.getByText(/showing 12 of 15/i)).toBeInTheDocument()
+        })
+        expect(screen.getByRole('button', { name: /load more/i })).toBeInTheDocument()
+    })
+})

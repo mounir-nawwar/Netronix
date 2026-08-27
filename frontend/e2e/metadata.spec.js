@@ -14,7 +14,7 @@
 
 import { test, expect } from './test.js'
 
-import { visibleLink } from './fixtures.js'
+import { revealAllProducts, visibleLink } from './fixtures.js'
 
 const head = (page) => page.evaluate(() => ({
     title: document.title,
@@ -76,6 +76,7 @@ test.describe('per-route metadata', () => {
 
     test('a product page names the product and carries Product + Offer', async ({ page }) => {
         await page.goto('/products')
+        await revealAllProducts(page)
         await visibleLink(page, 'MacBook Pro 16" M4 Pro').click()
         await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
 
