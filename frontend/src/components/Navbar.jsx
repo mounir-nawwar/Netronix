@@ -7,9 +7,10 @@ import { IoSearchOutline } from "react-icons/io5";
 import { CiMenuBurger } from "react-icons/ci";
 import PropTypes from 'prop-types';
 import { IoCloseOutline } from "react-icons/io5";
-import { FiShoppingBag, FiLogOut, FiChevronDown, FiHeart } from "react-icons/fi";
+import { FiChevronDown } from "react-icons/fi";
 import { motion, AnimatePresence } from 'framer-motion';
 import BrandLogo from './BrandLogo';
+import AccountMenu from './AccountMenu';
 import useDialog from '../lib/useDialog';
 import { collectionPath } from '../lib/catalog';
 
@@ -45,8 +46,14 @@ const Navbar = ({ visible }) => {
         open: mobileMenuOpen,
         onClose: () => setMobileMenuOpen(false),
     });
-    const profileDropdownRef = useRef(null);
-    
+    // Two refs, not one. `profileDropdownRef` used to be assigned to *both* the
+    // desktop panel and the mobile panel — the second mount always wins a
+    // shared ref, so the outside-click handler below only ever guarded the
+    // mobile copy, and the desktop dropdown's dismissal depended entirely on
+    // the `.profile-trigger` class check as a fallback.
+    const desktopAccountMenuRef = useRef(null);
+    const mobileAccountMenuRef = useRef(null);
+
     /**
      * The categories offered in the navigation (FE-010).
      *
@@ -71,21 +78,42 @@ const Navbar = ({ visible }) => {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
                 setDropdownOpen(false);
             }
-            if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target) && 
+            if (mobileMenuRef.current && !mobileMenuRef.current.contains(event.target) &&
                 !event.target.closest('.menu-trigger')) {
                 setMobileMenuOpen(false);
             }
-            if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target) && 
-                !event.target.closest('.profile-trigger')) {
+            // Neither ref alone can tell "outside" from "inside": the desktop
+            // panel is unmounted below `md`, and vice versa, so only one of the
+            // two ever has a node to test against at a given width. Both are
+            // checked, and `.profile-trigger` is kept as the escape hatch for
+            // the trigger button itself, which sits outside either panel.
+            const insideDesktopMenu = desktopAccountMenuRef.current?.contains(event.target);
+            const insideMobileMenu = mobileAccountMenuRef.current?.contains(event.target);
+            if (!insideDesktopMenu && !insideMobileMenu && !event.target.closest('.profile-trigger')) {
                 setProfileDropdownOpen(false);
             }
         };
-        
+
         document.addEventListener("mousedown", handleClickOutside);
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
-    }, [dropdownRef, mobileMenuRef, profileDropdownRef]);
+    }, [dropdownRef, mobileMenuRef]);
+
+    // A11Y — the account menu had no keyboard dismissal at all: no Escape, and
+    // (deliberately) no focus trap, since it is a menu next to a trigger rather
+    // than a modal — moving focus into it or rolling focus within it is a
+    // `role="menu"`/roving-focus semantics change with its own test surface,
+    // not part of this restyle. Escape is the one keyboard affordance a menu
+    // like this needs regardless.
+    useEffect(() => {
+        if (!profileDropdownOpen) return undefined;
+        const onKeyDown = (event) => {
+            if (event.key === 'Escape') setProfileDropdownOpen(false);
+        };
+        document.addEventListener('keydown', onKeyDown);
+        return () => document.removeEventListener('keydown', onKeyDown);
+    }, [profileDropdownOpen]);
 
     // Prevent body scroll when mobile menu is open
     useEffect(() => {
@@ -243,11 +271,19 @@ const Navbar = ({ visible }) => {
                                     </svg>
                                 </span>
                             </button>
+                            {/* Styled to match `AccountMenu` — the panel a few
+                                hundred pixels to the right in this same bar,
+                                built from the identical `bg-white`/`border-
+                                gray-100`/`rounded-lg`/`shadow-lg` recipe before
+                                this pass. Square now, `bg-plate`, a hairline
+                                `border-rule`, `hover:bg-wash`, so the two
+                                dropdowns that can be open in the same header
+                                read as one language rather than two. */}
                             {dropdownOpen && (
-                                <div id="products-menu" className="absolute top-full left-0 bg-white min-w-[200px] z-50 mt-2 rounded-lg shadow-lg py-2 border border-gray-100 animate-fadeIn">
-                                    <Link 
-                                        to="/products" 
-                                        className="block px-4 py-2 hover:bg-gray-100 transition-colors"
+                                <div id="products-menu" className="absolute top-full left-0 z-50 mt-2 min-w-[200px] border border-rule bg-plate py-1 animate-fadeIn">
+                                    <Link
+                                        to="/products"
+                                        className="block px-4 py-2 text-sm text-ink transition-colors hover:bg-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-statepurp"
                                         onClick={(e) => {
                                             e.preventDefault();
                                             handleNavigation("/products");
@@ -255,7 +291,7 @@ const Navbar = ({ visible }) => {
                                     >
                                         All Products
                                     </Link>
-                                    <div className="border-t border-gray-100 my-1"></div>
+                                    <div className="border-t border-rule my-1"></div>
                                     {/* These pointed at `/products?tag=<tag>`, which left
                                         `/collections/:type` reachable from the footer and
                                         nowhere else — even though it is the route built for
@@ -274,7 +310,7 @@ const Navbar = ({ visible }) => {
                                         <Link
                                             key={index}
                                             to={collectionPath(tag)}
-                                            className="block px-4 py-2 hover:bg-gray-100 transition-colors"
+                                            className="block px-4 py-2 text-sm text-ink transition-colors hover:bg-wash focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-statepurp"
                                             onClick={(e) => {
                                                 e.preventDefault();
                                                 handleNavigation(collectionPath(tag));
@@ -312,7 +348,7 @@ const Navbar = ({ visible }) => {
                         </button>
                     
                         {/* User account icon with improved dropdown */}
-                        <div className="relative" ref={profileDropdownRef}>
+                        <div className="relative">
                             <motion.button
                                 type="button"
                                 className="profile-trigger flex items-center space-x-1"
@@ -327,10 +363,19 @@ const Navbar = ({ visible }) => {
                                     <FiChevronDown aria-hidden="true" className={`w-4 h-4 text-gray-600 transition-transform duration-300 ${profileDropdownOpen ? 'rotate-180' : ''}`} />
                                 )}
                             </motion.button>
-                            
+
                             <AnimatePresence>
                                 {token && profileDropdownOpen && (
                                     <>
+                                        {/* This carried an `onClick` under
+                                            `style={{ pointerEvents: 'none' }}` —
+                                            a handler that could never fire. A
+                                            backdrop that dismisses the menu it
+                                            sits behind is the behaviour the
+                                            mobile menu's own backdrop already
+                                            has (`:531` below); this one now
+                                            matches it instead of only pretending
+                                            to. */}
                                         <motion.div
                                             className="fixed inset-0 bg-black bg-opacity-10 z-40 hidden md:block"
                                             variants={backdropVariants}
@@ -338,55 +383,20 @@ const Navbar = ({ visible }) => {
                                             animate="visible"
                                             exit="exit"
                                             onClick={() => setProfileDropdownOpen(false)}
-                                            style={{ pointerEvents: 'none' }}
+                                            aria-hidden="true"
                                         />
-                                        
-                                        <motion.div 
-                                            id="account-menu"
-                                            className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-50"
-                                            variants={profileDropdownVariants}
-                                            initial="hidden"
-                                            animate="visible"
-                                            exit="exit"
-                                        >
-                                            <div className="py-3 border-b border-gray-100 bg-gray-50">
-                                                <p className="px-4 text-sm font-medium text-gray-800">Account</p>
-                                            </div>
-                                            
-                                            <div className="py-1">
-                                                
-                                                <Link 
-                                                    to="/orders" 
-                                                    className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                                    onClick={() => setProfileDropdownOpen(false)}
-                                                >
-                                                    <FiShoppingBag className="w-4 h-4 mr-3 text-gray-500" />
-                                                    <span>My Orders</span>
-                                                </Link>
 
-                                                <Link 
-                                                    to="/wishlist" 
-                                                    className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                                    onClick={() => setProfileDropdownOpen(false)}
-                                                >
-                                                    <FiHeart className="w-4 h-4 mr-3 text-gray-500" />
-                                                    <span>My Wishlist</span>
-                                                </Link>
-                                            </div>
-                                            
-                                            <div className="py-1 border-t border-gray-100">
-                                                <button 
-                                                    className="flex w-full items-center px-4 py-3 text-sm text-red-500 hover:bg-gray-50 transition-colors"
-                                                    onClick={() => {
-                                                        logout();
-                                                        setProfileDropdownOpen(false);
-                                                    }}
-                                                >
-                                                    <FiLogOut className="w-4 h-4 mr-3" />
-                                                    <span>Sign Out</span>
-                                                </button>
-                                            </div>
-                                        </motion.div>
+                                        <AccountMenu
+                                            ref={desktopAccountMenuRef}
+                                            id="account-menu"
+                                            variants={profileDropdownVariants}
+                                            widthClassName="w-64"
+                                            onNavigate={() => setProfileDropdownOpen(false)}
+                                            onLogout={() => {
+                                                logout();
+                                                setProfileDropdownOpen(false);
+                                            }}
+                                        />
                                     </>
                                 )}
                             </AnimatePresence>
@@ -421,7 +431,7 @@ const Navbar = ({ visible }) => {
                     </button>
                     
                     {/* Mobile Profile Icon with dropdown */}
-                    <div className="relative" ref={profileDropdownRef}>
+                    <div className="relative">
                         <motion.button
                             type="button"
                             className="profile-trigger flex items-center"
@@ -432,7 +442,7 @@ const Navbar = ({ visible }) => {
                         >
                             <IoPersonOutline aria-hidden="true" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-800" />
                         </motion.button>
-                        
+
                         <AnimatePresence>
                             {token && profileDropdownOpen && (
                                 <>
@@ -443,53 +453,19 @@ const Navbar = ({ visible }) => {
                                         animate="visible"
                                         exit="exit"
                                         onClick={() => setProfileDropdownOpen(false)}
+                                        aria-hidden="true"
                                     />
-                                    
-                                    <motion.div 
-                                        className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden z-50"
-                                        variants={profileDropdownVariants}
-                                        initial="hidden"
-                                        animate="visible"
-                                        exit="exit"
-                                    >
-                                        <div className="py-3 border-b border-gray-100 bg-gray-50">
-                                            <p className="px-4 text-sm font-medium text-gray-800">Account</p>
-                                        </div>
-                                        
-                                        <div className="py-1">
-                                            
-                                            <Link 
-                                                to="/orders" 
-                                                className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                                onClick={() => setProfileDropdownOpen(false)}
-                                            >
-                                                <FiShoppingBag className="w-4 h-4 mr-3 text-gray-500" />
-                                                <span>My Orders</span>
-                                            </Link>
 
-                                            <Link 
-                                                to="/wishlist" 
-                                                className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gray-50 transition-colors"
-                                                onClick={() => setProfileDropdownOpen(false)}
-                                            >
-                                                <FiHeart className="w-4 h-4 mr-3 text-gray-500" />
-                                                <span>My Wishlist</span>
-                                            </Link>
-                                        </div>
-                                        
-                                        <div className="py-1 border-t border-gray-100">
-                                            <button 
-                                                className="flex w-full items-center px-4 py-3 text-sm text-red-500 hover:bg-gray-50 transition-colors"
-                                                onClick={() => {
-                                                    logout();
-                                                    setProfileDropdownOpen(false);
-                                                }}
-                                            >
-                                                <FiLogOut className="w-4 h-4 mr-3" />
-                                                <span>Sign Out</span>
-                                            </button>
-                                        </div>
-                                    </motion.div>
+                                    <AccountMenu
+                                        ref={mobileAccountMenuRef}
+                                        variants={profileDropdownVariants}
+                                        widthClassName="w-56"
+                                        onNavigate={() => setProfileDropdownOpen(false)}
+                                        onLogout={() => {
+                                            logout();
+                                            setProfileDropdownOpen(false);
+                                        }}
+                                    />
                                 </>
                             )}
                         </AnimatePresence>
