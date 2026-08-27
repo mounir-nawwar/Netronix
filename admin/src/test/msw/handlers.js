@@ -148,6 +148,22 @@ export const handlers = [
         // (DB-007, ADM-003). A handler that returned them regardless would let
         // a console bug pass here and fail in the browser.
         const includeArchived = new URL(request.url).searchParams.get('includeArchived') === 'true'
+
+        // And it mirrors `adminAuthForArchivedQuery` too, which is the half this
+        // handler used to leave out. `/list` is public, but the archived view is
+        // admin-only, so an anonymous request for it is a 401 on the real
+        // server. Modelling only the filter and not the guard is what let
+        // `listProducts` ship without a token: every unit test passed, and in
+        // the browser ticking "Show archived" returned 401 and rendered "No
+        // archived products" over a product that had just been archived. A mock
+        // more permissive than the thing it stands in for cannot fail.
+        if (includeArchived && request.headers.get('token') !== VALID_ADMIN_TOKEN) {
+            return HttpResponse.json(
+                { success: false, message: 'Not Authorized Login Again' },
+                { status: 401 },
+            )
+        }
+
         const visible = includeArchived ? catalog : catalog.filter((product) => !product.archived)
         return HttpResponse.json(envelope('products', visible.map(present), pagingOf(request)))
     }),

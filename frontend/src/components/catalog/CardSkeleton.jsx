@@ -17,16 +17,16 @@ import PropTypes from 'prop-types'
 const CardSkeleton = ({ index = 0 }) => (
     <div className="flex flex-col" aria-hidden="true">
         <div
-            className="aspect-square w-full animate-plate-sheen bg-plate"
+            className="aspect-square w-full animate-plate-sheen bg-wash"
             // Staggered so the grid breathes as a field rather than blinking in
             // unison, which reads as a broken render rather than as loading.
             style={{ animationDelay: `${(index % 4) * 160}ms` }}
         />
         <div className="pt-4">
-            <div className="h-2 w-12 bg-plate" />
-            <div className="mt-3 h-3 w-4/5 bg-plate" />
-            <div className="mt-2 h-3 w-3/5 bg-plate" />
-            <div className="mt-4 h-3 w-20 bg-plate" />
+            <div className="h-2 w-12 bg-wash" />
+            <div className="mt-3 h-3 w-4/5 bg-wash" />
+            <div className="mt-2 h-3 w-3/5 bg-wash" />
+            <div className="mt-4 h-3 w-20 bg-wash" />
             <div className="mt-3 h-px w-full bg-rule" />
         </div>
     </div>

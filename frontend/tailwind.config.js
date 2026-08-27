@@ -33,7 +33,22 @@ export default {
           40: '#6c6c73',
         },
         paper: '#fbfbfa',       // the page canvas. NOT gray-50, which is blue.
-        plate: '#f2f1ee',       // the product plate
+        // The surface a product image is painted on, and it is white for a
+        // reason that is about the data rather than the design. The live
+        // catalog's photography comes from Cloudinary and from vendor CDNs, and
+        // it is not consistent: some assets are cut out on transparency, most
+        // are shot on white, one is on black. A warm plate (this was #f2f1ee)
+        // renders every white-background photograph as a hard white rectangle
+        // floating on it — five of eight sampled live products. White absorbs
+        // them, and a cut-out sits on white perfectly well, so the only tile
+        // that still shows a box is the one whose source asset has a black
+        // background. Against #fbfbfa paper a white plate still reads as a
+        // tile, and the hairline under the price does the rest.
+        plate: '#ffffff',
+        // The warm grey the plate used to be. Still the right colour for a
+        // surface that is *not* holding a photograph: loading skeletons, a
+        // disabled control, a menu row under the pointer.
+        wash: '#f2f1ee',
         rule: '#e5e3de',        // hairlines — the only "border" the catalog has
       },
       keyframes: {

@@ -24,9 +24,9 @@
 // is real product photography, and this exists so the catalog is presentable
 // until there is some. Three things changed:
 //
-//   * **The light palette the catalog now uses** — a `#f2f1ee` plate with a
-//     `#121214` line drawing, so a product sits on the same surface the card
-//     paints behind it rather than fighting it.
+//   * **The light palette the catalog now uses** — a white plate with a
+//     `#121214` line drawing, so a drawn product sits on exactly the same
+//     ground as a photographed one rather than fighting it.
 //   * **A silhouette per product**, chosen from the product's own name and
 //     tags. Twenty tiles that differ from each other is the entire point.
 //   * **Four genuinely different views.** `ANGLE` skews the geometry, `SIDE`
@@ -42,7 +42,13 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-const PLATE = '#f2f1ee'
+// White, matching the card's plate. The plate is white because the live
+// catalog's photography is not consistent — most of it is shot on white, some
+// is cut out, one asset is on black — and a warm plate renders every
+// white-background photograph as a hard rectangle floating on it. A drawn
+// product has to sit on the same ground as a photographed one or the grid has
+// two different backgrounds in it.
+const PLATE = '#ffffff'
 const INK = '#121214'
 const MUTED = '#8e8e95'
 

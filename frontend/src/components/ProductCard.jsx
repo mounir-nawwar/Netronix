@@ -70,7 +70,7 @@ const placeholder = (label) =>
     'data:image/svg+xml;charset=utf-8,' +
     encodeURIComponent(
         '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400" role="img">' +
-        '<rect width="400" height="400" fill="#f2f1ee"/>' +
+        '<rect width="400" height="400" fill="#ffffff"/>' +
         '<text x="200" y="205" text-anchor="middle" font-family="system-ui, sans-serif" ' +
         `font-size="18" fill="#8e8e95">${label}</text>` +
         '</svg>',
@@ -365,7 +365,7 @@ const ProductCard = ({ product, variant = 'showcase', showQuickAdd = false, clas
                                 // "Sold out", and printing it twice on one tile
                                 // is the card arguing with itself. A disabled
                                 // action adds nothing next to it.
-                                ? 'hidden cursor-not-allowed bg-plate text-ink-40 md:flex'
+                                ? 'hidden cursor-not-allowed bg-wash text-ink-40 md:flex'
                                 : 'bg-ink text-paper hover:bg-statepurp'
                         } md:translate-y-full md:opacity-0 md:group-hover:translate-y-0 md:group-hover:opacity-100 md:group-focus-within:translate-y-0 md:group-focus-within:opacity-100`}
                     >

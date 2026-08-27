@@ -41,19 +41,75 @@ const BLOCKING = ['critical', 'serious']
  *
  * Infinite animations — the two brand marquees — are skipped, because their
  * `finished` promise never resolves.
+ *
+ * Why this loops rather than awaiting one batch
+ * ---------------------------------------------
+ * `document.getAnimations()` returns what is running *at the instant it is
+ * called*. Several pages stagger their entrance — `Cart` fades its container,
+ * then its heading, then each line — and a child whose delay has not elapsed
+ * yet has no animation object to find. Awaiting a single snapshot therefore
+ * returned while the last children had not started, and the 600 ms margin below
+ * was sometimes enough and sometimes not.
+ *
+ * That is exactly what the cart scan was reporting: two to ten contrast
+ * violations, different ones each run, on a page whose settled colours all pass
+ * — `.text-gray-500` at `#6b7280` is 4.8:1 on white, and it only fails while it
+ * is half faded in. Re-checking until nothing new has started is the difference
+ * between a flaky assertion and a real one.
  */
-async function settleAnimations(page) {
-    await page.evaluate(async () => {
-        if (typeof document.getAnimations !== 'function') return
-        const finite = document.getAnimations().filter((animation) => {
-            const timing = animation.effect?.getTiming?.()
-            return timing && timing.iterations !== Infinity
+async function settleAnimations(page, { rounds = 8 } = {}) {
+    for (let round = 0; round < rounds; round += 1) {
+        const running = await page.evaluate(async () => {
+            if (typeof document.getAnimations !== 'function') return 0
+
+            const finite = () => document.getAnimations().filter((animation) => {
+                const timing = animation.effect?.getTiming?.()
+                return timing && timing.iterations !== Infinity
+            })
+
+            await Promise.all(finite().map((animation) => animation.finished.catch(() => { })))
+            // Anything that began while we were awaiting the batch above.
+            return finite().filter((animation) => animation.playState === 'running').length
         })
-        await Promise.all(finite.map((animation) => animation.finished.catch(() => { })))
-    })
+
+        if (running === 0) break
+        await page.waitForTimeout(150)
+    }
+
     // framer-motion drives some values off rAF rather than WAAPI, so those are
-    // not in `getAnimations()`. One settle frame plus a small margin covers them.
-    await page.waitForTimeout(600)
+    // not in `getAnimations()` at all. Wait for the thing axe actually measures.
+    //
+    // **Effective** opacity, walking up the tree. `opacity` is not inherited as
+    // a computed value — it composites — so a `<p>` inside a container animating
+    // `opacity: 0 -> 1` reports `1` for itself throughout, while axe sees it
+    // blended against whatever is behind. Every fade on the cart page is on a
+    // wrapper, so checking the text nodes alone found nothing and let the scan
+    // run mid-transition. Measured before this: eight runs in ten reported
+    // `.text-gray-500` as `#989da6`, `#9a9fa9`, `#9ba0aa`… — its settled
+    // `#6b7280` mixed toward white by a different amount each time.
+    //
+    // Zero is fine and is not waited on: that is a deliberately hidden control,
+    // not one in transit.
+    await page.waitForFunction(() => {
+        const selector = 'p, h1, h2, h3, h4, h5, span, a, button, li, td, th, label, dt, dd'
+
+        const effectiveOpacity = (element) => {
+            let opacity = 1
+            for (let node = element; node && node.nodeType === 1; node = node.parentElement) {
+                const own = Number.parseFloat(getComputedStyle(node).opacity)
+                if (Number.isFinite(own)) opacity *= own
+            }
+            return opacity
+        }
+
+        return ![...document.querySelectorAll(selector)].some((element) => {
+            if (!element.textContent?.trim()) return false
+            const opacity = effectiveOpacity(element)
+            return opacity > 0.001 && opacity < 0.999
+        })
+    }, null, { timeout: 8000 }).catch(() => { })
+
+    await page.waitForTimeout(400)
 }
 
 async function scan(page, { include, disableRules = [] } = {}) {

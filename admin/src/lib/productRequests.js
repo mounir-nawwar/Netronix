@@ -148,10 +148,28 @@ export function completeItems(collected, label) {
     return collected.items
 }
 
-export async function listProducts({ includeArchived = false } = {}) {
+/**
+ * The console's product list.
+ *
+ * `token` is not optional when `includeArchived` is set, and that is the whole
+ * bug this parameter fixes. `/api/product/list` is public, but the route guards
+ * the archived view behind `adminAuthForArchivedQuery` — which calls the full
+ * `adminAuth` the moment `includeArchived` is truthy (DB-007). This function
+ * was the only request in this module that never sent a token, so ticking
+ * "Show archived" issued an unauthenticated request for an admin-only view, got
+ * a 401, and surfaced as an empty archived list: a product could be archived
+ * and then never found again from the console.
+ *
+ * The token is sent whenever the caller holds one rather than only when
+ * `includeArchived` is set, so the request does not change shape depending on a
+ * checkbox — the unarchived listing is identical either way, and a signed-in
+ * console asking as itself is the honest description of what is happening.
+ */
+export async function listProducts({ includeArchived = false, token } = {}) {
     const collected = await collectPages(async (paging) => {
         const { data } = await axios.get(`${backendUrl}/api/product/list`, {
             params: { ...paging, ...(includeArchived ? { includeArchived: 'true' } : {}) },
+            ...(token ? { headers: { token } } : {}),
         })
         return data
     })

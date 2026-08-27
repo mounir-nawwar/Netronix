@@ -28,9 +28,12 @@
 # ---------------------------------------------------------------------------
 # The keying pipeline
 # ---------------------------------------------------------------------------
-# Four of the sources are JPEGs shot on white, and the catalog paints products
-# on a #f2f1ee plate — so an unkeyed JPEG shows as a white box floating on the
-# plate. Removing that background is three filters and one correction:
+# Four of the sources are JPEGs shot on white. The card's plate is white too, so
+# an unkeyed JPEG would very nearly get away with it — but "very nearly" is the
+# problem: a JPEG's white is 246-255 with compression noise in it, not #ffffff,
+# so it shows as a faintly grey rectangle with a hard edge. Keying is also what
+# makes these assets independent of the plate colour, which has already moved
+# once. Removing the background is three filters and one correction:
 #
 #   1. `lutrgb`    — snap everything at or above 232 to pure white. JPEG noise
 #                    means the "white" backdrop is really 246-255 with a soft
@@ -67,6 +70,12 @@ OUT="scripts/assets/catalog"
 
 WIDTH=720          # ~2x the 400px the card plate renders at
 QUALITY=76         # 17-26 kB per image; they are embedded in the seed as data URIs
+EFFORT=6           # libwebp search effort. Costs encode time here, nothing at
+                   # runtime, and buys ~6% off every file at identical quality.
+                   # Going further means dropping WIDTH, which trades real
+                   # sharpness on the product page for bytes that never reach
+                   # production — the live catalog serves Cloudinary URLs and
+                   # never touches this seed.
 
 mkdir -p "$OUT"
 
@@ -79,7 +88,7 @@ KEY="$KEY,geq=r='r(X,Y)':g='g(X,Y)':b='min(b(X,Y),max(r(X,Y),g(X,Y)))':a='alpha(
 cutout() {
     ffmpeg -hide_banner -loglevel error -y -i "$SRC/$1" \
         -vf "scale=$WIDTH:-1" -frames:v 1 \
-        -c:v libwebp -q:v "$QUALITY" "$OUT/$2"
+        -c:v libwebp -q:v "$QUALITY" -compression_level "$EFFORT" "$OUT/$2"
     printf '  %-22s %7s bytes\n' "$2" "$(stat -c%s "$OUT/$2")"
 }
 
@@ -87,7 +96,7 @@ cutout() {
 keyed() {
     ffmpeg -hide_banner -loglevel error -y -i "$SRC/$1" \
         -vf "$KEY,scale=$WIDTH:-1" -frames:v 1 \
-        -c:v libwebp -q:v "$QUALITY" "$OUT/$2"
+        -c:v libwebp -q:v "$QUALITY" -compression_level "$EFFORT" "$OUT/$2"
     printf '  %-22s %7s bytes\n' "$2" "$(stat -c%s "$OUT/$2")"
 }
 

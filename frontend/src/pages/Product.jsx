@@ -262,12 +262,12 @@ const Product = () => {
         aria-label="Loading product"
       >
         <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-12 px-4 pt-[132px] sm:px-[5vw] md:px-[7vw] lg:grid-cols-2 lg:px-[9vw]">
-          <div aria-hidden="true" className="aspect-square w-full animate-plate-sheen bg-plate" />
+          <div aria-hidden="true" className="aspect-square w-full animate-plate-sheen bg-wash" />
           <div aria-hidden="true" className="pt-4">
-            <div className="h-2 w-20 bg-plate" />
-            <div className="mt-6 h-8 w-4/5 bg-plate" />
-            <div className="mt-4 h-6 w-32 bg-plate" />
-            <div className="mt-10 h-12 w-full bg-plate" />
+            <div className="h-2 w-20 bg-wash" />
+            <div className="mt-6 h-8 w-4/5 bg-wash" />
+            <div className="mt-4 h-6 w-32 bg-wash" />
+            <div className="mt-10 h-12 w-full bg-wash" />
           </div>
         </div>
       </div>
@@ -512,7 +512,7 @@ const Product = () => {
                       onClick={decreaseQuantity}
                       disabled={quantity <= 1}
                       className={`flex h-11 w-11 items-center justify-center transition-colors ${
-                        quantity <= 1 ? 'cursor-not-allowed text-ink-40' : 'text-ink hover:bg-plate'
+                        quantity <= 1 ? 'cursor-not-allowed text-ink-40' : 'text-ink hover:bg-wash'
                       }`}
                     >
                       <FiMinus className="h-4 w-4" />
@@ -526,7 +526,7 @@ const Product = () => {
                       onClick={increaseQuantity}
                       disabled={quantity >= getAvailableQuantity()}
                       className={`flex h-11 w-11 items-center justify-center transition-colors ${
-                        quantity >= getAvailableQuantity() ? 'cursor-not-allowed text-ink-40' : 'text-ink hover:bg-plate'
+                        quantity >= getAvailableQuantity() ? 'cursor-not-allowed text-ink-40' : 'text-ink hover:bg-wash'
                       }`}
                     >
                       <FiPlus className="h-4 w-4" />
@@ -543,7 +543,7 @@ const Product = () => {
                 disabled={ctaDisabled}
                 className={`flex-[2] py-4 font-michroma text-[10px] uppercase tracking-[0.18em] transition-colors duration-300 ${
                   ctaDisabled
-                    ? 'cursor-not-allowed bg-plate text-ink-40'
+                    ? 'cursor-not-allowed bg-wash text-ink-40'
                     : 'bg-ink text-paper hover:bg-statepurp'
                 }`}
               >
@@ -684,7 +684,7 @@ const Product = () => {
   ) : (
     <div className="min-h-screen bg-paper" role="status" aria-label="Loading product">
       <div aria-hidden="true" className="mx-auto max-w-[1400px] px-4 pt-[132px]">
-        <div className="aspect-square w-full max-w-lg animate-plate-sheen bg-plate" />
+        <div className="aspect-square w-full max-w-lg animate-plate-sheen bg-wash" />
       </div>
     </div>
   );

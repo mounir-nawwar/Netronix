@@ -50,7 +50,13 @@ const List = ({ token }) => {
       // The archived filter is a server-side one: `includeArchived` is what the
       // catalog endpoint already accepts, so the console is not filtering a page
       // of results it happened to receive.
-      setList(await listProducts({ includeArchived: showArchived }));
+      //
+      // The token has to go with it. `/api/product/list` is public, but the
+      // archived view behind `includeArchived` is admin-only
+      // (`adminAuthForArchivedQuery`, DB-007) — so without it, ticking "Show
+      // archived" asked for an admin view anonymously, took a 401, and rendered
+      // "No archived products" over a product that had just been archived.
+      setList(await listProducts({ includeArchived: showArchived, token }));
       setStatus('ready');
     } catch (error) {
       console.error('Fetch Error:', error);
@@ -58,7 +64,7 @@ const List = ({ token }) => {
       setLoadError(error.message || 'Could not load the product list');
       toast.error(error.response?.data?.message ?? 'Could not load the product list');
     }
-  }, [showArchived]);
+  }, [showArchived, token]);
 
   useEffect(() => { fetchList(); }, [fetchList]);
 

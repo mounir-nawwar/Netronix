@@ -85,7 +85,7 @@ const SortMenu = ({ value, onChange }) => {
                             role="option"
                             aria-selected={option.value === value}
                             onClick={() => { onChange(option.value); setOpen(false) }}
-                            className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-xs transition-colors duration-200 hover:bg-plate ${
+                            className={`flex w-full items-center justify-between px-4 py-2.5 text-left text-xs transition-colors duration-200 hover:bg-wash ${
                                 option.value === value ? 'text-ink' : 'text-ink-60'
                             }`}
                         >
