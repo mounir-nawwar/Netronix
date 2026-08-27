@@ -25,7 +25,11 @@ const BackButton = ({ className = '', showLabel = true }) => {
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.3 }}
-      className={`flex items-center gap-2 text-gray-600 hover:text-[#6a5acd] transition-colors ${className}`}
+      // On the site's tokens rather than `text-gray-600` and a typed-in
+      // `#6a5acd`. Every page that renders this control — cart, checkout,
+      // product, wishlist — is on the ink/paper palette now, and this was the
+      // last thing on any of them still reaching for the old one.
+      className={`flex items-center gap-2 text-ink-40 transition-colors duration-300 hover:text-statepurp ${className}`}
       onClick={goBack}
       aria-label="Go back"
     >

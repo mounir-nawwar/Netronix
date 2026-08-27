@@ -12,27 +12,41 @@ import Seo from './Seo'
  * them said so.
  */
 const NotFound = () => (
-    <div className="min-h-[60vh] flex items-center justify-center px-4 py-24">
+    <div className="flex min-h-[70vh] items-center bg-paper px-4 py-24 text-ink sm:px-[5vw] md:px-[7vw] lg:px-[9vw]">
         {/* SEO — a 404 that a crawler is told is a 404. This is a client-side
             route, so the HTTP status is still 200; `noindex, nofollow` is the
             part that is in this application's gift. */}
         <Seo rawTitle="Page not found — Netronix" description="This page does not exist." noIndex />
-        <div className="max-w-md text-center">
-            <p className="text-sm font-michroma text-[#6a5acd] mb-2">404</p>
-            <h1 className="text-3xl font-michroma text-gray-900 mb-3">Page not found</h1>
-            <p className="text-gray-600 mb-8">
+
+        <div className="mx-auto w-full max-w-[1200px]">
+            <div className="flex items-center gap-3">
+                <span className="font-michroma text-[9px] uppercase tracking-[0.22em] text-statepurp md:text-[10px]">
+                    Netronix / 404
+                </span>
+                <span className="h-px flex-1 bg-rule" />
+            </div>
+
+            <h1
+                className="mt-5 font-michroma uppercase leading-[0.95] tracking-tight text-ink"
+                style={{ fontSize: 'clamp(2rem, 6vw, 4rem)' }}
+            >
+                Page not found
+            </h1>
+
+            <p className="mt-8 max-w-[52ch] text-base leading-relaxed text-ink-60">
                 That page does not exist. It may have moved, or the link may be out of date.
             </p>
-            <div className="flex flex-wrap gap-3 justify-center">
+
+            <div className="mt-10 flex flex-wrap gap-3">
                 <Link
                     to="/"
-                    className="px-6 py-3 rounded-lg bg-[#6a5acd] text-white hover:bg-[#5a4cbb] transition-colors fill-button"
+                    className="border border-ink bg-ink px-8 py-3.5 font-michroma text-[10px] uppercase tracking-[0.18em] text-paper transition-colors duration-300 hover:border-statepurp hover:bg-statepurp"
                 >
                     Back to home
                 </Link>
                 <Link
                     to="/collections/all"
-                    className="px-6 py-3 rounded-lg border border-[#6a5acd] text-[#6a5acd] hover:bg-[#f5f3ff] transition-colors"
+                    className="border border-rule px-8 py-3.5 font-michroma text-[10px] uppercase tracking-[0.18em] text-ink transition-colors duration-300 hover:border-ink"
                 >
                     Browse products
                 </Link>

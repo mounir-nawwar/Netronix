@@ -7,6 +7,7 @@ import minnWordmark from '../assets/logos/minn-wordmark-light.svg';
 import BrandLogo from './BrandLogo';
 import { MINN_NAME, MINN_SOCIAL_LINKS, MINN_URL } from '../lib/minn.js';
 import { CONTACT_EMAIL } from '../lib/contact.js';
+import { collectionPath } from '../lib/catalog.js';
 
 const SOCIAL_ICONS = {
     facebook: FaFacebookF,
@@ -36,43 +37,32 @@ const Footer = () => {
                             {/* Collections */}
                             <div className="mb-6 sm:mb-0">
                                 <h2 className="text-lg md:text-xl font-michroma mb-4 sm:mb-6 md:mb-8">Collections</h2>
+                                {/* Four near-identical `<li>`s, each hardcoding
+                                    `/products?tag=<name>` twice — once in `to`
+                                    and once in the handler that preventDefaults
+                                    it. They point at `/collections/<name>` now,
+                                    through the one helper: that is the route
+                                    with the per-collection canonical and
+                                    breadcrumb, and it was reachable from nowhere
+                                    in the site's own navigation.
+
+                                    All four tags are in the seeded catalog. The
+                                    navbar's list is derived from the live tags
+                                    for exactly this reason (FE-010), and this
+                                    one is worth watching if the catalog's
+                                    taxonomy ever changes. */}
                                 <ul className="space-y-2 sm:space-y-3 mb-6 sm:mb-8 md:mb-12">
-                                    <li>
-                                        <Link 
-                                            to="/products?tag=Headphones" 
-                                            onClick={(e) => { e.preventDefault(); handleNavigation('/products?tag=Headphones'); }} 
-                                            className="text-sm md:text-base hover:text-gray-300 transition-colors"
-                                        >
-                                            Headphones
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link 
-                                            to="/products?tag=Earphones" 
-                                            onClick={(e) => { e.preventDefault(); handleNavigation('/products?tag=Earphones'); }} 
-                                            className="text-sm md:text-base hover:text-gray-300 transition-colors"
-                                        >
-                                            Earphones
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link 
-                                            to="/products?tag=Speakers" 
-                                            onClick={(e) => { e.preventDefault(); handleNavigation('/products?tag=Speakers'); }} 
-                                            className="text-sm md:text-base hover:text-gray-300 transition-colors"
-                                        >
-                                            Speakers
-                                        </Link>
-                                    </li>
-                                    <li>
-                                        <Link 
-                                            to="/products?tag=Accessories" 
-                                            onClick={(e) => { e.preventDefault(); handleNavigation('/products?tag=Accessories'); }} 
-                                            className="text-sm md:text-base hover:text-gray-300 transition-colors"
-                                        >
-                                            Accessories
-                                        </Link>
-                                    </li>
+                                    {['Headphones', 'Earphones', 'Speakers', 'Accessories'].map((tag) => (
+                                        <li key={tag}>
+                                            <Link
+                                                to={collectionPath(tag)}
+                                                onClick={(e) => { e.preventDefault(); handleNavigation(collectionPath(tag)); }}
+                                                className="text-sm md:text-base hover:text-gray-300 transition-colors"
+                                            >
+                                                {tag}
+                                            </Link>
+                                        </li>
+                                    ))}
                                 </ul>
 
                                 {/* One address, and it belongs to the agency that

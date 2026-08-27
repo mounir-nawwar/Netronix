@@ -163,7 +163,21 @@ describe('lossless customer variant selections', () => {
 
     it('wishlist add uses the empty typed identity for a variantless product', async () => {
         const user = userEvent.setup()
-        const variantless = { ...ambiguousProduct, variants: [] }
+        // Genuinely variantless: no declared axes *and* no inventory keyed by
+        // any. The fixture used to be `{ ...ambiguousProduct, variants: [] }`,
+        // which cleared the axes but kept a two-entry `inventoryV2` matrix keyed
+        // by Size and Storage — a product whose stock is counted per
+        // combination while declaring no combinations to choose from. No product
+        // the API can produce has that shape.
+        //
+        // It mattered because the old page decided what to add by reading
+        // `variants` alone, so against that fixture it added the empty identity
+        // — a cart line naming a combination the inventory does not contain,
+        // which `Cart` then renders as "This option cannot be identified any
+        // more" (FE-024). `defaultVariantSelection` reads the inventory, so it
+        // named a real entry instead and the assertion caught the difference.
+        // The shared card is right; the fixture was the thing that was wrong.
+        const variantless = { ...ambiguousProduct, variants: [], inventoryV2: [], inventory: {} }
         const context = baseContext({
             wishlist: [PRODUCT_ID],
             wishlistStatus: 'ready',
@@ -175,8 +189,43 @@ describe('lossless customer variant selections', () => {
         })
         renderWithContext(<Wishlist />, context)
 
-        await user.click(screen.getByRole('button', { name: /add to cart/i }))
-        expect(context.addToCart).toHaveBeenCalledWith(PRODUCT_ID, { variantOptions: {} })
+        // The wishlist renders `ProductCard` now rather than a fifth copy of the
+        // card, so the control is the shared quick-add: its name carries the
+        // product (a grid of buttons all called "Add to cart" is a grid of
+        // identical targets) and it passes an explicit quantity.
+        await user.click(screen.getByRole('button', { name: /add .* to cart/i }))
+        expect(context.addToCart).toHaveBeenCalledWith(PRODUCT_ID, { variantOptions: {} }, 1)
+    })
+
+    it('offers one remove control per saved product, named for the product', async () => {
+        const user = userEvent.setup()
+        const second = { ...ambiguousProduct, _id: 'second-product-id', name: 'Quiet Desktop' }
+        const context = baseContext({
+            wishlist: [PRODUCT_ID, second._id],
+            wishlistStatus: 'ready',
+            products: [ambiguousProduct, second],
+            catalogStatus: 'ready',
+            catalogError: null,
+            reloadCatalog: vi.fn(),
+            goBack: vi.fn(),
+            removeFromWishlist: vi.fn(),
+        })
+        renderWithContext(<Wishlist />, context)
+
+        // The page used to render **two** buttons per card — one over the image,
+        // one in the action row — both with the accessible name "Remove from
+        // wishlist". Four identical controls for two products, and no way for a
+        // screen-reader user to tell which removed what, or that two of them
+        // were duplicates. `getAllByRole` would have found four here.
+        const removes = screen.getAllByRole('button', { name: /remove .* from wishlist/i })
+        expect(removes).toHaveLength(2)
+
+        const names = removes.map((button) => button.getAttribute('aria-label'))
+        expect(new Set(names).size).toBe(2)
+        expect(names).toContain('Remove Quiet Desktop from wishlist')
+
+        await user.click(screen.getByRole('button', { name: /remove quiet desktop from wishlist/i }))
+        expect(context.removeFromWishlist).toHaveBeenCalledWith(second._id)
     })
 })
 

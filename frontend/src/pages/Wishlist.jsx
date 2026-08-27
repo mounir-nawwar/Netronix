@@ -1,9 +1,12 @@
 import { useContext, useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { ShopContext } from '../context/shopContext';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FiHeart, FiChevronLeft, FiShoppingBag, FiTrash2, FiX } from 'react-icons/fi';
-import { Link } from 'react-router-dom';
+import ProductCard from '../components/ProductCard';
+import CardSkeleton from '../components/catalog/CardSkeleton';
+import BackButton from '../components/BackButton';
+import Panel from '../components/Panel';
 import Seo from '../components/Seo';
+import { DENSITIES } from '../lib/catalogView';
 
 // FE-013 — the spinner that never stopped.
 //
@@ -15,10 +18,43 @@ import Seo from '../components/Seo';
 // anything yet" — was the case it could not reach.
 //
 // It settles on whatever actually happened now: loading, empty, or failed.
+//
+// ---------------------------------------------------------------------------
+// The redesign, and the fifth product card
+// ---------------------------------------------------------------------------
+//
+// This page was the last one on the old palette — `bg-gray-50`, `rounded-xl
+// shadow-sm`, `text-3xl font-bold`, `#6a5acd` typed in four times — and, more
+// to the point, it carried a **fifth copy of the product card**. FE-007
+// consolidated four of them into `ProductCard` precisely so a fix to image
+// handling or keyboard access would be made once; this one was not in that
+// count, and it had drifted the way all of them did:
+//
+//   * `image[0]` with no `onError`, so a dead URL left a broken-image glyph
+//     where every other surface falls back to an inline SVG;
+//   * no stock signal at all, so a saved product that has since sold out was
+//     still offered with an "Add to Cart" button;
+//   * `product.variants?.length > 0 ? 'View Options' : 'Add to Cart'`, a second
+//     implementation of a decision `defaultVariantSelection` already makes;
+//   * **two remove buttons per card**, both labelled `Remove from wishlist`.
+//     One over the image, one in the action row. To a screen reader every saved
+//     product had two identically-named controls and no way to tell which was
+//     which, or that they did the same thing.
+//
+// It renders `ProductCard` now, so it inherits the scrubbing, the sold-out
+// chip, the placeholder handling and the working quick-add for free.
+//
+// The remove control sits **below** the card rather than on it. `ProductCard`
+// puts a full-bleed overlay `<Link>` at `z-10` and its quick-add at `z-20`, with
+// the stock chip top-left and the mobile quick-add pill top-right; a third
+// control layered into that would have to win a z-index argument and would land
+// on one of the other two at some breakpoint. Underneath, it is unambiguous at
+// every width, reachable in tab order, and — being one control rather than two —
+// can finally carry the product's name.
 const Wishlist = () => {
   const {
     wishlist, wishlistStatus, products, catalogStatus, catalogError, reloadCatalog,
-    removeFromWishlist, addToCart, navigate, goBack, formatPrice, getPriceMinor,
+    removeFromWishlist, navigate,
   } = useContext(ShopContext);
   const [wishlistProducts, setWishlistProducts] = useState([]);
 
@@ -31,174 +67,127 @@ const Wishlist = () => {
     setWishlistProducts(wishlist.map(id => products.find(p => p._id === id)).filter(Boolean));
   }, [wishlist, products]);
 
-  const handleRemoveFromWishlist = (productId) => {
-    removeFromWishlist(productId);
-  };
-
-  const handleAddToCart = (product) => {
-    // For products with variants, we need to navigate to the product page
-    if (product.variants && product.variants.length > 0) {
-      navigate(`/product/${product._id}`);
-      return;
-    }
-
-    // A variantless product's one valid identity is the empty option set.
-    addToCart(product._id, { variantOptions: {} });
-  };
-
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.3 }
-    },
-    exit: {
-      opacity: 0,
-      x: -100,
-      transition: { duration: 0.3 }
-    }
-  };
+  const count = wishlistProducts.length;
 
   return (
+    <div className="min-h-screen bg-paper px-4 pb-24 text-ink sm:px-[5vw] md:px-[7vw] lg:px-[9vw]">
+      <Seo title="Your Wishlist" description="Products you have saved at Netronix." />
 
-      <div className="min-h-screen bg-gray-50 pt-[80px] md:pt-[120px] pb-16">
+      <motion.div
+        className="mx-auto max-w-[1200px]"
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <header className="pt-[104px] md:pt-[132px]">
+          <div className="flex items-center gap-3">
+            {/* FE-005 — `navigate(-1)` used to reach `navigateWithContext`, which
+                called `.includes()` on the number, threw, and fell back to
+                `window.location.href = -1`: a full page load of "/-1" and a
+                blank screen. `BackButton` hands the step to the router, and is
+                the same control the cart and the product page use. */}
+            <BackButton showLabel={false} />
+            <span className="font-michroma text-[9px] uppercase tracking-[0.22em] text-statepurp md:text-[10px]">
+              Netronix / Saved
+            </span>
+            <span className="h-px flex-1 bg-rule" />
+          </div>
 
-        <Seo title="Your Wishlist" description="Products you have saved at Netronix." />
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          {/* FE-005 — `navigate(-1)` used to reach `navigateWithContext`, which
-              called `.includes()` on the number, threw, and fell back to
-              `window.location.href = -1`: a full page load of "/-1" and a blank
-              screen. `goBack()` hands the step to the router. */}
-          <button
-            onClick={goBack}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+          <h1
+            className="mt-5 font-michroma uppercase leading-[0.95] tracking-tight text-ink"
+            style={{ fontSize: 'clamp(2rem, 6vw, 4rem)' }}
           >
-            <FiChevronLeft className="w-4 h-4" />
-            <span>Back</span>
-          </button>
-          
-          <h1 className="text-3xl font-bold text-gray-900">My Wishlist</h1>
-          <p className="mt-2 text-gray-600">
-            {wishlistProducts.length} {wishlistProducts.length === 1 ? 'item' : 'items'} saved
+            My Wishlist
+          </h1>
+
+          {/* Announced, because removing the last item changes this line and
+              nothing else on the page says what happened. */}
+          <p className="mt-5 text-sm text-ink-60 tnum" aria-live="polite">
+            {isLoading ? 'Loading your saved items…' : `${count} ${count === 1 ? 'item' : 'items'} saved`}
           </p>
-        </div>
+        </header>
 
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64" role="status" aria-live="polite">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a5acd]"></div>
-            <span className="sr-only">Loading your saved items…</span>
-          </div>
-        ) : hasFailed ? (
-          <div className="bg-white rounded-xl shadow-sm p-8 text-center" role="alert">
-            <div className="mb-4 w-16 h-16 mx-auto bg-amber-50 rounded-full flex items-center justify-center">
-              <FiHeart className="w-8 h-8 text-amber-500" />
+        <div className="pt-10">
+          {isLoading ? (
+            <div role="status" aria-live="polite">
+              <div className={`grid ${DENSITIES.comfortable} gap-x-5 gap-y-12 md:gap-x-6 md:gap-y-16`}>
+                {Array.from({ length: 6 }, (_, index) => <CardSkeleton key={index} index={index} />)}
+              </div>
+              <span className="sr-only">Loading your saved items…</span>
             </div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">We could not load your saved items</h2>
-            <p className="text-gray-600 mb-6">{catalogError || 'Please try again in a moment.'}</p>
-            <button
-              onClick={reloadCatalog}
-              className="py-3 px-6 bg-[#6a5acd] text-white rounded-lg inline-flex items-center justify-center gap-2 hover:bg-[#5a4cbb] transition-colors fill-button"
-            >
-              Try again
-            </button>
-          </div>
-        ) : wishlistProducts.length === 0 ? (
-          <div className="bg-white rounded-xl shadow-sm p-8 text-center">
-            <div className="mb-4 w-16 h-16 mx-auto bg-gray-100 rounded-full flex items-center justify-center">
-              <FiHeart className="w-8 h-8 text-gray-400" />
-            </div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-2">Your wishlist is empty</h2>
-            <p className="text-gray-600 mb-6">Discover products and save your favorites for later</p>
-            <button 
-              onClick={() => navigate('/products')}
-              className="py-3 px-6 bg-[#6a5acd] text-white rounded-lg inline-flex items-center justify-center gap-2 hover:bg-[#5a4cbb] transition-colors fill-button"
-            >
-              <FiShoppingBag className="w-5 h-5" />
-              <span>Explore Products</span>
-            </button>
-          </div>
-        ) : (
-          <motion.div 
-            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            <AnimatePresence>
-              {wishlistProducts.map(product => (
-                <motion.div 
-                  key={product._id}
-                  className="bg-white rounded-xl shadow-sm overflow-hidden"
-                  variants={itemVariants}
-                  layout
+          ) : hasFailed ? (
+            <Panel
+              role="alert"
+              heading="We could not load your saved items"
+              body={catalogError || 'Please try again in a moment.'}
+              action={
+                <button
+                  type="button"
+                  onClick={reloadCatalog}
+                  className="mt-8 border border-ink bg-ink px-8 py-3 font-michroma text-[9px] uppercase tracking-[0.16em] text-paper transition-colors duration-300 hover:border-statepurp hover:bg-statepurp"
                 >
-                  <div className="relative">
-                    <Link to={`/product/${product._id}`}>
-                      <img 
-                        src={Array.isArray(product.image) ? product.image[0] : product.image} 
-                        alt={product.name}
-                        className="w-full h-48 object-cover hover:scale-105 transition-transform"
-                      />
-                    </Link>
-                    <button 
-                      onClick={() => handleRemoveFromWishlist(product._id)}
-                      className="absolute top-2 right-2 p-2 rounded-full bg-white shadow-md text-gray-700 hover:text-red-500 transition-colors"
-                      aria-label="Remove from wishlist"
+                  Try again
+                </button>
+              }
+            />
+          ) : count === 0 ? (
+            <Panel
+              heading="Your wishlist is empty"
+              body="Products you save are kept here, across devices, for as long as you are signed in."
+              action={
+                <button
+                  type="button"
+                  onClick={() => navigate('/products')}
+                  className="mt-8 border border-ink bg-ink px-8 py-3 font-michroma text-[9px] uppercase tracking-[0.16em] text-paper transition-colors duration-300 hover:border-statepurp hover:bg-statepurp"
+                >
+                  Explore Products
+                </button>
+              }
+            />
+          ) : (
+            <div className={`grid ${DENSITIES.comfortable} gap-x-5 gap-y-12 md:gap-x-6 md:gap-y-16`}>
+              {/* `popLayout` takes a removed card out of flow immediately, so the
+                  cards after it glide up rather than waiting for the exit to
+                  finish and then jumping — the same treatment the catalog grid
+                  gives a filtered-out product. */}
+              <AnimatePresence mode="popLayout" initial={false}>
+                {wishlistProducts.map((product) => (
+                  <motion.div
+                    key={product._id}
+                    layout
+                    className="flex flex-col"
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8 }}
+                    transition={{
+                      duration: 0.45,
+                      ease: [0.22, 1, 0.36, 1],
+                      layout: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
+                    }}
+                  >
+                    <ProductCard product={product} variant="showcase" showQuickAdd />
+
+                    <button
+                      type="button"
+                      onClick={() => removeFromWishlist(product._id)}
+                      // The product's name, because a page of controls all
+                      // announced as "Remove from wishlist" is a page of
+                      // identical targets — which is exactly what the two
+                      // buttons this replaces produced, twice over.
+                      aria-label={`Remove ${product.name} from wishlist`}
+                      className="mt-3 self-start font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40 transition-colors duration-300 hover:text-statepurp"
                     >
-                      <FiX className="w-4 h-4" />
+                      Remove
                     </button>
-                  </div>
-                  
-                  <div className="p-5">
-                    <h3 className="font-michroma text-lg mb-2 text-gray-900">
-                      <Link to={`/product/${product._id}`} className="hover:text-[#6a5acd] transition-colors">
-                        {product.name}
-                      </Link>
-                    </h3>
-                    
-                    <p className="text-[#6a5acd] font-medium mb-4">{formatPrice(getPriceMinor(product))}</p>
-                    
-                    {/* Actions */}
-                    <div className="flex gap-2">
-                      <button 
-                        onClick={() => handleAddToCart(product)}
-                        className="flex-1 py-2 px-3 bg-[#6a5acd] text-white rounded-lg flex items-center justify-center gap-1 hover:bg-[#5a4cbb] transition-colors text-sm fill-button"
-                      >
-                        <FiShoppingBag className="w-4 h-4" />
-                        <span>{product.variants?.length > 0 ? 'View Options' : 'Add to Cart'}</span>
-                      </button>
-                      
-                      <button 
-                        onClick={() => handleRemoveFromWishlist(product._id)}
-                        className="p-2 border border-gray-300 rounded-lg text-gray-600 hover:border-red-500 hover:text-red-500 transition-colors"
-                        aria-label="Remove from wishlist"
-                      >
-                        <FiTrash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </motion.div>
-        )}
-      </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
+      </motion.div>
     </div>
   );
 };
 
-export default Wishlist; 
+export default Wishlist;

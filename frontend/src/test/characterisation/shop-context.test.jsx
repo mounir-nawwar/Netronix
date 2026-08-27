@@ -464,7 +464,13 @@ describe('navigation helper (FE-005 — FIXED)', () => {
         // It used to call `window.history.back()`, bypassing the router, while
         // importing a `useNavigate` it never used.
         expect(readCode('components/BackButton.jsx')).not.toMatch(/window\.history\.back/)
-        expect(readCode('pages/Wishlist.jsx')).toMatch(/onClick=\{goBack\}/)
+        // The wishlist used to inline its own `onClick={goBack}` button. It
+        // renders the shared control now, which is the point of the control:
+        // there is one implementation of "go back" and four pages using it.
+        expect(readCode('pages/Wishlist.jsx')).toMatch(/<BackButton/)
+        for (const page of ['pages/Cart.jsx', 'pages/PlaceOrder.jsx', 'pages/Product.jsx']) {
+            expect(readCode(page), page).toMatch(/<BackButton/)
+        }
     })
 
     it('navigates normally for a string path', async () => {

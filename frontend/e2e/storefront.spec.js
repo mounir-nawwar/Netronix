@@ -275,7 +275,10 @@ test.describe('flow 10 — wishlist (FE-005, FE-013)', () => {
         // FE-005 — back goes back, rather than to "/-1".
         await page.goto('/products')
         await page.goto('/wishlist')
-        await page.getByRole('button', { name: /^back$/i }).first().click()
+        // "Go back", not "Back": the page used to inline its own button whose
+        // name came from its visible text, and now renders the shared
+        // `BackButton`, which carries an explicit `aria-label`.
+        await page.getByRole('button', { name: /^go back$/i }).first().click()
         await expect(page).toHaveURL(/\/products/)
     })
 })

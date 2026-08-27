@@ -11,6 +11,7 @@ import { FiShoppingBag, FiLogOut, FiChevronDown, FiHeart } from "react-icons/fi"
 import { motion, AnimatePresence } from 'framer-motion';
 import BrandLogo from './BrandLogo';
 import useDialog from '../lib/useDialog';
+import { collectionPath } from '../lib/catalog';
 
 // A11Y-002 / A11Y-005 / A11Y-008 / A11Y-009 — what changed in Phase 4:
 //
@@ -255,14 +256,28 @@ const Navbar = ({ visible }) => {
                                         All Products
                                     </Link>
                                     <div className="border-t border-gray-100 my-1"></div>
+                                    {/* These pointed at `/products?tag=<tag>`, which left
+                                        `/collections/:type` reachable from the footer and
+                                        nowhere else — even though it is the route built for
+                                        exactly this. `Collections.jsx` gives a named
+                                        collection its own title, description, canonical URL
+                                        and `BreadcrumbList`; the query-string form has the
+                                        catalog's generic metadata and no breadcrumb, so the
+                                        two URLs showed the same products with only one of
+                                        them worth indexing.
+
+                                        Lowercased and encoded, matching the links About
+                                        already builds; `filterProducts` compares tags
+                                        case-insensitively, so "Gaming PCs" and "gaming pcs"
+                                        are the same collection. */}
                                     {featuredTags.map((tag, index) => (
-                                        <Link 
-                                            key={index} 
-                                            to={`/products?tag=${tag}`} 
+                                        <Link
+                                            key={index}
+                                            to={collectionPath(tag)}
                                             className="block px-4 py-2 hover:bg-gray-100 transition-colors"
                                             onClick={(e) => {
                                                 e.preventDefault();
-                                                handleNavigation(`/products?tag=${tag}`);
+                                                handleNavigation(collectionPath(tag));
                                             }}
                                         >
                                             {tag}
@@ -599,11 +614,11 @@ const Navbar = ({ visible }) => {
                                             animate="visible"
                                         >
                                             <Link 
-                                                to={`/products?tag=${tag}`} 
+                                                to={collectionPath(tag)} 
                                                 className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
                                                 onClick={(e) => {
                                                     e.preventDefault();
-                                                    handleNavigation(`/products?tag=${tag}`);
+                                                    handleNavigation(collectionPath(tag));
                                                 }}
                                             >
                                                 <span>{tag}</span>
@@ -672,31 +687,28 @@ const Navbar = ({ visible }) => {
                                             <div className="my-2 border-t border-gray-100"></div>
                                             <h3 className="text-xs uppercase text-gray-400 font-semibold ml-3 mb-1">Account</h3>
                                             
+                                            {/* A "MY PROFILE" row linking to
+                                                `/profile` used to sit here.
+                                                `App.jsx` declares no such route,
+                                                so it fell through to `path="*"`
+                                                and a signed-in customer opening
+                                                the account menu on a phone was
+                                                handed a 404 — the one dead
+                                                destination left in the app's own
+                                                navigation.
+
+                                                Removed rather than built. The
+                                                API has no endpoint that returns
+                                                the current user (`userRoute.js`
+                                                is register, login, logout and
+                                                the wishlist), so the storefront
+                                                never learns your name or your
+                                                email and the page would have had
+                                                nothing on it. The two rows below
+                                                — orders and saved items — are
+                                                the account surfaces that exist. */}
                                             <motion.div
                                                 custom={10}
-                                                variants={listItemVariants}
-                                                initial="hidden"
-                                                animate="visible"
-                                            >
-                                                <Link 
-                                                    to="/profile" 
-                                                    className="flex items-center justify-between p-3 rounded-xl hover:bg-gray-50 transition-colors font-michroma text-gray-800"
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        handleNavigation("/profile");
-                                                    }}
-                                                >
-                                                    <span>MY PROFILE</span>
-                                                    <motion.span 
-                                                        initial={{ x: -5, opacity: 0 }}
-                                                        animate={{ x: 0, opacity: 1 }}
-                                                        transition={{ delay: 0.65 }}
-                                                    >→</motion.span>
-                                                </Link>
-                                            </motion.div>
-                                            
-                                            <motion.div
-                                                custom={11}
                                                 variants={listItemVariants}
                                                 initial="hidden"
                                                 animate="visible"
@@ -719,7 +731,7 @@ const Navbar = ({ visible }) => {
                                             </motion.div>
                                             
                                             <motion.div
-                                                custom={12}
+                                                custom={11}
                                                 variants={listItemVariants}
                                                 initial="hidden"
                                                 animate="visible"
@@ -742,7 +754,7 @@ const Navbar = ({ visible }) => {
                                             </motion.div>
                                             
                                             <motion.div
-                                                custom={13}
+                                                custom={12}
                                                 variants={listItemVariants}
                                                 initial="hidden"
                                                 animate="visible"

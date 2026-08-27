@@ -22,6 +22,24 @@
 // because a filter that can be tested without mounting a 650-line page is a
 // filter that gets tested.
 
+/**
+ * The URL for a named collection.
+ *
+ * One function, because the tag was being turned into a path in four places —
+ * the navbar's desktop dropdown, its mobile menu, the footer and About — and
+ * three of them built a different URL. The navigation pointed at
+ * `/products?tag=Gaming+PCs` while About pointed at `/collections/gaming%20pcs`,
+ * so the same collection had two addresses and only the second carried the
+ * per-collection title, canonical and `BreadcrumbList` that `Collections.jsx`
+ * exists to provide.
+ *
+ * Lowercased because that is the form already in use and the form that reads
+ * best in a URL; `hasTag` compares case-insensitively, so it costs nothing.
+ */
+export function collectionPath(tag) {
+    return `/collections/${encodeURIComponent(String(tag).toLowerCase())}`
+}
+
 /** Case-insensitive tag match. `/collections/gaming` must find `Gaming`. */
 export function hasTag(product, tag) {
     if (!tag) return true
