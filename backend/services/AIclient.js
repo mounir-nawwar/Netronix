@@ -135,10 +135,37 @@ export function parseModelReply(raw, catalogIndex = new Map()) {
 // model name, not a rewrite. Everything downstream of `getClient()` — the
 // prompt, the marker-parsing contract, the error handling — is unchanged.
 
-/** Groq's free-tier flagship at time of writing. Override with `GROQ_MODEL`
- *  if it is ever retired — providers rotate free-tier model names faster than
- *  this file gets edited. */
-const DEFAULT_MODEL = 'llama-3.3-70b-versatile'
+/**
+ * `llama-3.3-70b-versatile` — the model this constant named when the Groq
+ * migration shipped — was gone within a day: `client.models.list()` against a
+ * real key returned 404 `model_not_found`, not a deprecation warning. Providers
+ * really do rotate free-tier model names faster than this file gets edited,
+ * which is the whole reason `GROQ_MODEL` exists as an override.
+ *
+ * `qwen/qwen3.8-27b` was picked from the account's actual live model list
+ * (`console.groq.com/docs/models` or `client.models.list()`), not from
+ * memory, and verified against this file's real `SYSTEM_PROMPT` and catalog
+ * shape before being set here — it followed the `[[product:<id>]]` marker
+ * contract correctly and refused to invent the warranty/tracking policy the
+ * prompt tells it does not exist, across three separate prompts, all with
+ * `finish_reason: "stop"`.
+ *
+ * That last part is not incidental. `openai/gpt-oss-20b` and
+ * `openai/gpt-oss-120b` — also live on this account — are reasoning models:
+ * they spend their token budget on a hidden `reasoning` field first and only
+ * write `content` once that finishes. Every 200-token probe against them
+ * came back with an **empty `content`** and `finish_reason: "length"` — the
+ * budget ran out inside the hidden reasoning before a customer-facing word
+ * was ever written, which is a silent empty reply, not an error `getClient`
+ * can catch. `qwen/qwen3.8-27b` writes `content` directly.
+ *
+ * Also deliberately not `groq/compound` / `groq/compound-mini`: those are
+ * Groq's own agentic systems with server-side tool use and live web search
+ * built in, which is a materially different security posture than "a pure
+ * text completion with no tool access" — the property the chatbot's whole
+ * threat model rests on (SEC-004 and the chatbot security test suite).
+ */
+const DEFAULT_MODEL = 'qwen/qwen3.8-27b'
 
 /**
  * Build the Groq client, or null when no key is configured.
@@ -299,7 +326,34 @@ async function processChatMessage(message, { history = [] } = {}) {
       max_tokens: 200
     });
 
-    const { text, links } = parseModelReply(completion.choices[0].message.content, catalogIndex);
+    const rawContent = completion.choices[0].message.content
+
+    // A reasoning model's failure mode, found while switching this file onto
+    // Groq (see `DEFAULT_MODEL`'s own comment). `openai/gpt-oss-20b` spent its
+    // whole 200-token budget on a hidden `reasoning` field and left `content`
+    // empty; a sibling of the model this file actually uses, `qwen/qwen3.6-27b`,
+    // put the reasoning trace **inside** `content` itself as `<think>…</think>`
+    // and ran out of budget before ever reaching an answer. `toInertText`
+    // strips the tag — it was built for HTML injection, SEC-004 — but the plain
+    // text *inside* the tag is not markup, so it would have passed straight
+    // through and been shown to a customer as though it were the reply.
+    //
+    // `DEFAULT_MODEL` does neither of these things, verified by hand against
+    // this exact prompt (`scripts/checkGroqModel.js`). This guard is not a
+    // claim that every reasoning model formats its thinking this one way; it is
+    // a check for the two concrete shapes that have actually been observed, so
+    // that a future `GROQ_MODEL` override landing on a reasoning model fails
+    // honestly instead of leaking its internal monologue.
+    const looksLikeLeakedReasoning = !rawContent?.trim() || /^\s*<think\b/i.test(rawContent)
+    if (looksLikeLeakedReasoning) {
+      logger.warn(
+        { event: 'chat.reasoning_leak', model: process.env.GROQ_MODEL || DEFAULT_MODEL },
+        'model reply looked like unfinished reasoning output rather than an answer',
+      )
+      return fallback("Our AI service is temporarily unavailable. Please try again later.");
+    }
+
+    const { text, links } = parseModelReply(rawContent, catalogIndex);
 
     return { success: true, message: text, text, links };
   } catch (error) {
