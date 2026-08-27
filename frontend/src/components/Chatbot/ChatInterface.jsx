@@ -346,7 +346,12 @@ const ChatInterface = ({ onClose }) => {
                       <Link
                         key={link.productId}
                         to={`/product/${link.productId}`}
-                        className="text-blue-500 font-medium text-sm hover:underline bg-blue-50 px-2 py-0.5 rounded-md transition-colors"
+                        // A11Y — `text-blue-500` on `bg-blue-50` measures
+                        // ~3.3:1, a real "serious" axe violation. Unreachable
+                        // while the assistant has no key: `links` is always
+                        // `[]` in that state, so this never rendered where any
+                        // scan could find it — until the day the key arrives.
+                        className="text-statepurp font-medium text-sm hover:underline bg-wash px-2 py-0.5 rounded-md transition-colors"
                       >
                         {link.label}
                       </Link>
@@ -354,8 +359,14 @@ const ChatInterface = ({ onClose }) => {
                   </div>
                 )}
 
+                {/* `ink-40`, not `text-gray-500` (#6b7280 ≈ 4.8:1 on white,
+                    close enough to the 4.5:1 line that a mid-fade axe scan
+                    caught it as a violation on other pages before). This
+                    bubble is `bg-white`, one of the three surfaces
+                    `tailwind.config.js` verifies `ink-40` against — 5.2:1
+                    here. */}
                 <p className={`text-[10px] mt-1 text-right ${
-                  msg.type === 'user' ? 'text-white/70' : 'text-gray-500'
+                  msg.type === 'user' ? 'text-white/70' : 'text-ink-40'
                 }`}>
                   {formatTime(msg.timestamp)}
                 </p>
@@ -405,13 +416,18 @@ const ChatInterface = ({ onClose }) => {
           nothing to suggest. */}
       {!unavailable && (
       <div className="px-4 py-2 border-t border-gray-100 bg-white">
-        <p className="text-xs font-michroma text-gray-500 mb-2">Suggested questions:</p>
+        {/* `ink-40` and `statepurp`, not `text-gray-500` and the raw
+            `#6a5acd` — this row is hidden whenever `unavailable` is true, so
+            it never rendered where the E2E harness (no API key, always
+            degraded) could scan it, but it is the first thing a working
+            assistant shows. */}
+        <p className="text-xs font-michroma text-ink-40 mb-2">Suggested questions:</p>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
           {quickReplies.map((reply, index) => (
             <button
               key={`reply-${index}`}
               type="button"
-              className="px-3 py-1.5 bg-gray-100 text-[#6a5acd] text-xs rounded-full whitespace-nowrap hover:bg-[#f5f3ff] transition-colors"
+              className="px-3 py-1.5 bg-wash text-statepurp text-xs rounded-full whitespace-nowrap hover:bg-[#f5f3ff] transition-colors"
               onClick={() => {
                 setMessage(reply);
                 inputRef.current?.focus();
@@ -478,8 +494,14 @@ const ChatInterface = ({ onClose }) => {
               setLastActivity(Date.now());
             }}
             placeholder={unavailable ? 'The assistant is offline' : 'Type your message...'}
+            // A11Y — `bg-gray-50 text-gray-500` measured ~4.6:1, close enough
+            // to 4.5:1 that a scan catching it half a frame into the fade the
+            // offline notice arrives with could tip it under. `unavailable`
+            // is always true in the E2E harness (no API key), so this is the
+            // one pair here guaranteed to render on every run. `ink-40` on
+            // `paper` is the pairing `tailwind.config.js` verifies at 5.0:1.
             className={`flex-1 border border-gray-200 rounded-full py-2 px-4 focus:outline-none focus:ring-2 focus:ring-[#6a5acd] text-sm ${
-              unavailable ? 'cursor-not-allowed bg-gray-50 text-gray-500' : ''
+              unavailable ? 'cursor-not-allowed bg-paper text-ink-40' : ''
             }`}
           />
           <motion.button

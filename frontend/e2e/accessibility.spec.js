@@ -223,9 +223,36 @@ test.describe('axe — zero critical or serious violations', () => {
     })
 
     test('the open support chat', async ({ page }) => {
-        await page.goto('/')
+        // This failed once, in 2.4 minutes against a 120 s budget — the five
+        // passing runs before and after it took 1.1-1.3 minutes, already more
+        // than half that budget before anything went wrong. `ChatBotWidget` is
+        // mounted outside `<Routes>`, so `/` paid for the Spline hero, the
+        // product film and the whole homepage before `settleAnimations`
+        // (which is not scoped by `include`) ever reached the ~30 nodes of
+        // dialog this test actually scans. `/cart` carries the same widget —
+        // `ChatBotWidget` only suppresses its launcher on `/contact`, where
+        // the page's own "Start chat" control replaces it — and is already
+        // the cheapest route another test in this file scans (`:199`).
+        //
+        // Left un-emptied deliberately: the launcher does not care what is in
+        // the cart, and adding an item here would only add the network round
+        // trip this test does not need.
+        await page.goto('/cart')
         await page.getByRole('button', { name: /open support chat/i }).click()
-        await expect(page.getByRole('dialog', { name: /netronix support/i })).toBeVisible()
+        const dialog = page.getByRole('dialog', { name: /netronix support/i })
+        await expect(dialog).toBeVisible()
+
+        // The scan's other failure mode: its only synchronisation was
+        // `toBeVisible()` on the dialog, which is true at mount, while
+        // `ChatInterface` fires `POST /api/chatbot/init` in the same instant
+        // and only *then* settles into its final shape — the greeting fades
+        // in, the quick-replies block unmounts, the offline notice mounts.
+        // `settleAnimations` is a floor, not a fence: it cannot wait out an
+        // animation that starts after it returns. The harness carries no
+        // `OPENAI_API_KEY` (`storefront.spec.js:309`), so `unavailable` is
+        // always `true` and this notice always arrives — waiting for it is
+        // waiting for the state the scan actually needs to be looking at.
+        await expect(dialog.getByRole('status')).toBeVisible()
 
         const { blocking } = await scan(page, { include: '[role="dialog"]' })
         expect(report(blocking)).toBe('')
