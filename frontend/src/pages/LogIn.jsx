@@ -5,9 +5,9 @@ import { toast } from '../lib/toast';
 import { ShopContext } from '../context/shopContext';
 import * as authApi from '../api/auth';
 import { ApiError } from '../api/client';
-import { motion } from 'framer-motion';
 import { IoMailOutline, IoLockClosedOutline, IoPersonOutline, IoArrowForwardOutline } from "react-icons/io5";
 import Seo from '../components/Seo';
+import { SUPPORT_EMAIL, buildMailto } from '../lib/contact';
 
 const LogIn = () => {
   const [currentState, setCurrentState] = useState('Login');
@@ -54,226 +54,152 @@ const LogIn = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // Animation variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
+  const signingIn = currentState === 'Login';
 
-  const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
-    visible: {
-      y: 0,
-      opacity: 1,
-      transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 24
-      }
-    }
-  };
-
-  const buttonVariants = {
-    hover: { 
-      scale: 1.05, 
-      boxShadow: "0px 5px 15px rgba(0, 0, 0, 0.1)",
-      transition: {
-        type: "spring",
-        stiffness: 400,
-        damping: 10
-      }
-    },
-    tap: { 
-      scale: 0.95 
-    }
-  };
-  
-  const switchButtonVariants = {
-    hover: { 
-      color: "#000", 
-      transition: { duration: 0.3 } 
-    }
-  };
+  const field = 'w-full border border-rule bg-paper px-4 py-3 pl-11 text-sm text-ink transition-colors placeholder:text-ink-40 focus:border-ink focus:outline-none';
+  const labelClass = 'mb-2 block font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40';
+  const iconClass = 'pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-ink-40';
 
   return (
+    <div className="min-h-screen bg-paper px-4 pb-24 text-ink sm:px-[5vw] md:px-[7vw] lg:px-[9vw]">
+      <Seo title="Sign in" description="Sign in to your Netronix account, or create one." />
 
-      <div className="min-h-[80vh] flex items-center justify-center px-4 py-12 bg-gradient-to-b from-white to-gray-50">
-
-        <Seo title="Sign in" description="Sign in to your Netronix account, or create one." />
-      <motion.div 
-        className="w-full max-w-md bg-white shadow-xl rounded-3xl overflow-hidden border border-gray-100"
-        initial={{ opacity: 0, y: 50 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: "easeOut" }}
-      >
-        <div className="relative">
-          {/* Background pattern */}
-          <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-r from-[#f9f9f9] to-[#f3f3f3] rounded-b-[30%]"></div>
-          
-          {/* Form header */}
-          <motion.div 
-            className="relative pt-12 pb-6 text-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.2 }}
-          >
-            <motion.h1 
-              className="text-3xl font-bold text-gray-900 mb-2"
-              initial={{ y: -20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.3 }}
-            >
-              {currentState === 'Login' ? 'Welcome Back' : 'Create Account'}
-            </motion.h1>
-            <motion.p 
-              className="text-gray-600 text-sm"
-              initial={{ y: -10, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.4 }}
-            >
-              {currentState === 'Login' 
-                ? 'Sign in to continue to your account' 
-                : 'Sign up to get started with Netronix'}
-            </motion.p>
-          </motion.div>
+      <div className="mx-auto max-w-[420px] pt-[104px] md:pt-[132px]">
+        <div className="flex items-center gap-3">
+          <span className="font-michroma text-[9px] uppercase tracking-[0.22em] text-statepurp md:text-[10px]">
+            Netronix / Account
+          </span>
+          <span className="h-px flex-1 bg-rule" />
         </div>
 
-        {/* Form */}
-        <motion.form 
-          onSubmit={onSubmitHandler}
-          className="px-8 pt-6 pb-8 bg-white"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
+        <h1
+          className="mt-5 font-michroma uppercase leading-[0.95] tracking-tight text-ink"
+          style={{ fontSize: 'clamp(1.75rem, 5vw, 2.75rem)' }}
         >
-          {/* Name field (only for Sign Up) */}
-          {currentState === 'Sign Up' && (
-            <motion.div className="mb-6" variants={itemVariants}>
-              <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="name">
-                Full Name
-              </label>
+          {signingIn ? 'Welcome back' : 'Create account'}
+        </h1>
+
+        <p className="mt-4 text-sm leading-relaxed text-ink-60">
+          {signingIn
+            ? 'Sign in to see your orders and your wishlist. You do not need an account to buy — checkout works as a guest.'
+            : 'An account keeps your order history and your wishlist. Buying as a guest works without one.'}
+        </p>
+
+        <form onSubmit={onSubmitHandler} className="mt-10">
+          {!signingIn && (
+            <div className="mb-6">
+              <label className={labelClass} htmlFor="name">Full Name</label>
               <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <IoPersonOutline className="h-5 w-5 text-gray-400" />
-                </div>
+                <span className={iconClass}>
+                  <IoPersonOutline aria-hidden="true" className="h-4 w-4" />
+                </span>
                 <input
                   id="name"
                   type="text"
-                  className="appearance-none border border-gray-300 rounded-lg w-full py-3 px-4 pl-10 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  placeholder="John Doe"
+                  className={field}
+                  placeholder="Rania Aoun"
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                 />
               </div>
-            </motion.div>
+            </div>
           )}
 
-          {/* Email field */}
-          <motion.div className="mb-6" variants={itemVariants}>
-            <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="email">
-              Email Address
-            </label>
+          <div className="mb-6">
+            <label className={labelClass} htmlFor="email">Email Address</label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <IoMailOutline className="h-5 w-5 text-gray-400" />
-              </div>
+              <span className={iconClass}>
+                <IoMailOutline aria-hidden="true" className="h-4 w-4" />
+              </span>
               <input
                 id="email"
                 type="email"
-                className="appearance-none border border-gray-300 rounded-lg w-full py-3 px-4 pl-10 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                className={field}
                 placeholder="you@example.com"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
-          </motion.div>
+          </div>
 
-          {/* Password field */}
-          <motion.div className="mb-6" variants={itemVariants}>
-            <label className="block text-gray-700 text-sm font-medium mb-2" htmlFor="password">
-              Password
-            </label>
+          <div className="mb-8">
+            <label className={labelClass} htmlFor="password">Password</label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <IoLockClosedOutline className="h-5 w-5 text-gray-400" />
-              </div>
+              <span className={iconClass}>
+                <IoLockClosedOutline aria-hidden="true" className="h-4 w-4" />
+              </span>
               <input
                 id="password"
                 type="password"
-                className="appearance-none border border-gray-300 rounded-lg w-full py-3 px-4 pl-10 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                className={field}
                 placeholder="••••••••"
                 required
+                autoComplete={signingIn ? 'current-password' : 'new-password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </div>
-          </motion.div>
+          </div>
 
-          {/* Form actions */}
-          <motion.div className="flex items-center justify-between mb-6" variants={itemVariants}>
-            {currentState === 'Login' ? (
-              <motion.a
-                className="inline-block align-baseline text-sm text-indigo-600 hover:text-indigo-800 cursor-pointer"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                Forgot Password?
-              </motion.a>
-            ) : (
-              <div className="w-full text-center text-xs text-gray-500">
-                By signing up, you agree to our <span className="text-indigo-600 cursor-pointer">Terms</span> and <span className="text-indigo-600 cursor-pointer">Privacy Policy</span>
-              </div>
+          {/* What used to sit here were three controls that went nowhere: a
+              "Forgot Password?" `<a>` with no `href` and no handler, and
+              "Terms" and "Privacy Policy" as bare `<span>`s with
+              `cursor-pointer` — styled as links, pointing at routes that do not
+              exist. The same defect the product card's "Quick view" and
+              "Add to wishlist" buttons were: an affordance for a feature nobody
+              built.
+
+              There is no password-reset endpoint on this API, so the honest
+              version of "forgot password" is the support address that a person
+              actually reads. */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className={`flex w-full items-center justify-center gap-2 py-4 font-michroma text-[10px] uppercase tracking-[0.18em] transition-colors duration-300 ${
+              isLoading ? 'cursor-not-allowed bg-wash text-ink-40' : 'bg-ink text-paper hover:bg-statepurp'
+            }`}
+          >
+            {isLoading && (
+              <span
+                aria-hidden="true"
+                className="h-3.5 w-3.5 animate-spin rounded-full border border-current border-t-transparent"
+              />
             )}
-          </motion.div>
+            {signingIn ? 'Sign In' : 'Create Account'}
+            <IoArrowForwardOutline aria-hidden="true" className="h-3.5 w-3.5" />
+          </button>
+        </form>
 
-          {/* Submit button */}
-          <motion.div variants={itemVariants}>
-            <motion.button
-              className={`w-full bg-black hover:bg-gray-900 text-white font-medium py-3 px-4 rounded-lg focus:outline-none focus:shadow-outline transition-all duration-200 flex items-center justify-center ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
-              type="submit"
-              disabled={isLoading}
-              variants={buttonVariants}
-              whileHover="hover"
-              whileTap="tap"
+        <div className="mt-8 border-t border-rule pt-6 text-sm text-ink-60">
+          <p>
+            {signingIn ? "Don't have an account?" : 'Already have an account?'}{' '}
+            <button
+              type="button"
+              onClick={() => setCurrentState(signingIn ? 'Sign Up' : 'Login')}
+              className="rule-draw pb-0.5 text-ink transition-colors hover:text-statepurp"
             >
-              {isLoading ? (
-                <span className="inline-block h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></span>
-              ) : null}
-              {currentState === 'Login' ? 'Sign In' : 'Create Account'}
-              <IoArrowForwardOutline className="ml-2 h-5 w-5" />
-            </motion.button>
-          </motion.div>
-        </motion.form>
-
-        {/* Switch between login and signup */}
-        <motion.div 
-          className="px-8 py-4 bg-gray-50 border-t border-gray-100 text-center"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-        >
-          <p className="text-sm text-gray-600">
-            {currentState === 'Login' ? "Don't have an account?" : "Already have an account?"}
-            <motion.button
-              className="ml-1 font-medium text-indigo-600"
-              onClick={() => setCurrentState(currentState === 'Login' ? 'Sign Up' : 'Login')}
-              variants={switchButtonVariants}
-              whileHover="hover"
-            >
-              {currentState === 'Login' ? 'Sign Up' : 'Sign In'}
-            </motion.button>
+              {signingIn ? 'Sign Up' : 'Sign In'}
+            </button>
           </p>
-        </motion.div>
-      </motion.div>
+
+          {signingIn && (
+            <p className="mt-4 text-xs text-ink-40">
+              Cannot get in? Email{' '}
+              <a
+                href={buildMailto({ to: SUPPORT_EMAIL, subject: 'Account access' })}
+                className="rule-draw pb-0.5 text-ink-60 transition-colors hover:text-ink"
+              >
+                {SUPPORT_EMAIL}
+              </a>{' '}
+              and a person will help.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
 
-export default LogIn;
+export default LogIn

@@ -2,7 +2,7 @@ import { useContext, useRef, useState } from 'react'
 import { ShopContext } from '../context/shopContext';
 import { toast } from '../lib/toast';
 import { motion } from 'framer-motion';
-import { FiShoppingBag, FiCreditCard, FiHome, FiCheck, FiPackage } from 'react-icons/fi';
+import { FiCreditCard, FiHome, FiCheck, FiPackage } from 'react-icons/fi';
 import CartTotal from '../components/CartTotal'
 import whishLogo from '../assets/all/whishLogo.png';
 import BackButton from '../components/BackButton';
@@ -160,64 +160,68 @@ const PlaceOrder = () => {
 
   return (
 
-      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 px-4 sm:px-6 lg:px-8 py-12 pt-[80px] md:pt-[100px]">
+      <div className="min-h-screen bg-paper px-4 pb-24 text-ink sm:px-[5vw] md:px-[7vw] lg:px-[9vw]">
 
         <Seo title="Checkout" description="Enter your delivery details and choose a payment method." />
-      <motion.div 
-        className="max-w-6xl mx-auto"
-        initial={{ opacity: 0, y: 20 }}
+      {/* One entrance for the page. This was a four-step chain — `0.2` on the
+          heading, `0.3` on the left column, `0.4` on the right — so the checkout
+          assembled itself over roughly half a second every time it was opened,
+          which reads as slow on a fast connection and broken on a slow one. */}
+      <motion.div
+        className="mx-auto max-w-[1200px]"
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
-        <div className="flex items-center mb-6">
-          <BackButton showLabel={false} className="mr-3" />
-          <motion.h1 
-            className="text-3xl font-bold text-gray-900"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
+        <div className="pt-[104px] md:pt-[132px]">
+          <div className="flex items-center gap-3">
+            <BackButton showLabel={false} />
+            <span className="font-michroma text-[9px] uppercase tracking-[0.22em] text-statepurp md:text-[10px]">
+              Netronix / Checkout
+            </span>
+            <span className="h-px flex-1 bg-rule" />
+          </div>
+
+          <h1
+            className="mt-5 font-michroma uppercase leading-[0.95] tracking-tight text-ink"
+            style={{ fontSize: 'clamp(2rem, 6vw, 4rem)' }}
           >
             Checkout
-          </motion.h1>
+          </h1>
         </div>
 
-        <form onSubmit={onSubmitHandler} className="flex flex-col lg:flex-row gap-8">
+        <form onSubmit={onSubmitHandler} className="flex flex-col gap-12 pt-10 lg:flex-row lg:gap-16">
           {/* Left Column - Delivery Information */}
-          <motion.div 
-            className="lg:w-2/3"
-            initial={{ opacity: 0, x: -20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+          <div className="lg:w-[62%]">
+            <div className="border border-rule p-6 md:p-8">
               <div className="flex items-center gap-3 mb-6">
-                <FiHome className="w-5 h-5 text-[#6a5acd]" />
-                <h2 className="text-xl font-bold text-gray-900">Delivery Information</h2>
+                <FiHome className="h-4 w-4 text-statepurp" />
+                <h2 className="font-michroma text-[11px] uppercase tracking-[0.18em] text-ink">Delivery Information</h2>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="checkout-firstName" className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                  <label htmlFor="checkout-firstName" className="mb-2 block font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40">First Name</label>
                   <input 
                     id="checkout-firstName"
                     required 
                     onChange={onChangeHandler} 
                     name='firstName' 
                     value={formData.firstName} 
-                    className='w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-[#6a5acd] focus:border-transparent' 
+                    className='w-full border border-rule bg-paper px-4 py-3 text-sm text-ink transition-colors placeholder:text-ink-40 focus:border-ink focus:outline-none' 
                     type="text" 
                     placeholder='First name' 
                   />
                 </div>
                 <div>
-                  <label htmlFor="checkout-lastName" className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                  <label htmlFor="checkout-lastName" className="mb-2 block font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40">Last Name</label>
                   <input 
                     id="checkout-lastName"
                     required 
                     onChange={onChangeHandler} 
                     name='lastName' 
                     value={formData.lastName} 
-                    className='w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-[#6a5acd] focus:border-transparent' 
+                    className='w-full border border-rule bg-paper px-4 py-3 text-sm text-ink transition-colors placeholder:text-ink-40 focus:border-ink focus:outline-none' 
                     type="text" 
                     placeholder='Last name' 
                   />
@@ -225,28 +229,28 @@ const PlaceOrder = () => {
               </div>
               
               <div className="mt-4">
-                <label htmlFor="checkout-email" className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <label htmlFor="checkout-email" className="mb-2 block font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40">Email Address</label>
                 <input 
                   id="checkout-email"
                   required 
                   onChange={onChangeHandler} 
                   name='email' 
                   value={formData.email} 
-                  className='w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-[#6a5acd] focus:border-transparent' 
+                  className='w-full border border-rule bg-paper px-4 py-3 text-sm text-ink transition-colors placeholder:text-ink-40 focus:border-ink focus:outline-none' 
                   type="email" 
                   placeholder='Email Address' 
                 />
               </div>
               
               <div className="mt-4">
-                <label htmlFor="checkout-street" className="block text-sm font-medium text-gray-700 mb-1">Street Address</label>
+                <label htmlFor="checkout-street" className="mb-2 block font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40">Street Address</label>
                 <input 
                   id="checkout-street"
                   required 
                   onChange={onChangeHandler} 
                   name='street' 
                   value={formData.street} 
-                  className='w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-[#6a5acd] focus:border-transparent' 
+                  className='w-full border border-rule bg-paper px-4 py-3 text-sm text-ink transition-colors placeholder:text-ink-40 focus:border-ink focus:outline-none' 
                   type="text" 
                   placeholder='Street' 
                 />
@@ -254,27 +258,27 @@ const PlaceOrder = () => {
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <div>
-                  <label htmlFor="checkout-city" className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                  <label htmlFor="checkout-city" className="mb-2 block font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40">City</label>
                   <input 
                     id="checkout-city"
                     required 
                     onChange={onChangeHandler} 
                     name='city' 
                     value={formData.city} 
-                    className='w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-[#6a5acd] focus:border-transparent' 
+                    className='w-full border border-rule bg-paper px-4 py-3 text-sm text-ink transition-colors placeholder:text-ink-40 focus:border-ink focus:outline-none' 
                     type="text" 
                     placeholder='City' 
                   />
                 </div>
                 <div>
-                  <label htmlFor="checkout-state" className="block text-sm font-medium text-gray-700 mb-1">State/Province</label>
+                  <label htmlFor="checkout-state" className="mb-2 block font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40">State/Province</label>
                   <input 
                     id="checkout-state"
                     required 
                     onChange={onChangeHandler} 
                     name='state' 
                     value={formData.state} 
-                    className='w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-[#6a5acd] focus:border-transparent' 
+                    className='w-full border border-rule bg-paper px-4 py-3 text-sm text-ink transition-colors placeholder:text-ink-40 focus:border-ink focus:outline-none' 
                     type="text" 
                     placeholder='State/Province' 
                   />
@@ -283,14 +287,14 @@ const PlaceOrder = () => {
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
                 <div>
-                  <label htmlFor="checkout-zipcode" className="block text-sm font-medium text-gray-700 mb-1">Zip/Postal Code</label>
+                  <label htmlFor="checkout-zipcode" className="mb-2 block font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40">Zip/Postal Code</label>
                   <input 
                     id="checkout-zipcode"
                     required 
                     onChange={onChangeHandler} 
                     name='zipcode'
                     value={formData.zipcode}
-                    className='w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-[#6a5acd] focus:border-transparent'
+                    className='w-full border border-rule bg-paper px-4 py-3 text-sm text-ink transition-colors placeholder:text-ink-40 focus:border-ink focus:outline-none'
                     /* FE-032 — `type="number"` on a postal code. A number input
                        drops leading zeros, so Beirut's "2022" survives but a
                        code like "01234" is submitted as "1234"; it also refuses
@@ -304,14 +308,14 @@ const PlaceOrder = () => {
                   />
                 </div>
                 <div>
-                  <label htmlFor="checkout-country" className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                  <label htmlFor="checkout-country" className="mb-2 block font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40">Country</label>
                   <input 
                     id="checkout-country"
                     required 
                     onChange={onChangeHandler} 
                     name='country' 
                     value={formData.country} 
-                    className='w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-[#6a5acd] focus:border-transparent' 
+                    className='w-full border border-rule bg-paper px-4 py-3 text-sm text-ink transition-colors placeholder:text-ink-40 focus:border-ink focus:outline-none' 
                     type="text" 
                     placeholder='Country' 
                   />
@@ -319,14 +323,14 @@ const PlaceOrder = () => {
               </div>
               
               <div className="mt-4">
-                <label htmlFor="checkout-phone" className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                <label htmlFor="checkout-phone" className="mb-2 block font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40">Phone Number</label>
                 <input 
                   id="checkout-phone"
                   required 
                   onChange={onChangeHandler} 
                   name='phone'
                   value={formData.phone}
-                  className='w-full border border-gray-300 rounded-lg py-2 px-4 focus:outline-none focus:ring-2 focus:ring-[#6a5acd] focus:border-transparent'
+                  className='w-full border border-rule bg-paper px-4 py-3 text-sm text-ink transition-colors placeholder:text-ink-40 focus:border-ink focus:outline-none'
                   /* FE-032 — the shop is Lebanon-based and every seeded address
                      is "+961 71 000 000". A `type="number"` input cannot hold a
                      "+", a space or a hyphen, so the country code — the part
@@ -341,7 +345,7 @@ const PlaceOrder = () => {
             </div>
             
             {/* Payment Method Section */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
+            <div className="mt-6 border border-rule p-6 md:p-8">
               {/* A11Y-005 — these were two `<div onClick>` acting as radio
                   buttons: not reachable by Tab, not operable by Space, not
                   grouped, with no `aria-checked`. **Checkout could not be
@@ -356,8 +360,8 @@ const PlaceOrder = () => {
                   same border, the same fill, the same hover. `peer-focus`
                   gives the keyboard user the focus ring the div never could. */}
               <fieldset className="border-0 p-0 m-0">
-                <legend className="flex items-center gap-3 mb-6 text-xl font-bold text-gray-900">
-                  <FiCreditCard aria-hidden="true" className="w-5 h-5 text-[#6a5acd]" />
+                <legend className="mb-6 flex items-center gap-3 font-michroma text-[11px] uppercase tracking-[0.18em] text-ink">
+                  <FiCreditCard aria-hidden="true" className="h-4 w-4 text-statepurp" />
                   Payment Method
                 </legend>
 
@@ -371,7 +375,7 @@ const PlaceOrder = () => {
                     {
                       value: 'cod',
                       label: 'Cash on Delivery',
-                      icon: <FiPackage aria-hidden="true" className="w-5 h-5 text-[#6a5acd]" />,
+                      icon: <FiPackage aria-hidden="true" className="h-4 w-4 text-statepurp" />,
                     },
                   ].map((option) => (
                     <label
@@ -394,71 +398,59 @@ const PlaceOrder = () => {
                       />
                       <span
                         aria-hidden="true"
-                        className={`w-5 h-5 rounded-full border flex items-center justify-center peer-focus-visible:ring-2 peer-focus-visible:ring-[#6a5acd] peer-focus-visible:ring-offset-2 ${
-                          method === option.value ? 'border-[#6a5acd]' : 'border-gray-300'
+                        className={`flex h-5 w-5 items-center justify-center rounded-full border peer-focus-visible:ring-2 peer-focus-visible:ring-statepurp peer-focus-visible:ring-offset-2 ${
+                          method === option.value ? 'border-ink' : 'border-rule'
                         }`}
                       >
-                        {method === option.value && <span className="w-3 h-3 bg-[#6a5acd] rounded-full" />}
+                        {method === option.value && <span className="h-2.5 w-2.5 rounded-full bg-ink" />}
                       </span>
                       <span className="ml-4 flex items-center">
                         {option.icon}
-                        <span className="ml-2 text-sm font-medium text-gray-700">{option.label}</span>
+                        <span className="ml-2 text-sm text-ink">{option.label}</span>
                       </span>
                     </label>
                   ))}
                 </div>
               </fieldset>
             </div>
-          </motion.div>
+          </div>
 
           {/* Right Column - Order Summary */}
-          <motion.div 
-            className="lg:w-1/3"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4 }}
-          >
-            <div className="bg-white rounded-xl shadow-md p-6 sticky top-24">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Order Summary</h2>
-              
-              <CartTotal />
+          <div className="lg:w-[38%]">
+            <div className="sticky top-[132px] border border-rule p-7">
+              <CartTotal heading="Order Summary" />
               
               <button 
                 type="submit"
                 disabled={isSubmitting}
-                className={`mt-6 w-full flex justify-center items-center gap-2 px-6 py-3 rounded-lg text-white font-medium transition-colors fill-button ${
-                  isSubmitting 
-                    ? 'bg-gray-400 cursor-not-allowed' 
-                    : 'bg-[#6a5acd] hover:bg-[#5a4cbb]'
+                className={`mt-8 flex w-full items-center justify-center gap-2 py-4 font-michroma text-[10px] uppercase tracking-[0.18em] transition-colors duration-300 ${
+                  isSubmitting
+                    ? 'cursor-not-allowed bg-wash text-ink-40'
+                    : 'bg-ink text-paper hover:bg-statepurp'
                 }`}
               >
                 {isSubmitting ? (
                   <>
-                    <div className="w-5 h-5 border-t-2 border-b-2 border-white rounded-full animate-spin"></div>
+                    <span className="h-3.5 w-3.5 animate-spin rounded-full border border-current border-t-transparent" aria-hidden="true" />
                     <span>Processing...</span>
                   </>
                 ) : (
                   <>
                     <span>Place Order</span>
-                    <FiCheck className="w-4 h-4" />
+                    <FiCheck aria-hidden="true" className="h-3.5 w-3.5" />
                   </>
                 )}
               </button>
               
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <div className="flex items-center justify-center">
-                  <FiShoppingBag className="w-5 h-5 text-[#6a5acd] mr-2" />
-                  <button 
-                    type="button"
-                    onClick={() => navigate('/cart')}
-                    className="text-center text-[#6a5acd] hover:text-[#5a4cbb] transition-colors text-sm underline"
-                  >
-                    Return to Cart
-                  </button>
-                </div>
-              </div>
+              <button
+                type="button"
+                onClick={() => navigate('/cart')}
+                className="rule-draw mt-7 block w-full pb-1 text-center text-xs text-ink-60 transition-colors hover:text-ink"
+              >
+                Return to Cart
+              </button>
             </div>
-          </motion.div>
+          </div>
         </form>
       </motion.div>
     </div>
