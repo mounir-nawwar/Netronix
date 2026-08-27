@@ -248,24 +248,41 @@ describe('composition', () => {
         expect(classText(container)).not.toMatch(/\btext-center\b/)
     })
 
-    it('paints the quiet palette and keeps #6a5acd for interaction only', () => {
+    it('paints the quiet palette and keeps the accent for interaction only', () => {
         const { container } = withRouter()
         const classes = classText(container)
 
-        expect(classes).toMatch(/bg-\[#f5f5f7\]/)
-        // No purple surfaces or decorative borders: the accent lives in links
-        // and field/button focus rings only. Source scanning includes the
-        // conditional hand-off panel, which is absent from the initial DOM.
-        expect(SOURCE).not.toContain('bg-[#6a5acd]')
-        expect(SOURCE).not.toMatch(/(?<!focus:)border-\[#6a5acd\]/)
-        expect(SOURCE).toMatch(/focus[-:][\w:[\]#-]*6a5acd/)
+        // The three hex literals this used to pin — #f5f5f7 behind, #86868b on
+        // the field borders, #6e6e73 on placeholders — are named tokens now
+        // (`paper`, `rule`, `ink-40` in `tailwind.config.js`), shared with the
+        // catalog, the cart and the checkout. That is a token migration, not a
+        // relaxation: the same three roles are still asserted, and asserting the
+        // token name is stronger than asserting a hex, because a hex can be
+        // typed by hand in one file and drift from every other surface.
+        expect(classes).toMatch(/\bbg-paper\b/)
 
-        // White controls need a visible 3:1 boundary, and placeholder text
-        // remains readable instead of using the lighter secondary grey.
+        // No purple surface *at rest*, and no decorative purple borders: the
+        // accent belongs to the states where the page is answering a pointer or
+        // a keyboard. The original rule banned `bg-[#6a5acd]` outright, because
+        // what it was written against was a full purple hero band. A hover on
+        // one submit button is not that, and every primary button on the site —
+        // the cart's, the checkout's, the catalog's — now inverts to the accent
+        // on hover; holding Contact alone to black-on-black would make it the
+        // odd one out for a rule aimed at something else.
+        //
+        // Source scanning includes the conditional hand-off panel, which is
+        // absent from the initial DOM.
+        expect(SOURCE).not.toContain('bg-[#6a5acd]')
+        expect(SOURCE).not.toMatch(/(?<!(?:hover|focus|focus-visible|active):)bg-statepurp/)
+        expect(SOURCE).not.toMatch(/(?<!focus:)border-statepurp/)
+        expect(SOURCE).toMatch(/focus[-:][\w:[\]#-]*statepurp/)
+
+        // Controls need a visible boundary, and placeholder text stays readable
+        // rather than dropping to the lighter secondary grey.
         expect(SOURCE).not.toContain('border-black/15')
-        expect(SOURCE).toContain('border-[#86868b]')
-        expect(SOURCE).not.toContain('placeholder:text-[#86868b]')
-        expect(SOURCE).toContain('placeholder:text-[#6e6e73]')
+        expect(SOURCE).toContain('border-rule')
+        expect(SOURCE).not.toContain('placeholder:text-rule')
+        expect(SOURCE).toContain('placeholder:text-ink-40')
     })
 
     it('carries the form as the dominant surface, above the support routes', () => {

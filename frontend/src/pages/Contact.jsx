@@ -26,8 +26,8 @@ import {
 // they already know they want — a number, an address, the catalogue — and a
 // destination needs a row and a rule under it, not a card and a shadow.
 //
-// #f5f5f7 behind, white for the one surface that takes input, near-black type.
-// #6a5acd is kept, but only where the page answers a pointer or a keyboard:
+// `paper` behind, white for the one surface that takes input, `ink` type.
+// `statepurp` is kept, but only where the page answers a pointer or a keyboard:
 // links, focus rings. Nothing is filled with it, so nothing competes with the
 // submit button for the eye.
 
@@ -62,17 +62,17 @@ const SUBJECTS = [
 ];
 
 const FIELD_CLASS =
-  'w-full min-h-[44px] rounded-lg border border-[#86868b] bg-white px-3.5 py-2.5 text-base ' +
-  'text-[#1d1d1f] placeholder:text-[#6e6e73] transition-colors ' +
-  'focus:border-[#6a5acd] focus:outline-none focus:ring-2 focus:ring-[#6a5acd]/40';
+  'w-full min-h-[44px] rounded-lg border border-rule bg-white px-3.5 py-2.5 text-base ' +
+  'text-ink placeholder:text-ink-40 transition-colors ' +
+  'focus:border-ink focus:outline-none focus:ring-2 focus:ring-statepurp/40';
 
-const LABEL_CLASS = 'block text-sm font-medium text-[#424245]';
+const LABEL_CLASS = 'block text-sm font-medium text-ink-60';
 
 const ACTION_CLASS =
-  'inline-flex min-h-[44px] shrink-0 items-center text-base font-medium text-[#6a5acd] ' +
-  'underline decoration-[#6a5acd]/30 underline-offset-4 transition-colors ' +
-  'hover:decoration-[#6a5acd] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6a5acd] ' +
-  'focus-visible:ring-offset-2 focus-visible:ring-offset-[#f5f5f7]';
+  'inline-flex min-h-[44px] shrink-0 items-center text-base font-medium text-statepurp ' +
+  'underline decoration-statepurp/30 underline-offset-4 transition-colors ' +
+  'hover:decoration-statepurp focus:outline-none focus-visible:ring-2 focus-visible:ring-statepurp ' +
+  'focus-visible:ring-offset-2 focus-visible:ring-offset-paper';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -119,16 +119,16 @@ const Contact = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f5f5f7] text-[#1d1d1f] pt-[80px] md:pt-[100px]">
+    <div className="min-h-screen bg-paper text-ink pt-[80px] md:pt-[100px]">
       <Seo title="Contact" description="How to reach Netronix." />
 
       <div className="mx-auto w-full max-w-[980px] px-5 sm:px-6 lg:px-8">
         <header data-testid="contact-header" className="max-w-[42rem] pt-12 pb-9 md:pt-16 md:pb-12">
-          <p className="text-sm font-medium tracking-wide text-[#6e6e73]">Contact</p>
+          <p className="text-sm font-medium tracking-wide text-ink-40">Contact</p>
           <h1 className="mt-3 text-[2rem] font-semibold leading-[1.1] tracking-tight sm:text-[2.75rem]">
             Write to Netronix.
           </h1>
-          <p className="mt-4 text-lg leading-relaxed text-[#424245]">
+          <p className="mt-4 text-lg leading-relaxed text-ink-60">
             Say what you need below and this page assembles the email for you. If you would
             rather go straight to a number or an address, they are further down the page.
           </p>
@@ -137,7 +137,7 @@ const Contact = () => {
         <section
           data-testid="configure-surface"
           aria-labelledby="configure-heading"
-          className="rounded-xl border border-black/10 bg-white p-6 sm:p-9"
+          className="rounded-xl border border-rule bg-white p-6 sm:p-9"
         >
           <h2 id="configure-heading" className="text-xl font-semibold tracking-tight">
             Compose a message
@@ -146,11 +146,11 @@ const Contact = () => {
           <p
             id="contact-form-disclosure"
             data-testid="contact-form-disclosure"
-            className="mt-2 max-w-[46rem] text-sm leading-relaxed text-[#6e6e73]"
+            className="mt-2 max-w-[46rem] text-sm leading-relaxed text-ink-40"
           >
             Netronix has no message inbox on this website. Sending this form opens your own
             email app with the message already written and addressed to{' '}
-            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-[#6a5acd] underline underline-offset-2">
+            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-statepurp underline underline-offset-2">
               {SUPPORT_EMAIL}
             </a>
             {' '}— you still have to press send there.
@@ -158,16 +158,16 @@ const Contact = () => {
 
           <div role="status" aria-live="polite" className="mt-6 empty:mt-0">
             {handedOff && (
-              <div className="rounded-lg border border-black/10 bg-[#f5f5f7] p-4">
+              <div className="rounded-lg border border-rule bg-paper p-4">
                 <p className="font-medium">Your email app should now be open.</p>
-                <p className="mt-1 text-sm leading-relaxed text-[#424245]">
+                <p className="mt-1 text-sm leading-relaxed text-ink-60">
                   The message is waiting there as a draft to {SUPPORT_EMAIL}. If nothing
                   opened, copy what you wrote and email us directly at{' '}
-                  <a href={`mailto:${SUPPORT_EMAIL}`} className="text-[#6a5acd] underline underline-offset-2">
+                  <a href={`mailto:${SUPPORT_EMAIL}`} className="text-statepurp underline underline-offset-2">
                     {SUPPORT_EMAIL}
                   </a>
                   , or call{' '}
-                  <a href={PHONE_HREF} className="text-[#6a5acd] underline underline-offset-2">
+                  <a href={PHONE_HREF} className="text-statepurp underline underline-offset-2">
                     {PHONE_DISPLAY}
                   </a>
                   .
@@ -241,14 +241,14 @@ const Contact = () => {
 
             <dl
               data-testid="draft-summary"
-              className="mt-7 border-t border-black/10 pt-5 text-sm"
+              className="mt-7 border-t border-rule pt-5 text-sm"
             >
               <div className="flex gap-3">
-                <dt className="w-16 shrink-0 text-[#6e6e73]">To</dt>
+                <dt className="w-16 shrink-0 text-ink-40">To</dt>
                 <dd className="min-w-0 break-words">{SUPPORT_EMAIL}</dd>
               </div>
               <div className="mt-2 flex gap-3">
-                <dt className="w-16 shrink-0 text-[#6e6e73]">Subject</dt>
+                <dt className="w-16 shrink-0 text-ink-40">Subject</dt>
                 <dd className="min-w-0 break-words">{draft.subject}</dd>
               </div>
             </dl>
@@ -256,7 +256,7 @@ const Contact = () => {
             <button
               type="submit"
               aria-describedby="contact-form-disclosure"
-              className="mt-7 inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-[#1d1d1f] px-6 py-3 text-base font-medium text-white transition-colors hover:bg-black focus:outline-none focus-visible:ring-2 focus-visible:ring-[#6a5acd] focus-visible:ring-offset-2 sm:w-auto"
+              className="mt-7 inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-ink px-6 py-3 text-base font-medium text-white transition-colors hover:bg-statepurp focus:outline-none focus-visible:ring-2 focus-visible:ring-statepurp focus-visible:ring-offset-2 sm:w-auto"
             >
               Open email draft
             </button>
@@ -270,12 +270,12 @@ const Contact = () => {
 
           <ul
             data-testid="support-routes"
-            className="mt-4 divide-y divide-black/10 border-y border-black/10"
+            className="mt-4 divide-y divide-rule border-y border-rule"
           >
             <li data-testid="support-route" className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
               <div className="min-w-0">
                 <h3 className="text-base font-medium">Phone</h3>
-                <p className="mt-0.5 text-sm text-[#6e6e73]">Call Netronix directly.</p>
+                <p className="mt-0.5 text-sm text-ink-40">Call Netronix directly.</p>
               </div>
               <a href={PHONE_HREF} data-testid="support-route-action" className={ACTION_CLASS}>
                 {PHONE_DISPLAY}
@@ -285,7 +285,7 @@ const Contact = () => {
             <li data-testid="support-route" className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
               <div className="min-w-0">
                 <h3 className="text-base font-medium">Sales</h3>
-                <p className="mt-0.5 text-sm text-[#6e6e73]">Pricing, stock and delivery across Lebanon.</p>
+                <p className="mt-0.5 text-sm text-ink-40">Pricing, stock and delivery across Lebanon.</p>
               </div>
               <a href={`mailto:${SALES_EMAIL}`} data-testid="support-route-action" className={ACTION_CLASS}>
                 {SALES_EMAIL}
@@ -295,7 +295,7 @@ const Contact = () => {
             <li data-testid="support-route" className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
               <div className="min-w-0">
                 <h3 className="text-base font-medium">Support</h3>
-                <p className="mt-0.5 text-sm text-[#6e6e73]">Orders, returns and anything already bought.</p>
+                <p className="mt-0.5 text-sm text-ink-40">Orders, returns and anything already bought.</p>
               </div>
               <a href={`mailto:${SUPPORT_EMAIL}`} data-testid="support-route-action" className={ACTION_CLASS}>
                 {SUPPORT_EMAIL}
@@ -305,7 +305,7 @@ const Contact = () => {
             <li data-testid="support-route" className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
               <div className="min-w-0">
                 <h3 className="text-base font-medium">Catalogue</h3>
-                <p className="mt-0.5 text-sm text-[#6e6e73]">Everything Netronix currently sells.</p>
+                <p className="mt-0.5 text-sm text-ink-40">Everything Netronix currently sells.</p>
               </div>
               <Link to="/products" data-testid="support-route-action" className={ACTION_CLASS}>
                 Browse products
@@ -315,7 +315,7 @@ const Contact = () => {
             <li data-testid="support-route" className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
               <div className="min-w-0">
                 <h3 className="text-base font-medium">Assistant</h3>
-                <p className="mt-0.5 text-sm text-[#6e6e73]">Answers questions about the current catalogue.</p>
+                <p className="mt-0.5 text-sm text-ink-40">Answers questions about the current catalogue.</p>
               </div>
               <button
                 type="button"
@@ -330,7 +330,7 @@ const Contact = () => {
             <li data-testid="support-route" className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
               <div className="min-w-0">
                 <h3 className="text-base font-medium">Repairs</h3>
-                <p className="mt-0.5 text-sm text-[#6e6e73]">Prepare an email with the device details.</p>
+                <p className="mt-0.5 text-sm text-ink-40">Prepare an email with the device details.</p>
               </div>
               <a href={REPAIR_MAILTO} data-testid="support-route-action" className={ACTION_CLASS}>
                 Book a repair
@@ -340,9 +340,9 @@ const Contact = () => {
           </ul>
         </section>
 
-        <section aria-labelledby="minn-heading" className="mt-12 border-t border-black/10 pt-8 pb-16 md:pb-24">
+        <section aria-labelledby="minn-heading" className="mt-12 border-t border-rule pt-8 pb-16 md:pb-24">
           <h2 id="minn-heading" className="text-base font-semibold">Connect With MINN</h2>
-          <p className="mt-1 text-sm text-[#6e6e73]">Follow the agency behind this storefront.</p>
+          <p className="mt-1 text-sm text-ink-40">Follow the agency behind this storefront.</p>
           <ul className="mt-1 flex flex-wrap gap-x-7">
             {MINN_SOCIAL_LINKS.map(({ platform, url, label }) => (
               <li key={platform}>

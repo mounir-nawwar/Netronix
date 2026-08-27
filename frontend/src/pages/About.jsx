@@ -1,558 +1,212 @@
-import { useContext, useEffect, useRef } from 'react';
-import { motion, useAnimation, useInView } from 'framer-motion';
+import { useContext, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 
 import { ShopContext } from '../context/shopContext';
-import { FiCpu, FiTarget, FiAward, FiShield, FiTrendingUp, FiPackage, FiHeadphones, FiHardDrive, FiMonitor, FiSmartphone, FiServer } from 'react-icons/fi';
+import { tagsOf } from '../lib/catalog';
+import { MINN_NAME, MINN_URL } from '../lib/minn.js';
+import { SUPPORT_EMAIL, buildMailto } from '../lib/contact';
 import Seo from '../components/Seo';
 
+// The About page, rebuilt — the same treatment Contact was given, for the same
+// reasons.
+//
+// What was here was the house style of a generative tool: a solid `#6a5acd`
+// hero with five tech glyphs drifting on `repeat: Infinity` loops, a decorative
+// four-tile icon grid standing in for a photograph, eight more icon cards under
+// matching drop shadows, two circles drifting behind the section, a bordered
+// square rotating on a twelve-second cycle, and a CTA band whose background was
+// a tiled SVG data URI animating its own `background-position`. Five infinite
+// animations on a page nobody scrolls twice.
+//
+// The copy was the more serious half. It claimed:
+//
+//   * "Your Tech Partner Since 2025" and "founded in 2025" — a heritage claim
+//     on a storefront whose own catalog is dated 2026. There is no history to
+//     have;
+//   * "same-day shipping on most in-stock items", "detailed tracking
+//     information", an "optimized logistics network" — there is no shipping
+//     system behind any of it. `PlaceOrder` collects an address and a payment
+//     method, and that is the whole of what this application knows about
+//     delivery;
+//   * "rigorous testing", "comprehensive warranties", "certified professionals"
+//     — unverifiable, and the last is close enough to the "team of experts"
+//     phrasing that `minn-attribution-and-dead-links.test.jsx` already bans on
+//     Contact;
+//   * a category grid listing **Networking** and "Software & Security", which
+//     the catalog does not stock. `e2e/storefront.spec.js` asserts the tag
+//     filter offers no Networking, so the About page was advertising a
+//     department the shop would then refuse to show.
+//
+// Everything below is either read from the running catalog or is a fact about
+// code in this repository. The categories come from the context's own tag list,
+// so they cannot drift from what is actually for sale; the payment methods are
+// the two `PlaceOrder` renders; guest checkout is a real supported path.
+
 const About = () => {
-  const { navigate } = useContext(ShopContext);
+    const { tags, products } = useContext(ShopContext);
 
-  // Animation variants
-  const fadeIn = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { 
-        duration: 0.6,
-        ease: "easeOut"
-      } 
-    }
-  };
-  
-  const staggerContainer = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.2
-      }
-    }
-  };
-  
-  const scaleIn = {
-    hidden: { opacity: 0, scale: 0.8 },
-    visible: { 
-      opacity: 1, 
-      scale: 1,
-      transition: { 
-        duration: 0.5,
-        ease: "easeOut"
-      } 
-    }
-  };
+    // The real taxonomy, the same way `CatalogPage` derives it: the tags
+    // endpoint the context already fetched, falling back to the tags the loaded
+    // catalog carries. Never a written-down list — that is exactly how the old
+    // page ended up advertising Networking (FE-010).
+    const categories = useMemo(
+        () => (tags?.length > 0 ? [...tags].sort() : tagsOf(products)),
+        [tags, products],
+    );
 
-  // For the floating icons animation
-  const iconContainerRef = useRef(null);
-  const isInView = useInView(iconContainerRef, { once: false, amount: 0.3 });
-  const controls = useAnimation();
+    const facts = [
+        {
+            term: 'Stock',
+            detail: 'Counted per configuration, not per product. A 16-inch with 1 TB is a different line on the shelf from a 14-inch with 512 GB, and the page tells you which one is short before you reach the checkout.',
+        },
+        {
+            term: 'Prices',
+            detail: 'Shown per configuration in US dollars. The figure on the card is the figure for the options selected, so choosing more storage changes the price where you choose it rather than at the end.',
+        },
+        {
+            term: 'Buying',
+            detail: 'Checkout works without an account. An account keeps your order history and your wishlist; it is not a condition of ordering.',
+        },
+        {
+            term: 'Payment',
+            detail: 'Cash on delivery, or Whish. Both are chosen at checkout, and no card details are handled by this site.',
+        },
+    ];
 
-  useEffect(() => {
-    if (isInView) {
-      controls.start("visible");
-    }
-  }, [controls, isInView]);
+    return (
+        <div className="min-h-screen bg-paper px-4 pb-24 text-ink sm:px-[5vw] md:px-[7vw] lg:px-[9vw]">
+            <Seo title="About" description="Who Netronix is, and what the shop sells." />
 
-  const floatingIcons = [
-    { icon: <FiCpu />, x: -20, y: -15, delay: 0 },
-    { icon: <FiMonitor />, x: 25, y: 20, delay: 0.5 },
-    { icon: <FiSmartphone />, x: -25, y: 15, delay: 1 },
-    { icon: <FiHardDrive />, x: 15, y: -20, delay: 1.5 },
-    { icon: <FiServer />, x: 5, y: 25, delay: 2 }
-  ];
-
-  return (
-
-      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 pt-[80px] md:pt-[100px]">
-
-        <Seo title="About" description="Who Netronix is, and what the shop sells." />
-      {/* Hero Section */}
-      <motion.div 
-        className="relative overflow-hidden bg-[#6a5acd] text-white"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.8 }}
-      >
-        <div className="absolute inset-0 opacity-20">
-          {/* Tech-inspired background elements */}
-          <div className="absolute inset-y-0 left-1/2 w-full bg-white opacity-10 transform -skew-x-12"></div>
-          <div className="absolute inset-y-0 right-1/4 w-24 bg-white opacity-10 transform -skew-x-12"></div>
-          <div className="absolute top-0 left-0 w-full h-full">
-            <div className="absolute top-1/4 left-1/4 w-1 h-20 bg-white opacity-30 rounded-full"></div>
-            <div className="absolute top-1/3 left-1/3 w-2 h-2 bg-white opacity-30 rounded-full"></div>
-            <div className="absolute top-2/3 left-2/3 w-3 h-3 bg-white opacity-20 rounded-full"></div>
-            <div className="absolute top-1/2 left-3/4 w-12 h-1 bg-white opacity-20 rounded-full"></div>
-            <div className="absolute bottom-1/4 right-1/4 w-1 h-16 bg-white opacity-30 rounded-full"></div>
-          </div>
-          <div className="absolute bottom-0 left-0 w-full h-32 bg-gradient-to-t from-[#6a5acd] to-transparent"></div>
-        </div>
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-28 md:py-32 flex flex-col items-center">
-          <motion.div
-            ref={iconContainerRef}
-            className="absolute inset-0 pointer-events-none"
-          >
-            {floatingIcons.map((item, index) => (
-              <motion.div
-                key={index}
-                className="absolute text-white opacity-30 text-4xl"
-                style={{ 
-                  top: `${50 + item.y}%`, 
-                  left: `${50 + item.x}%`,
-                  x: "-50%",
-                  y: "-50%"
-                }}
-                initial={{ opacity: 0 }}
-                animate={controls}
-                variants={{
-                  visible: {
-                    opacity: 0.6,
-                    y: [item.y, item.y - 10, item.y],
-                    transition: {
-                      opacity: { duration: 0.5, delay: item.delay },
-                      y: { 
-                        repeat: Infinity, 
-                        repeatType: "reverse", 
-                        duration: 2,
-                        ease: "easeInOut",
-                        delay: item.delay
-                      }
-                    }
-                  }
-                }}
-              >
-                {item.icon}
-              </motion.div>
-            ))}
-          </motion.div>
-          
-          <motion.h1 
-            className="text-4xl md:text-5xl lg:text-6xl font-bold text-center mb-6"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2 }}
-          >
-            Powering Your Digital Future
-            <span className="block mt-3">with Cutting-Edge Tech</span>
-          </motion.h1>
-          
-          <motion.p 
-            className="text-lg md:text-xl text-center max-w-3xl mb-10 opacity-90"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 0.9 }}
-            transition={{ duration: 0.7, delay: 0.4 }}
-          >
-            At Netronix, we bring you the best in computers, components, and tech accessories to power your digital lifestyle.
-          </motion.p>
-        </div>
-      </motion.div>
-      
-      {/* Our Story Section */}
-      <motion.div 
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={fadeIn}
-      >
-        <div className="flex flex-col md:flex-row gap-12 lg:gap-20 items-center">
-          <motion.div 
-            className="md:w-1/2 relative"
-            variants={scaleIn}
-          >
-            <div className="relative rounded-xl overflow-hidden shadow-lg bg-gradient-to-br from-[#6a5acd]/10 to-white p-8">
-              <div className="grid grid-cols-2 gap-6">
-                {/* Tech product illustrations */}
-                <motion.div 
-                  className="bg-white rounded-xl shadow-sm p-6 flex items-center justify-center"
-                  whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(106, 90, 205, 0.1)" }}
-                >
-                  <FiMonitor className="w-16 h-16 text-[#6a5acd]" />
-                </motion.div>
-                <motion.div 
-                  className="bg-white rounded-xl shadow-sm p-6 flex items-center justify-center"
-                  whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(106, 90, 205, 0.1)" }}
-                >
-                  <FiCpu className="w-16 h-16 text-[#6a5acd]" />
-                </motion.div>
-                <motion.div 
-                  className="bg-white rounded-xl shadow-sm p-6 flex items-center justify-center"
-                  whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(106, 90, 205, 0.1)" }}
-                >
-                  <FiSmartphone className="w-16 h-16 text-[#6a5acd]" />
-                </motion.div>
-                <motion.div 
-                  className="bg-white rounded-xl shadow-sm p-6 flex items-center justify-center"
-                  whileHover={{ y: -5, boxShadow: "0 10px 25px -5px rgba(106, 90, 205, 0.1)" }}
-                >
-                  <FiHardDrive className="w-16 h-16 text-[#6a5acd]" />
-                </motion.div>
-              </div>
-              <div className="mt-8 bg-white rounded-xl shadow-sm p-6 flex items-center justify-center">
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.5 }}
-                >
-                  <h3 className="text-2xl font-bold text-[#6a5acd] text-center">Netronix</h3>
-                  <p className="text-gray-600 text-center mt-2">Your Tech Partner Since 2025</p>
-                </motion.div>
-              </div>
-            </div>
-            <motion.div 
-              className="absolute -bottom-6 -right-6 md:-bottom-10 md:-right-10 w-32 h-32 md:w-48 md:h-48 bg-[#6a5acd]/10 rounded-full z-[-1]"
-              animate={{
-                scale: [1, 1.05, 1],
-                rotate: [0, 5, 0],
-              }}
-              transition={{
-                duration: 8,
-                ease: "easeInOut",
-                repeat: Infinity,
-              }}
-            />
-            
             <motion.div
-              className="absolute -top-4 -left-4 w-16 h-16 md:w-24 md:h-24 border-2 border-[#6a5acd]/20 rounded-xl z-[-1]"
-              animate={{
-                rotate: [0, 90],
-                opacity: [0.5, 0.3, 0.5]
-              }}
-              transition={{
-                duration: 12,
-                ease: "linear",
-                repeat: Infinity
-              }}
-            />
-          </motion.div>
-          
-          <motion.div 
-            className="md:w-1/2"
-            variants={fadeIn}
-          >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">Our Story</h2>
-            
-            <div className="space-y-6 text-gray-600">
-              <p className="text-lg">
-                Netronix was founded in 2025 with a clear vision: to provide high-quality technology products with exceptional service. What began as a small computer repair shop has evolved into a premier destination for tech enthusiasts and professionals alike.
-              </p>
-              
-              <p className="text-lg">
-                Our journey has been driven by a passion for technology and a commitment to staying at the forefront of digital innovation. We carefully curate our product selection, partnering with leading manufacturers to bring you the latest advancements in computing technology.
-              </p>
-              
-              <div className="pt-6">
-                <h3 className="text-xl font-bold text-gray-800 flex items-center gap-2 mb-4">
-                  <FiTarget className="text-[#6a5acd]" />
-                  Our Mission
-                </h3>
-                <p className="text-lg pl-7">
-                  Our mission is to empower individuals and businesses with technology solutions that enhance productivity, creativity, and connectivity. We believe that access to quality tech should be straightforward and supported by expertise you can trust.
-                </p>
-              </div>
-            </div>
-          </motion.div>
+                className="mx-auto max-w-[1200px]"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            >
+                <header className="pt-[104px] md:pt-[132px]">
+                    <div className="flex items-center gap-3">
+                        <span className="font-michroma text-[9px] uppercase tracking-[0.22em] text-statepurp md:text-[10px]">
+                            Netronix / About
+                        </span>
+                        <span className="h-px flex-1 bg-rule" />
+                    </div>
+
+                    <h1
+                        className="mt-5 font-michroma uppercase leading-[0.95] tracking-tight text-ink"
+                        style={{ fontSize: 'clamp(2.25rem, 7vw, 5rem)' }}
+                    >
+                        A computer shop.
+                    </h1>
+
+                    <p className="mt-8 max-w-[60ch] text-base leading-relaxed text-ink-60">
+                        Netronix sells laptops, desktops and the things that go around them. Every
+                        product page states the stock for the exact configuration you have chosen,
+                        which is the part most storefronts leave until the checkout. There is no
+                        membership, no newsletter wall, and nothing on this site claims a delivery
+                        time it cannot keep.
+                    </p>
+                </header>
+
+                {/* What is actually for sale, read from the catalog. */}
+                <section className="mt-24" aria-labelledby="about-catalog">
+                    <div className="flex items-center gap-3">
+                        <h2 id="about-catalog" className="font-michroma text-[10px] uppercase tracking-[0.2em] text-ink">
+                            What we stock
+                        </h2>
+                        <span className="h-px flex-1 bg-rule" />
+                    </div>
+
+                    {categories.length > 0 ? (
+                        <ul className="mt-8 grid grid-cols-2 gap-px border border-rule bg-rule sm:grid-cols-3 lg:grid-cols-4">
+                            {categories.map((category) => (
+                                <li key={category} className="bg-paper">
+                                    <Link
+                                        to={`/collections/${encodeURIComponent(category.toLowerCase())}`}
+                                        className="group flex min-h-[104px] flex-col justify-end p-5 transition-colors hover:bg-wash"
+                                    >
+                                        <span className="font-michroma text-[10px] uppercase tracking-[0.16em] text-ink md:text-[11px]">
+                                            {category}
+                                        </span>
+                                        <span className="mt-2 text-xs text-ink-40 transition-colors group-hover:text-statepurp">
+                                            Browse &#8599;
+                                        </span>
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="mt-8 text-sm text-ink-60">
+                            The catalog is loading. <Link to="/collections/all" className="rule-draw pb-0.5 text-ink">Browse everything</Link>.
+                        </p>
+                    )}
+                </section>
+
+                {/* How the shop works — each row a fact about this application. */}
+                <section className="mt-24" aria-labelledby="about-how">
+                    <div className="flex items-center gap-3">
+                        <h2 id="about-how" className="font-michroma text-[10px] uppercase tracking-[0.2em] text-ink">
+                            How buying works
+                        </h2>
+                        <span className="h-px flex-1 bg-rule" />
+                    </div>
+
+                    <dl className="mt-4 max-w-[74ch] divide-y divide-rule">
+                        {facts.map((fact) => (
+                            <div key={fact.term} className="flex flex-col gap-2 py-6 md:flex-row md:gap-10">
+                                <dt className="w-32 shrink-0 font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40">
+                                    {fact.term}
+                                </dt>
+                                <dd className="text-sm leading-relaxed text-ink-60">{fact.detail}</dd>
+                            </div>
+                        ))}
+                    </dl>
+                </section>
+
+                {/* Who built it. The URL lives in one module (`lib/minn.js`), which
+                    is what the Footer, the newsletter rail and Contact all use. */}
+                <section className="mt-24 border-t border-rule pt-10" aria-labelledby="about-minn">
+                    <h2 id="about-minn" className="font-michroma text-[10px] uppercase tracking-[0.2em] text-ink">
+                        Built by {MINN_NAME}
+                    </h2>
+                    <p className="mt-5 max-w-[60ch] text-sm leading-relaxed text-ink-60">
+                        This storefront, its admin console and its API were designed and built by{' '}
+                        <a
+                            href={MINN_URL}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rule-draw pb-0.5 text-ink transition-colors hover:text-statepurp"
+                        >
+                            {MINN_NAME}
+                        </a>
+                        , the agency behind this storefront. Questions about an order go to{' '}
+                        <a
+                            href={buildMailto({ to: SUPPORT_EMAIL, subject: 'Question about Netronix' })}
+                            className="rule-draw pb-0.5 text-ink transition-colors hover:text-statepurp"
+                        >
+                            {SUPPORT_EMAIL}
+                        </a>
+                        .
+                    </p>
+
+                    <div className="mt-10 flex flex-wrap gap-3">
+                        <Link
+                            to="/collections/all"
+                            className="border border-ink bg-ink px-8 py-3.5 font-michroma text-[10px] uppercase tracking-[0.18em] text-paper transition-colors duration-300 hover:border-statepurp hover:bg-statepurp"
+                        >
+                            Browse the catalog
+                        </Link>
+                        <Link
+                            to="/contact"
+                            className="border border-rule px-8 py-3.5 font-michroma text-[10px] uppercase tracking-[0.18em] text-ink transition-colors duration-300 hover:border-ink"
+                        >
+                            Contact
+                        </Link>
+                    </div>
+                </section>
+            </motion.div>
         </div>
-      </motion.div>
-      
-      {/* Product Categories Section */}
-      <motion.div 
-        className="bg-gray-50 py-20 overflow-hidden"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={fadeIn}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <motion.div 
-            className="text-center mb-16 relative z-10"
-            variants={fadeIn}
-          >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">What We Offer</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Discover our comprehensive range of tech products and solutions
-            </p>
-          </motion.div>
-          
-          <motion.div 
-            className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8 relative z-10"
-            variants={staggerContainer}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-          >
-            {[
-              { icon: <FiMonitor className="w-8 h-8" />, title: "Computers & Laptops", delay: 0 },
-              { icon: <FiCpu className="w-8 h-8" />, title: "Components & Parts", delay: 0.1 },
-              { icon: <FiSmartphone className="w-8 h-8" />, title: "Mobile Devices", delay: 0.2 },
-              { icon: <FiHardDrive className="w-8 h-8" />, title: "Storage Solutions", delay: 0.3 },
-              { icon: <FiServer className="w-8 h-8" />, title: "Networking", delay: 0.4 },
-              { icon: <FiHeadphones className="w-8 h-8" />, title: "Accessories", delay: 0.5 },
-              { icon: <FiTarget className="w-8 h-8" />, title: "Gaming", delay: 0.6 },
-              { icon: <FiShield className="w-8 h-8" />, title: "Software & Security", delay: 0.7 }
-            ].map((item, index) => (
-              <motion.div 
-                key={index}
-                className="bg-white rounded-xl p-6 hover:shadow-md transition-all text-center group hover:bg-[#6a5acd]/5 hover:border-[#6a5acd]/30 border border-transparent"
-                variants={{
-                  hidden: { opacity: 0, y: 20 },
-                  visible: { 
-                    opacity: 1, 
-                    y: 0,
-                    transition: { delay: item.delay, duration: 0.5 }
-                  }
-                }}
-                whileHover={{ y: -5 }}
-              >
-                <motion.div 
-                  className="w-16 h-16 bg-[#6a5acd]/10 text-[#6a5acd] rounded-lg flex items-center justify-center mx-auto mb-4"
-                  whileHover={{ 
-                    scale: 1.1,
-                    rotate: 5,
-                    backgroundColor: "rgba(106, 90, 205, 0.2)"
-                  }}
-                >
-                  {item.icon}
-                </motion.div>
-                <h3 className="font-semibold text-lg text-gray-900">{item.title}</h3>
-              </motion.div>
-            ))}
-          </motion.div>
-          
-          {/* Animated background elements */}
-          <div className="absolute inset-0 pointer-events-none">
-            <motion.div
-              className="absolute top-10 left-10 w-32 h-32 rounded-full border border-[#6a5acd]/10"
-              animate={{
-                scale: [1, 1.2, 1],
-                opacity: [0.3, 0.1, 0.3],
-                x: [0, 30, 0],
-                y: [0, 30, 0]
-              }}
-              transition={{
-                duration: 15,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            />
-            <motion.div
-              className="absolute bottom-20 right-20 w-48 h-48 rounded-full border border-[#6a5acd]/10"
-              animate={{
-                scale: [1, 1.3, 1],
-                opacity: [0.2, 0.05, 0.2],
-                x: [0, -40, 0],
-                y: [0, -30, 0]
-              }}
-              transition={{
-                duration: 18,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            />
-          </div>
-        </div>
-      </motion.div>
-      
-      {/* Values Section */}
-      <motion.div 
-        className="py-20"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={fadeIn}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            className="text-center mb-16"
-            variants={fadeIn}
-          >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Our Core Values</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Everything we do is guided by these principles that define who we are
-            </p>
-          </motion.div>
-          
-          <motion.div 
-            className="grid grid-cols-1 md:grid-cols-3 gap-8"
-            variants={staggerContainer}
-          >
-            <motion.div 
-              className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition-all"
-              variants={scaleIn}
-              whileHover={{ y: -5 }}
-            >
-              <motion.div 
-                className="w-14 h-14 bg-[#6a5acd]/10 text-[#6a5acd] rounded-xl flex items-center justify-center mb-6"
-                whileHover={{ rotate: 10 }}
-              >
-                <FiShield className="w-7 h-7" />
-              </motion.div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Quality Assurance</h3>
-              <p className="text-gray-600">
-                We source products from trusted manufacturers and provide comprehensive warranties. Every product undergoes rigorous testing before reaching our customers.
-              </p>
-            </motion.div>
-            
-            <motion.div 
-              className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition-all"
-              variants={scaleIn}
-              whileHover={{ y: -5 }}
-            >
-              <motion.div 
-                className="w-14 h-14 bg-[#6a5acd]/10 text-[#6a5acd] rounded-xl flex items-center justify-center mb-6"
-                whileHover={{ rotate: 10 }}
-              >
-                <FiTrendingUp className="w-7 h-7" />
-              </motion.div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Innovation Focus</h3>
-              <p className="text-gray-600">
-                We constantly update our inventory with the latest tech, staying ahead of trends to bring you cutting-edge solutions that enhance your digital experience.
-              </p>
-            </motion.div>
-            
-            <motion.div 
-              className="bg-white p-8 rounded-xl shadow-sm hover:shadow-md transition-all"
-              variants={scaleIn}
-              whileHover={{ y: -5 }}
-            >
-              <motion.div 
-                className="w-14 h-14 bg-[#6a5acd]/10 text-[#6a5acd] rounded-xl flex items-center justify-center mb-6"
-                whileHover={{ rotate: 10 }}
-              >
-                <FiHeadphones className="w-7 h-7" />
-              </motion.div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Expert Support</h3>
-              <p className="text-gray-600">
-                Our team of tech enthusiasts and certified professionals provides knowledgeable advice to help you make informed purchasing decisions.
-              </p>
-            </motion.div>
-          </motion.div>
-        </div>
-      </motion.div>
-      
-      {/* Why Choose Us Section */}
-      <motion.div 
-        className="bg-gray-50 py-20"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={fadeIn}
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <motion.div 
-            className="text-center mb-16"
-            variants={fadeIn}
-          >
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Why Choose Netronix</h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Our commitment to excellence sets us apart
-            </p>
-          </motion.div>
-          
-          <motion.div 
-            className="grid grid-cols-1 md:grid-cols-3 gap-8"
-            variants={staggerContainer}
-          >
-            <motion.div 
-              className="border border-gray-200 hover:border-[#6a5acd]/30 p-8 rounded-xl hover:bg-[#6a5acd]/5 transition-all duration-300"
-              variants={fadeIn}
-              whileHover={{ scale: 1.02 }}
-            >
-              <div className="flex items-center gap-4 mb-6">
-                <FiAward className="w-8 h-8 text-[#6a5acd]" />
-                <h3 className="text-xl font-bold text-gray-900">Curated Selection</h3>
-              </div>
-              <p className="text-gray-600">
-                We carefully select each product in our inventory, focusing on performance, reliability, and value. Our tech experts test and verify everything we sell.
-              </p>
-            </motion.div>
-            
-            <motion.div 
-              className="border border-gray-200 hover:border-[#6a5acd]/30 p-8 rounded-xl hover:bg-[#6a5acd]/5 transition-all duration-300"
-              variants={fadeIn}
-              whileHover={{ scale: 1.02 }}
-            >
-              <div className="flex items-center gap-4 mb-6">
-                <FiPackage className="w-8 h-8 text-[#6a5acd]" />
-                <h3 className="text-xl font-bold text-gray-900">Swift Delivery</h3>
-              </div>
-              <p className="text-gray-600">
-                Get your tech quickly with our optimized logistics network. We offer same-day shipping on most in-stock items and provide detailed tracking information.
-              </p>
-            </motion.div>
-            
-            <motion.div 
-              className="border border-gray-200 hover:border-[#6a5acd]/30 p-8 rounded-xl hover:bg-[#6a5acd]/5 transition-all duration-300"
-              variants={fadeIn}
-              whileHover={{ scale: 1.02 }}
-            >
-              <div className="flex items-center gap-4 mb-6">
-                <FiHeadphones className="w-8 h-8 text-[#6a5acd]" />
-                <h3 className="text-xl font-bold text-gray-900">Tech Support</h3>
-              </div>
-              <p className="text-gray-600">
-                Our customer support goes beyond sales. We offer setup assistance, troubleshooting help, and ongoing technical support to ensure your technology works for you.
-              </p>
-            </motion.div>
-          </motion.div>
-        </div>
-      </motion.div>
-      
-      {/* CTA Section */}
-      <motion.div 
-        className="bg-[#6a5acd] text-white overflow-hidden relative"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-100px" }}
-        variants={fadeIn}
-      >
-        <div className="absolute inset-0 opacity-10">
-          <motion.div 
-            className="absolute top-0 left-0 right-0 bottom-0"
-            animate={{ 
-              backgroundPosition: ["0% 0%", "100% 100%"]
-            }}
-            transition={{ 
-              duration: 20, 
-              ease: "linear", 
-              repeat: Infinity,
-              repeatType: "reverse"
-            }}
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.2'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            }}
-          />
-        </div>
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 md:py-20 relative">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-8">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to upgrade your tech?</h2>
-              <p className="text-lg opacity-90 mb-6 md:mb-0 max-w-xl">
-                Browse our extensive collection of computers, components, and accessories to find the perfect tech for your needs.
-              </p>
-            </div>
-            <motion.div 
-              className="flex-shrink-0"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <button 
-                /* FE-031 — router navigation. `window.location.href` discarded
-                   the whole application and reloaded it from the network to move
-                   between two routes the router already owns. */
-                onClick={() => navigate('/collections/all')}
-                className="fill-button px-8 py-4 bg-white text-[#6a5acd] rounded-lg font-medium hover:bg-gray-100 transition-colors shadow-lg"
-              >
-                Shop Now
-              </button>
-            </motion.div>
-          </div>
-        </div>
-      </motion.div>
-    </div>
-  );
+    );
 };
 
-export default About;
+export default About
