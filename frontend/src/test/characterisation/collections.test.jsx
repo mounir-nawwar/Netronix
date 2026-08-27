@@ -180,6 +180,62 @@ describe('flow 11 — sorting uses the field the schema has (FE-003 — FIXED)',
     })
 })
 
+describe('Phase 1 — /collections is a categories index, not a fourth catalog page', () => {
+    const renderCollectionsIndex = () =>
+        render(
+            <MemoryRouter initialEntries={['/collections']}>
+                <ShopContextProvider>
+                    <Routes>
+                        <Route path="/collections" element={<Collections />} />
+                        <Route path="/collections/:type" element={<Collections />} />
+                    </Routes>
+                </ShopContextProvider>
+            </MemoryRouter>,
+        )
+
+    it('shows a tile per tag, and no product grid', async () => {
+        setCatalog([CHEAP, EXPENSIVE])
+        renderCollectionsIndex()
+
+        expect(await screen.findByRole('link', { name: /accessories/i })).toBeInTheDocument()
+        expect(screen.getByRole('link', { name: /laptops/i })).toBeInTheDocument()
+
+        // The old bare route rendered the whole catalog behind this control;
+        // its absence is the difference between a tile index and a grid.
+        expect(screen.queryByRole('button', { name: /refine/i })).not.toBeInTheDocument()
+        expect(screen.queryByText('Affordable Mouse')).not.toBeInTheDocument()
+        expect(screen.queryByText('Expensive Laptop')).not.toBeInTheDocument()
+    })
+
+    it('builds every tile href through collectionPath, never inline', async () => {
+        setCatalog([CHEAP, EXPENSIVE])
+        renderCollectionsIndex()
+
+        // `collectionPath` lowercases and URI-encodes the tag. About's tiles
+        // used to build this by hand (`/collections/${category.toLowerCase()}`,
+        // duplicated from this page's own typed route) — now there is one
+        // function both call.
+        const accessories = await screen.findByRole('link', { name: /accessories/i })
+        expect(accessories).toHaveAttribute('href', '/collections/accessories')
+        const laptops = screen.getByRole('link', { name: /laptops/i })
+        expect(laptops).toHaveAttribute('href', '/collections/laptops')
+    })
+
+    it('shows the count of products actually in each collection, not a label', async () => {
+        setCatalog([CHEAP, MID, EXPENSIVE])
+        renderCollectionsIndex()
+
+        // CHEAP and MID both carry the Accessories tag; EXPENSIVE carries
+        // Laptops alone. The count comes from `filterProducts`, the same
+        // function the grid itself uses, so a tile can never overstate what it
+        // links to.
+        const accessories = await screen.findByRole('link', { name: /accessories/i })
+        expect(accessories).toHaveTextContent('2 products')
+        const laptops = screen.getByRole('link', { name: /laptops/i })
+        expect(laptops).toHaveTextContent('1 product')
+    })
+})
+
 describe('flow 20 — Collections distinguishes loading from empty (FE-012)', () => {
     it('says nothing about emptiness while the catalog is still loading', async () => {
         setCatalog([CHEAP])

@@ -6,6 +6,7 @@ import ProductCard from '../ProductCard'
 import CardSkeleton from './CardSkeleton'
 import EditorialTile from './EditorialTile'
 import { DENSITIES } from '../../lib/catalogView'
+import { collectionPath } from '../../lib/catalog'
 
 import gaming800 from '../../assets/optimised/gaming-category-800.webp'
 import gaming400 from '../../assets/optimised/gaming-category-400.webp'
@@ -24,12 +25,18 @@ import accessories400 from '../../assets/optimised/accessories-category-400.webp
 //
 // The imagery is the WebP set `scripts/optimise-media.sh` already produced for
 // the homepage. No new asset is fetched to make this page look like this.
+//
+// `to` is built with `collectionPath` rather than written out, the same as
+// every other collection link on the site now (About's tiles, the navbar's
+// products dropdown) — three call sites building the same URL by hand is how
+// `/collections/gaming%20pcs` and `/products?tag=Gaming+PCs` ended up as two
+// different addresses for one collection.
 const INTERSTITIALS = [
     {
         eyebrow: 'Built to win',
         title: 'Gaming, without the compromise',
         copy: 'Desktop-class GPUs, high-refresh panels and thermals that hold a boost clock past the first ten minutes.',
-        to: '/collections/gaming',
+        to: collectionPath('gaming'),
         cta: 'Shop gaming',
         image: gaming800,
         imageSmall: gaming400,
@@ -38,7 +45,7 @@ const INTERSTITIALS = [
         eyebrow: 'Apple silicon',
         title: 'The MacBook line, in stock',
         copy: 'Every configuration priced per variant, so the number on the card is the number you pay.',
-        to: '/collections/macbooks',
+        to: collectionPath('macbooks'),
         cta: 'Shop MacBooks',
         image: macbook800,
         imageSmall: macbook400,
@@ -47,7 +54,7 @@ const INTERSTITIALS = [
         eyebrow: 'The rest of the desk',
         title: 'Accessories that keep up',
         copy: 'Keyboards, mice, docks and power — the parts that decide whether the machine is pleasant to use.',
-        to: '/collections/accessories',
+        to: collectionPath('accessories'),
         cta: 'Shop accessories',
         image: accessories800,
         imageSmall: accessories400,

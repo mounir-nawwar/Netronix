@@ -80,8 +80,10 @@ test.describe('flow 8 — the homepage renders from seeded data (FE-004, PORT-00
 
 // ---------------------------------------------------------------------------
 test.describe('flow 4 — browse, filter, sort (FE-003, FE-010)', () => {
-    test('/collections/all shows products above $1,000', async ({ page }) => {
-        await page.goto('/collections/all')
+    test('/products shows products above $1,000', async ({ page }) => {
+        // Was `/collections/all` — that address now redirects to `/products`
+        // (Phase 1), which is the one full-catalog route the site keeps.
+        await page.goto('/products')
         // The grid pages at twelve; these two are named explicitly, so the whole
         // result has to be on screen before they can be called missing.
         await revealAllProducts(page)
@@ -92,7 +94,7 @@ test.describe('flow 4 — browse, filter, sort (FE-003, FE-010)', () => {
     })
 
     test('the price slider reaches the top of the catalog', async ({ page }) => {
-        await page.goto('/collections/all')
+        await page.goto('/products')
         await revealAllProducts(page)
         // Wait for the catalog to land: the ceiling is derived from it, so
         // asserting before it arrives measures the default, not the fix.
@@ -133,7 +135,7 @@ test.describe('flow 4 — browse, filter, sort (FE-003, FE-010)', () => {
     })
 
     test('the tag filter offers only tags the catalog has', async ({ page }) => {
-        await page.goto('/collections/all')
+        await page.goto('/products')
         // The taxonomy is chips in the sticky bar rather than a sidebar column,
         // but they are still real checkboxes with real labels — a
         // `<button aria-pressed>` would have looked the same and been worse for
@@ -150,6 +152,49 @@ test.describe('flow 4 — browse, filter, sort (FE-003, FE-010)', () => {
         await revealAllProducts(page)
         await expect(visibleLink(page, 'MacBook Pro 16" M4 Pro')).toBeVisible()
         await expect(page.getByText('Sonos Era 300')).toHaveCount(0)
+    })
+})
+
+// ---------------------------------------------------------------------------
+// `/products`, `/collections` and `/collections/all` used to render a
+// byte-identical page unfiltered, under three self-referencing canonical URLs.
+// `/collections` is a real categories index now, and `/collections/all` is
+// gone (Phase 1).
+test.describe('flow 4c — the categories index (Phase 1)', () => {
+    test('/collections shows tiles by category, not a product grid', async ({ page }) => {
+        await page.goto('/collections')
+
+        // A tile per tag the catalog actually carries, read off the running
+        // taxonomy rather than a written-down list (FE-010).
+        const laptops = page.getByRole('link', { name: /laptops/i }).locator('visible=true').first()
+        await expect(laptops).toBeVisible()
+
+        // The old bare route rendered the whole unfiltered catalog behind this
+        // same "Refine" control every filtered/sorted view has; its absence is
+        // what "tiles, not a grid" actually means here.
+        await expect(page.getByRole('button', { name: /refine/i })).toHaveCount(0)
+    })
+
+    test('every tile is built through collectionPath, and lands on a populated collection', async ({ page }) => {
+        await page.goto('/collections')
+
+        const laptops = page.getByRole('link', { name: /laptops/i }).locator('visible=true').first()
+        // `collectionPath` lowercases and URI-encodes the tag. This is the one
+        // helper every collection link on the site goes through now — About's
+        // tiles, the homepage interstitials and this index alike — rather than
+        // three call sites each building the URL by hand.
+        await expect(laptops).toHaveAttribute('href', '/collections/laptops')
+
+        await laptops.click()
+        await expect(page).toHaveURL(/\/collections\/laptops$/)
+        await revealAllProducts(page)
+        await expect(visibleLink(page, 'MacBook Pro 16" M4 Pro')).toBeVisible()
+    })
+
+    test('/collections/all redirects to /products', async ({ page }) => {
+        await page.goto('/collections/all')
+        await expect(page).toHaveURL(/\/products$/)
+        await expect(page.getByRole('heading', { name: /all products/i })).toBeVisible()
     })
 })
 
@@ -171,7 +216,7 @@ test.describe('flow 20 — routes and states (FE-020, FE-021)', () => {
 // ---------------------------------------------------------------------------
 test.describe('flow 6 — the guest cart (FE-009)', () => {
     test('the last item removed stays gone after a reload', async ({ page }) => {
-        await page.goto('/collections/all')
+        await page.goto('/products')
         await addFirstAvailableToCart(page, 'Sonos Era 300')
 
         await page.goto('/cart')
@@ -190,7 +235,7 @@ test.describe('flow 6 — the guest cart (FE-009)', () => {
 // ---------------------------------------------------------------------------
 test.describe('flow 11 — guest checkout', () => {
     test('a guest can buy without an account', async ({ page }) => {
-        await page.goto('/collections/all')
+        await page.goto('/products')
         await addFirstAvailableToCart(page, 'Anker Prime 27K Power Bank')
 
         await page.goto('/cart')
@@ -216,7 +261,7 @@ test.describe('flow 11 — guest checkout', () => {
 test.describe('flow 9/7 — sign in, cart merge, order history, sign out', () => {
     test('a guest cart survives signing in, and logout clears everything', async ({ page }) => {
         // Something in the cart as a guest.
-        await page.goto('/collections/all')
+        await page.goto('/products')
         await addFirstAvailableToCart(page, 'Sony WH-1000XM6')
 
         // Sign in as the seeded demo customer, who already has a server cart.
@@ -295,7 +340,7 @@ test.describe('flow 16 — the chatbot (FE-027, FE-028, FE-029, BE-001)', () => 
         // mounted by `App`, so it is on every route, and the homepage's 11.5 MB
         // video and 3D iframe (PERF-001…003, Phase 4) put this test within
         // seconds of the suite's timeout while testing none of them.
-        await page.goto('/collections/all')
+        await page.goto('/products')
         await page.getByRole('button', { name: /open support chat/i }).click()
 
         // FE-027 — exactly one interface, from one owner.

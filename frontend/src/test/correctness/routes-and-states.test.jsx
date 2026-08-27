@@ -56,13 +56,19 @@ describe('FE-003 — the collections route names the parameter the page reads', 
         await waitFor(() => expect(screen.queryByText('A Gaming PC')).not.toBeInTheDocument())
     })
 
-    it('renders the whole catalog at /collections/all', async () => {
+    it('redirects /collections/all to /products, instead of rendering a fourth address for the same page', async () => {
+        // `/products`, `/collections` and `/collections/all` used to render a
+        // byte-identical unfiltered catalog under three self-referencing
+        // canonical URLs (Phase 1). `/collections/all` is the destination of
+        // the site's loudest CTAs, so it redirects rather than 404ing; the
+        // whole catalog now lives at `/products` alone.
         setCatalog([
             makeProduct({ _id: '5eed00000000000000000001', name: 'A MacBook', tags: ['MacBooks'] }),
             makeProduct({ _id: '5eed00000000000000000002', name: 'A Gaming PC', tags: ['Gaming PCs'] }),
         ])
         renderApp('/collections/all')
 
+        expect(await screen.findByRole('heading', { name: /all products/i })).toBeInTheDocument()
         expect(await screen.findByText('A MacBook')).toBeInTheDocument()
         expect(screen.getByText('A Gaming PC')).toBeInTheDocument()
     })

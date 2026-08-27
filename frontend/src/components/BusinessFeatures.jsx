@@ -36,7 +36,9 @@ const features = [
         title: 'Stock by configuration',
         description:
             'The count shown is for the exact options selected — a 1 TB 16-inch is a different line on the shelf from a 512 GB 14-inch.',
-        to: '/collections/all',
+        // `/products` is the whole catalog; `/collections/all` was a fourth
+        // address for the same page and now redirects here (Phase 1).
+        to: '/products',
         linkLabel: 'Browse the catalog',
     },
     {

@@ -44,8 +44,10 @@ const NotFound = () => (
                 >
                     Back to home
                 </Link>
+                {/* `/products` is the whole catalog; `/collections/all` was a
+                    fourth address for the same page and now redirects here (Phase 1). */}
                 <Link
-                    to="/collections/all"
+                    to="/products"
                     className="border border-rule px-8 py-3.5 font-michroma text-[10px] uppercase tracking-[0.18em] text-ink transition-colors duration-300 hover:border-ink"
                 >
                     Browse products

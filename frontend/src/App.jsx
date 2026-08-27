@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import SearchBar from './components/SearchBar'
 import Footer from './components/Footer'
@@ -115,6 +115,16 @@ function App() {
               test mounting its own `<Route path="/collections/:type">` cannot
               see, and the browser suite caught. */}
           <Route path='/collections' element={<Collections />} />
+          {/* `/products`, `/collections` and `/collections/all` used to render a
+              byte-identical page unfiltered, under three self-referencing
+              canonical URLs — and `/collections/all` published itself under the
+              title "all — Netronix" (`Collections.jsx` passed the raw `:type`
+              to `<Seo>`). It is the target of the site's loudest CTAs, so it
+              redirects rather than 404ing; `/products` is the one full-catalog
+              route now. React Router ranks a static segment above a dynamic
+              one regardless of declaration order, so this wins over
+              `/collections/:type` below for exactly this path. */}
+          <Route path='/collections/all' element={<Navigate to='/products' replace />} />
           <Route path='/collections/:type' element={<Collections />} />
           <Route path='/products' element={<AllProducts />} />
           <Route path='/product/:productId' element={<Product />} />

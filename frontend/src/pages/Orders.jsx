@@ -208,9 +208,11 @@ const Orders = () => {
               heading="No orders found"
               body="You haven't placed any orders yet."
               action={
+                // `/products` is the whole catalog; `/collections/all` was a
+                // fourth address for the same page and now redirects here (Phase 1).
                 <button
                   type="button"
-                  onClick={() => navigate('/collections/all')}
+                  onClick={() => navigate('/products')}
                   className="mt-8 border border-ink bg-ink px-8 py-3 font-michroma text-[9px] uppercase tracking-[0.16em] text-paper transition-colors duration-300 hover:border-statepurp hover:bg-statepurp"
                 >
                   Start Shopping

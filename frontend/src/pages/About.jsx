@@ -1,12 +1,10 @@
-import { useContext, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
-import { ShopContext } from '../context/shopContext';
-import { tagsOf } from '../lib/catalog';
 import { MINN_NAME, MINN_URL } from '../lib/minn.js';
 import { CONTACT_EMAIL, buildMailto } from '../lib/contact';
 import Seo from '../components/Seo';
+import CollectionTiles from '../components/catalog/CollectionTiles';
 
 // The About page, rebuilt — the same treatment Contact was given, for the same
 // reasons.
@@ -44,17 +42,6 @@ import Seo from '../components/Seo';
 // the two `PlaceOrder` renders; guest checkout is a real supported path.
 
 const About = () => {
-    const { tags, products } = useContext(ShopContext);
-
-    // The real taxonomy, the same way `CatalogPage` derives it: the tags
-    // endpoint the context already fetched, falling back to the tags the loaded
-    // catalog carries. Never a written-down list — that is exactly how the old
-    // page ended up advertising Networking (FE-010).
-    const categories = useMemo(
-        () => (tags?.length > 0 ? [...tags].sort() : tagsOf(products)),
-        [tags, products],
-    );
-
     const facts = [
         {
             term: 'Stock',
@@ -117,29 +104,7 @@ const About = () => {
                         <span className="h-px flex-1 bg-rule" />
                     </div>
 
-                    {categories.length > 0 ? (
-                        <ul className="mt-8 grid grid-cols-2 gap-px border border-rule bg-rule sm:grid-cols-3 lg:grid-cols-4">
-                            {categories.map((category) => (
-                                <li key={category} className="bg-paper">
-                                    <Link
-                                        to={`/collections/${encodeURIComponent(category.toLowerCase())}`}
-                                        className="group flex min-h-[104px] flex-col justify-end p-5 transition-colors hover:bg-wash"
-                                    >
-                                        <span className="font-michroma text-[10px] uppercase tracking-[0.16em] text-ink md:text-[11px]">
-                                            {category}
-                                        </span>
-                                        <span className="mt-2 text-xs text-ink-40 transition-colors group-hover:text-statepurp">
-                                            Browse &#8599;
-                                        </span>
-                                    </Link>
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="mt-8 text-sm text-ink-60">
-                            The catalog is loading. <Link to="/collections/all" className="rule-draw pb-0.5 text-ink">Browse everything</Link>.
-                        </p>
-                    )}
+                    <CollectionTiles />
                 </section>
 
                 {/* How the shop works — each row a fact about this application. */}
@@ -190,8 +155,10 @@ const About = () => {
                     </p>
 
                     <div className="mt-10 flex flex-wrap gap-3">
+                        {/* `/products` is the whole catalog now — `/collections/all` was a
+                            fourth address for the same page and is gone (Phase 1). */}
                         <Link
-                            to="/collections/all"
+                            to="/products"
                             className="border border-ink bg-ink px-8 py-3.5 font-michroma text-[10px] uppercase tracking-[0.18em] text-paper transition-colors duration-300 hover:border-statepurp hover:bg-statepurp"
                         >
                             Browse the catalog

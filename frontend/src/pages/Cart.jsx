@@ -211,9 +211,11 @@ const Cart = () => {
               heading="Your cart is empty"
               body="Add items to get started"
               action={
+                // `/products` is the whole catalog; `/collections/all` was a
+                // fourth address for the same page and now redirects here (Phase 1).
                 <button
                   type="button"
-                  onClick={() => navigate('/collections/all')}
+                  onClick={() => navigate('/products')}
                   className={`mt-8 ${SOLID_BUTTON}`}
                 >
                   Start Shopping
@@ -398,9 +400,11 @@ const Cart = () => {
                       </p>
                     )}
 
+                    {/* `/products` is the whole catalog; `/collections/all` was a
+                        fourth address for the same page and now redirects here (Phase 1). */}
                     <button
                       type="button"
-                      onClick={() => navigate('/collections/all')}
+                      onClick={() => navigate('/products')}
                       className="rule-draw mt-7 block w-full pb-1 text-center text-xs text-ink-60 transition-colors hover:text-ink"
                     >
                       Continue Shopping
