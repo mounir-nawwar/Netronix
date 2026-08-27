@@ -357,10 +357,28 @@ body {
   border-color: #6a5acd;
 }
 
-/* Toast Notification Styling */
+/* Toast Notification Styling
+   ---------------------------------------------------------------------------
+   This was `border-radius: 8px`, a drop shadow, `#ffffff`/`#000000` rather
+   than the `plate`/`ink` tokens, and four saturated accents — three of which
+   (`#ff5d5d`, `#ffbb33`, `#33b5e5`) exist nowhere in `tailwind.config.js`. Four
+   different colours read as a traffic-light system on a site that otherwise
+   spends one accent (`statepurp`) on interaction only. Square corners, a
+   hairline `rule` border and one accent bar now — `ink` for every variant
+   except error, which keeps the one restrained red the account menu's Sign
+   Out already uses (Phase 3), so there is exactly one red on the site rather
+   than a second one invented here.
+
+   `theme()` reaches the same tokens `tailwind.config.js` defines, so this
+   stays one source of truth rather than a second set of hex literals sitting
+   next to the first. The `!important`s are kept — they are fighting
+   `ReactToastify.css`'s own rules, not this project's. */
 .Toastify__toast {
-  border-radius: 8px !important;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  border-radius: 0 !important;
+  box-shadow: 0 2px 8px rgba(18, 18, 20, 0.06) !important;
+  background-color: theme('colors.plate') !important;
+  color: theme('colors.ink.DEFAULT') !important;
+  border: 1px solid theme('colors.rule') !important;
   font-family: 'Outfit', sans-serif !important;
   font-size: 14px !important;
   padding: 12px 16px !important;
@@ -372,41 +390,23 @@ body {
 }
 
 .Toastify__progress-bar {
-  background-color: #6a5acd !important;
+  background-color: theme('colors.statepurp') !important;
 }
 
-.Toastify__toast--success {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border-left: 4px solid #6a5acd !important;
-}
-
-.Toastify__toast--error {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border-left: 4px solid #ff5d5d !important;
-}
-
-.Toastify__toast--warning {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border-left: 4px solid #ffbb33 !important;
-}
-
+.Toastify__toast--success,
+.Toastify__toast--warning,
 .Toastify__toast--info {
-  background-color: #ffffff !important;
-  color: #000000 !important;
-  border-left: 4px solid #33b5e5 !important;
+  border-left: 4px solid theme('colors.ink.DEFAULT') !important;
 }
 
-.Toastify__close-button {
-  color: #999 !important;
-  opacity: 0.7 !important;
+/* The one exception: error keeps a real red, because "something failed" is
+   the one state this project's restrained palette should not flatten. */
+.Toastify__toast--error {
+  border-left: 4px solid theme('colors.red.500') !important;
 }
 
-.Toastify__close-button:hover {
-  opacity: 1 !important;
-}
+/* `ToastSurface.jsx` sets `closeButton={false}` in the storefront, so this
+   selector was unreachable dead CSS — the button it styles is never rendered. */
 /* ---------------------------------------------------------------------------
    A11Y-001 — reduced motion.
 

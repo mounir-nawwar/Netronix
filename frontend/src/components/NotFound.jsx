@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 
 import Seo from './Seo'
+import Button from './Button'
 
 /**
  * The 404 page (FE-020).
@@ -38,20 +39,14 @@ const NotFound = () => (
             </p>
 
             <div className="mt-10 flex flex-wrap gap-3">
-                <Link
-                    to="/"
-                    className="border border-ink bg-ink px-8 py-3.5 font-michroma text-[10px] uppercase tracking-[0.18em] text-paper transition-colors duration-300 hover:border-statepurp hover:bg-statepurp"
-                >
+                <Button as={Link} to="/" variant="solid" className="px-8 py-3.5 text-[10px] tracking-[0.18em]">
                     Back to home
-                </Link>
+                </Button>
                 {/* `/products` is the whole catalog; `/collections/all` was a
                     fourth address for the same page and now redirects here (Phase 1). */}
-                <Link
-                    to="/products"
-                    className="border border-rule px-8 py-3.5 font-michroma text-[10px] uppercase tracking-[0.18em] text-ink transition-colors duration-300 hover:border-ink"
-                >
+                <Button as={Link} to="/products" variant="quiet" className="px-8 py-3.5 text-[10px] tracking-[0.18em]">
                     Browse products
-                </Link>
+                </Button>
             </div>
         </div>
     </div>

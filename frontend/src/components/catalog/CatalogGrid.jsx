@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import ProductCard from '../ProductCard'
 import CardSkeleton from './CardSkeleton'
 import EditorialTile from './EditorialTile'
+import Button from '../Button'
 import { DENSITIES } from '../../lib/catalogView'
 import { collectionPath } from '../../lib/catalog'
 
@@ -139,13 +140,14 @@ const CatalogGrid = ({ products, density, status, error, onRetry, onClearFilters
                 <p className="mx-auto mt-4 max-w-[42ch] text-sm text-ink-60">
                     {error || 'Please try again in a moment.'}
                 </p>
-                <button
+                <Button
                     type="button"
+                    variant="solid"
                     onClick={onRetry}
-                    className="mt-8 border border-ink bg-ink px-8 py-3 font-michroma text-[9px] uppercase tracking-[0.16em] text-paper transition-colors duration-300 hover:bg-statepurp hover:border-statepurp"
+                    className="mt-8 px-8 py-3 text-[9px] tracking-[0.16em]"
                 >
                     Try again
-                </button>
+                </Button>
             </div>
         )
     }
@@ -162,13 +164,14 @@ const CatalogGrid = ({ products, density, status, error, onRetry, onClearFilters
                         : 'This collection is empty right now.'}
                 </p>
                 {hasFilters && (
-                    <button
+                    <Button
                         type="button"
+                        variant="solid"
                         onClick={onClearFilters}
-                        className="mt-8 border border-ink bg-ink px-8 py-3 font-michroma text-[9px] uppercase tracking-[0.16em] text-paper transition-colors duration-300 hover:bg-statepurp hover:border-statepurp"
+                        className="mt-8 px-8 py-3 text-[9px] tracking-[0.16em]"
                     >
                         Clear filters
-                    </button>
+                    </Button>
                 )}
             </div>
         )
@@ -230,10 +233,11 @@ const CatalogGrid = ({ products, density, status, error, onRetry, onClearFilters
                 </p>
 
                 {remaining > 0 && (
-                    <button
+                    <Button
                         type="button"
+                        variant="outline"
                         onClick={() => setVisibleCount((current) => current + PAGE)}
-                        className="mt-5 border border-rule px-10 py-3.5 font-michroma text-[9px] uppercase tracking-[0.18em] text-ink transition-colors duration-300 hover:border-ink hover:bg-ink hover:text-paper md:text-[10px]"
+                        className="mt-5 px-10 py-3.5 text-[9px] tracking-[0.18em] md:text-[10px]"
                     >
                         Load more
                         {/* `opacity`, not a colour: the button inverts to ink on
@@ -241,7 +245,7 @@ const CatalogGrid = ({ products, density, status, error, onRetry, onClearFilters
                         <span className="tnum ml-2 opacity-50" aria-hidden="true">
                             {Math.min(PAGE, remaining)}
                         </span>
-                    </button>
+                    </Button>
                 )}
             </div>
         )}

@@ -9,8 +9,7 @@ import CartTotal from '../components/CartTotal';
 import Panel from '../components/Panel';
 import BackButton from '../components/BackButton';
 import Seo from '../components/Seo';
-
-const SOLID_BUTTON = 'border border-ink bg-ink px-8 py-3 font-michroma text-[9px] uppercase tracking-[0.16em] text-paper transition-colors duration-300 hover:border-statepurp hover:bg-statepurp'
+import Button from '../components/Button';
 
 // FE-012 — the cart said "empty" while it was still loading.
 //
@@ -106,7 +105,7 @@ const Cart = () => {
     const availableInventory = item.available ?? 0;
 
     if (newQuantity > availableInventory) {
-      toast.error(`Only ${availableInventory} items available for this variant`);
+      toast.error(`Only ${availableInventory} items available for this variant.`);
       // Update to maximum available
       updateQuantity(item._id, lineRefOf(item), availableInventory);
     } else {
@@ -201,9 +200,9 @@ const Cart = () => {
               heading="We could not load your cart"
               body={catalogError || 'Please try again in a moment.'}
               action={
-                <button type="button" onClick={reloadCatalog} className={`mt-8 ${SOLID_BUTTON}`}>
+                <Button type="button" variant="solid" onClick={reloadCatalog} className="mt-8 px-8 py-3 text-[9px] tracking-[0.16em]">
                   Try again
-                </button>
+                </Button>
               }
             />
           ) : cartData.length === 0 ? (
@@ -213,13 +212,14 @@ const Cart = () => {
               action={
                 // `/products` is the whole catalog; `/collections/all` was a
                 // fourth address for the same page and now redirects here (Phase 1).
-                <button
+                <Button
                   type="button"
+                  variant="solid"
                   onClick={() => navigate('/products')}
-                  className={`mt-8 ${SOLID_BUTTON}`}
+                  className="mt-8 px-8 py-3 text-[9px] tracking-[0.16em]"
                 >
                   Start Shopping
-                </button>
+                </Button>
               }
             />
           ) : (
@@ -378,7 +378,7 @@ const Cart = () => {
                       onClick={() => {
                         // Check if any items have inventory warnings before proceeding
                         if (blocked) {
-                          toast.error('Please resolve inventory issues before checkout');
+                          toast.error('Please resolve inventory issues before checkout.');
                           return;
                         }
                         navigate('/placeorder');

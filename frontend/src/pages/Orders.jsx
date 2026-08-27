@@ -9,6 +9,7 @@ import { FiPackage } from 'react-icons/fi'
 import DemoNotice from '../components/DemoNotice'
 import Panel from '../components/Panel'
 import Seo from '../components/Seo';
+import Button from '../components/Button'
 
 /**
  * How an order status is written on the storefront.
@@ -95,7 +96,7 @@ const Orders = () => {
       }
     } catch (error) {
       console.error('Could not load your orders', error);
-      toast.error(error instanceof ApiError ? error.message : 'Could not load your orders');
+      toast.error(error instanceof ApiError ? error.message : 'Could not load your orders.');
     } finally {
       setIsLoading(false);
     }
@@ -173,14 +174,15 @@ const Orders = () => {
                 It is now named after what it does, and there is one of it rather
                 than one per line, because every copy did the same thing to the
                 whole page. */}
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={loadOrderData}
               disabled={isLoading}
-              className="border border-rule px-6 py-3 font-michroma text-[9px] uppercase tracking-[0.16em] text-ink transition-colors duration-300 hover:border-ink hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:border-rule disabled:text-ink-40 disabled:hover:bg-transparent"
+              className="px-6 py-3 text-[9px] tracking-[0.16em]"
             >
               {isLoading ? 'Refreshing…' : 'Refresh'}
-            </button>
+            </Button>
           </div>
 
           <DemoNotice className="mt-8 max-w-[68ch]" />
@@ -210,13 +212,14 @@ const Orders = () => {
               action={
                 // `/products` is the whole catalog; `/collections/all` was a
                 // fourth address for the same page and now redirects here (Phase 1).
-                <button
+                <Button
                   type="button"
+                  variant="solid"
                   onClick={() => navigate('/products')}
-                  className="mt-8 border border-ink bg-ink px-8 py-3 font-michroma text-[9px] uppercase tracking-[0.16em] text-paper transition-colors duration-300 hover:border-statepurp hover:bg-statepurp"
+                  className="mt-8 px-8 py-3 text-[9px] tracking-[0.16em]"
                 >
                   Start Shopping
-                </button>
+                </Button>
               }
             />
           ) : (

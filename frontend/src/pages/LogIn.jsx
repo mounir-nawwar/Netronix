@@ -38,7 +38,7 @@ const LogIn = () => {
         return;
       }
 
-      if (currentState === 'Sign Up') toast.success('Sign up successful! Welcome aboard!');
+      if (currentState === 'Sign Up') toast.success('Account created.');
       await applySession(nextToken);
     } catch (error) {
       // The server's own message, not "Request failed with status code 401".

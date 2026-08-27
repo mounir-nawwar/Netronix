@@ -90,7 +90,7 @@ const PlaceOrder = () => {
 
       // Check if we have items to order
       if (orderItems.length === 0) {
-        toast.error('Your cart is empty');
+        toast.error('Your cart is empty.');
         setIsSubmitting(false);
         return;
       }
@@ -148,7 +148,7 @@ const PlaceOrder = () => {
         setTimeout(() => navigate(token ? '/orders' : '/'), 1500);
       } catch (error) {
         console.error('Order error:', error);
-        toast.error(error instanceof ApiError ? error.message : 'Order placement failed');
+        toast.error(error instanceof ApiError ? error.message : 'Could not place your order.');
       } finally {
         setIsSubmitting(false);
       }

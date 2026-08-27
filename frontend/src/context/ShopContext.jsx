@@ -293,9 +293,9 @@ const ShopContextProvider = (props) => {
             return items;
         } catch (error) {
             setProducts([]);
-            setCatalogError(error instanceof ApiError ? error.message : 'Error loading products');
+            setCatalogError(error instanceof ApiError ? error.message : 'Could not load the catalog.');
             setCatalogStatus('error');
-            report(error, 'Error loading products');
+            report(error, 'Could not load the catalog.');
             return [];
         }
     }, [report]);
@@ -504,7 +504,7 @@ const ShopContextProvider = (props) => {
     const addToCart = useCallback(async (itemId, selection = '', quantity = 1) => {
         const product = products.find(p => p._id === itemId);
         if (!product) {
-            toast.error('Product not found');
+            toast.error('Product not found.');
             return;
         }
 
@@ -529,7 +529,11 @@ const ShopContextProvider = (props) => {
 
         const needsSelection = Array.isArray(product.variants) && product.variants.length > 0;
         if (needsSelection && !variantKey && !variantOptions) {
-            toast.error('Select Product Options')
+            // Was "Select Product Options" here — Title Case, no full stop —
+            // while `Product.jsx` said "Please select all options" for the
+            // identical condition. Two toasts for one fact. This is the wording
+            // that survives; `Product.jsx` and `FeaturedProduct.jsx` match it.
+            toast.error('Please select all options.')
             return;
         }
 
@@ -544,13 +548,17 @@ const ShopContextProvider = (props) => {
             entry = resolveVariant(product, { variantOptions, variantKey });
         } catch (error) {
             if (!(error instanceof VariantResolutionError)) throw error;
-            toast.error('That option is no longer available');
+            toast.error('That option is no longer available.');
             return;
         }
 
         const available = entry.quantity;
         if (available <= 0) {
-            toast.error(`Selected variant is out of stock`);
+            // Was "Selected variant is out of stock" — a template literal with
+            // no interpolation in it — while `Product.jsx` said "This
+            // combination is out of stock" for the same fact. One wording now,
+            // shared with `Product.jsx`'s own check before it ever calls here.
+            toast.error('This variant is out of stock.');
             return;
         }
 
@@ -571,7 +579,7 @@ const ShopContextProvider = (props) => {
         const currentQuantityInCart = index === -1 ? 0 : Number(previousLines[index].quantity);
 
         if (currentQuantityInCart + quantity > available) {
-            toast.error(`Cannot add ${quantity} items. Only ${available - currentQuantityInCart} more available for this variant`);
+            toast.error(`Cannot add ${quantity} items. Only ${available - currentQuantityInCart} more available for this variant.`);
             return;
         }
 
@@ -589,9 +597,17 @@ const ShopContextProvider = (props) => {
         // "Size: 16, Storage: inch" for a 16-inch laptop (DB-003).
         const variantDisplay = variantLabel(product.variants, entry.options) || 'Default';
 
+        // This used to carry its own `style: { background: "#ffffff", color:
+        // "#000000", borderLeft: "4px solid #6a5acd", … }` — a second,
+        // hand-typed copy of the palette `index.css`'s `.Toastify__toast--*`
+        // rules already declare, and the one that would drift first if the
+        // tokens ever moved. It also repeated `position`/`autoClose`/etc.,
+        // every one of them already `ToastSurface`'s container default. Both
+        // are gone: this toast is styled and positioned exactly like every
+        // other one on the site now, through the one stylesheet.
         toast.success(
             <div className="flex items-center">
-                <div className="flex-shrink-0 w-10 h-10 mr-2 bg-gray-100 rounded-md overflow-hidden">
+                <div className="flex-shrink-0 w-10 h-10 mr-2 overflow-hidden bg-wash">
                     {product.image && Array.isArray(product.image) && product.image[0] ? (
                         <img
                             src={product.image[0]}
@@ -599,33 +615,18 @@ const ShopContextProvider = (props) => {
                             className="w-full h-full object-cover"
                         />
                     ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                        <div className="flex h-full w-full items-center justify-center bg-wash">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-ink-40" viewBox="0 0 20 20" fill="currentColor">
                                 <path fillRule="evenodd" d="M10 2a4 4 0 00-4 4v1H5a1 1 0 00-.994.89l-1 9A1 1 0 004 18h12a1 1 0 00.994-1.11l-1-9A1 1 0 0015 7h-1V6a4 4 0 00-4-4zm2 5V6a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" />
                             </svg>
                         </div>
                     )}
                 </div>
                 <div>
-                    <p className="font-michroma text-sm text-[#6a5acd]">{product.name}</p>
-                    <p className="text-xs text-gray-700">Added to cart • {quantity} × {variantDisplay}</p>
+                    <p className="font-michroma text-sm text-statepurp">{product.name}</p>
+                    <p className="text-xs text-ink-60">Added to cart • {quantity} × {variantDisplay}</p>
                 </div>
-            </div>,
-            {
-                position: "bottom-right",
-                autoClose: 3000,
-                hideProgressBar: false,
-                closeOnClick: true,
-                pauseOnHover: true,
-                draggable: true,
-                progress: undefined,
-                style: {
-                    background: "#ffffff",
-                    color: "#000000",
-                    borderLeft: "4px solid #6a5acd",
-                    fontFamily: "Outfit, sans-serif"
-                },
-            }
+            </div>
         );
 
         if (!token) return;   // the guest cart is persisted by its own effect
@@ -771,7 +772,7 @@ const ShopContextProvider = (props) => {
         try {
             return await productsApi.fetchProduct(productId);
         } catch (error) {
-            report(error, 'Error loading product');
+            report(error, 'Could not load that product.');
             return null;
         }
     }, [products, report])
@@ -781,7 +782,7 @@ const ShopContextProvider = (props) => {
             const { items } = await productsApi.listProductsByTag(tag);
             return items;
         } catch (error) {
-            report(error, 'Error loading products');
+            report(error, 'Could not load these products.');
             return [];
         }
     }, [report])
@@ -818,13 +819,13 @@ const ShopContextProvider = (props) => {
             // version left the page's spinner running for ever on any path that
             // did not produce products.
             setWishlistStatus('error');
-            report(error, 'Could not load your saved items');
+            report(error, 'Could not load your saved items.');
         }
     }, [report]);
 
     const addToWishlist = useCallback(async (productId) => {
         if (!token) {
-            toast.error('Please log in to save items');
+            toast.error('Please log in to save items.');
             navigate('/login');
             return;
         }
@@ -837,7 +838,7 @@ const ShopContextProvider = (props) => {
             if (product) {
                 toast.success(
                     <div className="flex items-center">
-                        <div className="flex-shrink-0 w-10 h-10 mr-2 bg-gray-100 rounded-md overflow-hidden">
+                        <div className="flex-shrink-0 w-10 h-10 mr-2 overflow-hidden bg-wash">
                             {product.image && Array.isArray(product.image) && product.image[0] ? (
                                 <img
                                     src={product.image[0]}
@@ -845,22 +846,22 @@ const ShopContextProvider = (props) => {
                                     className="w-full h-full object-cover"
                                 />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                                <div className="flex h-full w-full items-center justify-center bg-wash">
+                                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-ink-40" viewBox="0 0 20 20" fill="currentColor">
                                         <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                                     </svg>
                                 </div>
                             )}
                         </div>
                         <div>
-                            <p className="font-michroma text-sm text-[#6a5acd]">{product.name}</p>
-                            <p className="text-xs text-gray-700">Saved to wishlist</p>
+                            <p className="font-michroma text-sm text-statepurp">{product.name}</p>
+                            <p className="text-xs text-ink-60">Saved to wishlist</p>
                         </div>
                     </div>
                 );
             }
         } catch (error) {
-            report(error, 'Could not save that item');
+            report(error, 'Could not save that item.');
         }
     }, [navigate, products, report, token]);
 
@@ -870,9 +871,9 @@ const ShopContextProvider = (props) => {
         try {
             await authApi.removeFromWishlist(productId);
             setWishlist((previous) => previous.filter(id => id !== productId));
-            toast.info('Item removed from wishlist');
+            toast.info('Item removed from wishlist.');
         } catch (error) {
-            report(error, 'Could not remove that item');
+            report(error, 'Could not remove that item.');
         }
     }, [report, token]);
 
@@ -930,13 +931,13 @@ const ShopContextProvider = (props) => {
             localStorage.removeItem(GUEST_CART_KEY);
             localStorage.removeItem(GUEST_CART_LINES_KEY);
             if (capped.length > 0) {
-                toast.info('Some items were reduced to the quantity we have in stock');
+                toast.info('Some items were reduced to the quantity we have in stock.');
             }
         };
 
         const [cartResult] = await Promise.allSettled([restoreCart(), loadWishlist(generation)]);
         if (generation === sessionGeneration.current && cartResult.status === 'rejected') {
-            report(cartResult.reason, 'We signed you in, but could not load your cart');
+            report(cartResult.reason, 'We signed you in, but could not load your cart.');
         }
     }, [loadWishlist, report]);
 

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { MINN_NAME, MINN_URL } from '../lib/minn.js';
 import { CONTACT_EMAIL, buildMailto } from '../lib/contact';
 import Seo from '../components/Seo';
+import Button from '../components/Button';
 import CollectionTiles from '../components/catalog/CollectionTiles';
 
 // The About page, rebuilt — the same treatment Contact was given, for the same
@@ -157,18 +158,12 @@ const About = () => {
                     <div className="mt-10 flex flex-wrap gap-3">
                         {/* `/products` is the whole catalog now — `/collections/all` was a
                             fourth address for the same page and is gone (Phase 1). */}
-                        <Link
-                            to="/products"
-                            className="border border-ink bg-ink px-8 py-3.5 font-michroma text-[10px] uppercase tracking-[0.18em] text-paper transition-colors duration-300 hover:border-statepurp hover:bg-statepurp"
-                        >
+                        <Button as={Link} to="/products" variant="solid" className="px-8 py-3.5 text-[10px] tracking-[0.18em]">
                             Browse the catalog
-                        </Link>
-                        <Link
-                            to="/contact"
-                            className="border border-rule px-8 py-3.5 font-michroma text-[10px] uppercase tracking-[0.18em] text-ink transition-colors duration-300 hover:border-ink"
-                        >
+                        </Button>
+                        <Button as={Link} to="/contact" variant="quiet" className="px-8 py-3.5 text-[10px] tracking-[0.18em]">
                             Contact
-                        </Link>
+                        </Button>
                     </div>
                 </section>
             </motion.div>

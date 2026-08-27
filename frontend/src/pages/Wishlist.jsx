@@ -5,6 +5,7 @@ import ProductCard from '../components/ProductCard';
 import CardSkeleton from '../components/catalog/CardSkeleton';
 import BackButton from '../components/BackButton';
 import Panel from '../components/Panel';
+import Button from '../components/Button';
 import Seo from '../components/Seo';
 import { DENSITIES } from '../lib/catalogView';
 
@@ -121,13 +122,14 @@ const Wishlist = () => {
               heading="We could not load your saved items"
               body={catalogError || 'Please try again in a moment.'}
               action={
-                <button
+                <Button
                   type="button"
+                  variant="solid"
                   onClick={reloadCatalog}
-                  className="mt-8 border border-ink bg-ink px-8 py-3 font-michroma text-[9px] uppercase tracking-[0.16em] text-paper transition-colors duration-300 hover:border-statepurp hover:bg-statepurp"
+                  className="mt-8 px-8 py-3 text-[9px] tracking-[0.16em]"
                 >
                   Try again
-                </button>
+                </Button>
               }
             />
           ) : count === 0 ? (
@@ -135,13 +137,14 @@ const Wishlist = () => {
               heading="Your wishlist is empty"
               body="Products you save are kept here, across devices, for as long as you are signed in."
               action={
-                <button
+                <Button
                   type="button"
+                  variant="solid"
                   onClick={() => navigate('/products')}
-                  className="mt-8 border border-ink bg-ink px-8 py-3 font-michroma text-[9px] uppercase tracking-[0.16em] text-paper transition-colors duration-300 hover:border-statepurp hover:bg-statepurp"
+                  className="mt-8 px-8 py-3 text-[9px] tracking-[0.16em]"
                 >
                   Explore Products
-                </button>
+                </Button>
               }
             />
           ) : (

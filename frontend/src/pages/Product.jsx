@@ -106,13 +106,13 @@ const Product = () => {
         }
         setSelectedVariants(initialSelectedVariants);
       } else {
-        toast.error('Product not found');
+        toast.error('Product not found.');
         navigate('/products');
       }
     } catch (error) {
       if (generation !== loadGeneration.current) return;
       console.error(error);
-      toast.error('Error loading product');
+      toast.error('Could not load that product.');
       navigate('/products');
     } finally {
       if (generation === loadGeneration.current) setLoading(false);
@@ -209,7 +209,7 @@ const Product = () => {
     if (quantity < getAvailableQuantity()) {
       setQuantity(prev => prev + 1);
     } else {
-      toast.warning(`Only ${getAvailableQuantity()} items available`);
+      toast.warning(`Only ${getAvailableQuantity()} items available.`);
     }
   };
 
@@ -222,12 +222,12 @@ const Product = () => {
   // Handle add to cart with inventory check
   const handleAddToCart = () => {
     if (!areAllVariantsSelected()) {
-      toast.error('Please select all options');
+      toast.error('Please select all options.');
       return;
     }
 
     if (isOutOfStock()) {
-      toast.error('This combination is out of stock');
+      toast.error('This variant is out of stock.');
       return;
     }
 

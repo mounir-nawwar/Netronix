@@ -65,7 +65,7 @@ const FeaturedProduct = () => {
         const next = quantity + change;
         if (next < 1) return;
         if (availableStock > 0 && next > availableStock) {
-            toast.warning(`Only ${availableStock} items available`);
+            toast.warning(`Only ${availableStock} items available.`);
             return;
         }
         setQuantity(next);
@@ -79,11 +79,11 @@ const FeaturedProduct = () => {
     const handleAddToCart = () => {
         if (!product?._id) return;
         if (!currentEntry) {
-            toast.error('Please select all options');
+            toast.error('Please select all options.');
             return;
         }
         if (availableStock < quantity) {
-            toast.error(`Only ${availableStock} items available`);
+            toast.error(`Only ${availableStock} items available.`);
             return;
         }
         addToCart(product._id, { variantOptions: currentEntry.options }, quantity);
