@@ -67,11 +67,66 @@ describe('every presentation mode renders the fields its callers rendered', () =
 
     it('showcase renders the quick-add button only when asked', () => {
         const { unmount } = renderCard({ product: product(), variant: 'showcase' })
-        expect(screen.queryByRole('button', { name: /add to cart/i })).toBeNull()
+        expect(screen.queryByRole('button', { name: /add .* to cart/i })).toBeNull()
         unmount()
 
+        // The name carries the product. A catalog grid renders twenty of these,
+        // and twenty buttons all announced as "Add to cart" are twenty targets
+        // a screen-reader user cannot tell apart.
         renderCard({ product: product(), variant: 'showcase', showQuickAdd: true })
-        expect(screen.getByRole('button', { name: /add to cart/i })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Add MacBook Pro 16" M4 Pro to cart' }))
+            .toBeInTheDocument()
+    })
+})
+
+// ---------------------------------------------------------------------------
+describe('the card says only what the catalog can support', () => {
+    // FE-011 / PORT-005. Every card rendered `★★★★★` on the `full` variant and
+    // a hardcoded `★ 4.5` on `showcase`, for every product, against a schema
+    // with no `rating` field and no review model — so the number could never
+    // move and was identical on all twenty products. The component's own header
+    // comment said so and rendered them anyway.
+    it.each(['full', 'showcase', 'minimal'])('%s invents no rating', (variant) => {
+        const { container } = renderCard({ product: product(), variant })
+        expect(container.textContent).not.toMatch(/[★☆]/)
+        expect(container.textContent).not.toMatch(/\b4\.5\b/)
+    })
+
+    it('carries no star glyph in anything it renders', () => {
+        // Comments are stripped first, the same way the sibling schema-field
+        // assertion below does it: the header comment *documents* the two star
+        // blocks that were removed, and quoting them there is the point.
+        const source = readFileSync(join(process.cwd(), 'src/components/ProductCard.jsx'), 'utf8')
+            .replace(/\/\*[\s\S]*?\*\//g, '')
+            .replace(/(^|[^:])\/\/.*$/gm, '$1')
+
+        expect(source).not.toMatch(/[★☆]/)
+        expect(source).not.toMatch(/&#9733;|&#9734;/)
+    })
+
+    it('states sold-out stock rather than implying it', () => {
+        const none = product({
+            variants: [{ name: 'Size', options: ['S'] }],
+            inventory: { S: 0 },
+        })
+        // No quick-add, so the chip is the only thing that can be saying it.
+        renderCard({ product: none, variant: 'showcase' })
+        expect(screen.getByText(/sold out/i)).toBeInTheDocument()
+    })
+
+    it('counts remaining stock honestly when it is low, and stays quiet when it is not', () => {
+        const scarce = product({
+            variants: [{ name: 'Size', options: ['S'] }],
+            inventory: { S: 2 },
+        })
+        const { unmount } = renderCard({ product: scarce, variant: 'showcase' })
+        expect(screen.getByText('Last 2')).toBeInTheDocument()
+        unmount()
+
+        // The default fixture has five in stock. A badge on every card is a
+        // texture, not a signal — which is exactly what the stars were.
+        const { container } = renderCard({ product: product(), variant: 'showcase' })
+        expect(container.textContent).not.toMatch(/last \d/i)
     })
 })
 
@@ -224,15 +279,28 @@ describe('there is exactly one card implementation left (FE-007)', () => {
     })
 
     it('every tiled surface renders the shared component', () => {
+        // The two browse pages reach it through `catalog/CatalogGrid` now
+        // rather than importing it directly: they were two implementations of
+        // one page, with two filter sidebars, two sort controls and two card
+        // variants between them, and they are wrappers over one shell. The
+        // property this test is protecting is unchanged — there is one card,
+        // and every grid renders it — so the grid is named alongside the
+        // surfaces that still tile it themselves.
         for (const file of [
-            'pages/AllProducts.jsx',
-            'pages/Collections.jsx',
+            'components/catalog/CatalogGrid.jsx',
             'components/FeaturedProducts.jsx',
             'components/RelatedProducts.jsx',
         ]) {
             const source = readFileSync(join(process.cwd(), 'src', file), 'utf8')
             expect(source, file).toMatch(/from ['"].*ProductCard['"]/)
             // …and none of them still declares one of its own.
+            expect(source, file).not.toMatch(/^const ProductCard = /m)
+        }
+
+        // And the pages themselves tile nothing directly any more.
+        for (const file of ['pages/AllProducts.jsx', 'pages/Collections.jsx']) {
+            const source = readFileSync(join(process.cwd(), 'src', file), 'utf8')
+            expect(source, file).toMatch(/from ['"].*catalog\/CatalogPage['"]/)
             expect(source, file).not.toMatch(/^const ProductCard = /m)
         }
     })

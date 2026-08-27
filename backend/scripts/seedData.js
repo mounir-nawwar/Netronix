@@ -29,6 +29,8 @@
 // Nothing reads them by literal any more, which is the part that mattered.
 // ---------------------------------------------------------------------------
 
+import { imagesFor } from './demoArtwork.js'
+
 // A fixed clock. Products are dated backwards from this instant so that
 // sort-by-newest is stable across runs and machines.
 const CATALOG_EPOCH = Date.UTC(2026, 7, 1, 12, 0, 0) // 2026-08-01T12:00:00Z
@@ -49,35 +51,37 @@ export const DEMO_BCRYPT_SALT = '$2b$10$NetronixDemoSeedSalt00'
 const seededId = (n) => `5eed${String(n).padStart(20, '0')}`
 
 /**
- * A self-contained placeholder image.
+ * Catalog imagery.
  *
- * Returned as an SVG data URI rather than a hosted URL on purpose: the seed must
- * work with no network access, produce identical bytes on every run, and add no
- * third-party dependency. Real deployments store Cloudinary URLs here; these are
- * visibly placeholders, which is the honest thing for demo data to look like.
+ * Still data URIs rather than hosted URLs, for the reasons they always were:
+ * the seed must work with no network access, produce identical bytes on every
+ * run, and add no third-party dependency. It is also the only shape that works
+ * everywhere the field is read — the storefront and the admin console are
+ * served from different origins, and the admin puts `image[0]` straight into a
+ * `src`, so a root-relative path would resolve against the wrong host there.
+ * Real deployments store Cloudinary URLs.
+ *
+ * The generator that used to live in this file returned one dark gradient
+ * square with the brand and product name stamped on it, identically for all
+ * twenty products, with four views per product that differed only by a text
+ * label — so the products page was twenty indistinguishable tiles and the
+ * card's pointer-scrub interaction had nothing to scrub between.
+ *
+ * `demoArtwork.js` replaces it, and is shared with `make-demo-images.mjs` so a
+ * running database and the recovery export cannot disagree about what a product
+ * looks like. It resolves each product one of two ways:
+ *
+ *   * a **photograph**, cut out onto transparency by
+ *     `make-catalog-images.sh` from the real product shots already in
+ *     `frontend/src/assets/` — fourteen of the twenty;
+ *   * four drawn **views** otherwise.
+ *
+ * The split is deliberate and the rule is narrow: a photograph is used only
+ * when it shows the thing the product actually is. There is no picture in the
+ * set of a mouse, a keyboard, a monitor, a power bank or a stream deck, and
+ * illustrating those with the nearest available photo would be the catalog
+ * asserting something false about what is for sale.
  */
-function demoImage(name, brand, view) {
-    const svg = [
-        '<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900">',
-        '<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">',
-        '<stop offset="0" stop-color="#141221"/><stop offset="1" stop-color="#2a2350"/>',
-        '</linearGradient></defs>',
-        '<rect width="900" height="900" fill="url(#g)"/>',
-        '<circle cx="450" cy="380" r="210" fill="none" stroke="#6a5acd" stroke-width="2" opacity="0.55"/>',
-        '<circle cx="450" cy="380" r="150" fill="#6a5acd" opacity="0.13"/>',
-        `<text x="450" y="392" text-anchor="middle" fill="#6a5acd" font-family="Verdana,sans-serif" font-size="34" letter-spacing="10">${escapeXml(brand.toUpperCase())}</text>`,
-        `<text x="450" y="700" text-anchor="middle" fill="#f4f3ff" font-family="Verdana,sans-serif" font-size="30">${escapeXml(truncate(name, 34))}</text>`,
-        `<text x="450" y="748" text-anchor="middle" fill="#8f86c9" font-family="Verdana,sans-serif" font-size="20" letter-spacing="6">${escapeXml(view.toUpperCase())}</text>`,
-        '<text x="450" y="850" text-anchor="middle" fill="#5b5480" font-family="Verdana,sans-serif" font-size="17" letter-spacing="4">NETRONIX DEMO IMAGE</text>',
-        '</svg>',
-    ].join('')
-    return `data:image/svg+xml;base64,${Buffer.from(svg, 'utf8').toString('base64')}`
-}
-
-const escapeXml = (value) =>
-    String(value).replace(/[<>&'"]/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' }[c]))
-
-const truncate = (value, max) => (value.length <= max ? value : `${value.slice(0, max - 1)}…`)
 
 /**
  * Build a product document.
@@ -105,7 +109,11 @@ function product({ id, name, brand, price, description, tags, variants = [], inv
         variants,
         inventory,
         bestSeller,
-        image: ['front', 'angle', 'detail', 'in box'].map((view) => demoImage(name, brand, view)),
+        // A real photograph where the assets hold one that honestly shows this
+        // product, four drawn views where they do not. Decided from the name
+        // and the tags, so this has to be given the product rather than just
+        // its name and brand.
+        image: imagesFor({ name, brand, tags }),
         date: CATALOG_EPOCH - ageDays * DAY,
         // Persisted since Phase 3 (FE-004): this is how the homepage selects.
         showcase,

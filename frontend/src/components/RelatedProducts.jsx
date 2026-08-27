@@ -2,7 +2,6 @@ import { useContext, useMemo } from 'react'
 import { useParams } from 'react-router-dom'
 
 import { ShopContext } from '../context/shopContext'
-import Title from '../components/Title'
 import ProductCard from './ProductCard'
 import { hasTag } from '../lib/catalog'
 import PropTypes from 'prop-types';
@@ -50,17 +49,25 @@ const RelatedProducts = ({ tags = [] }) => {
   if (related.length === 0) return null
 
   return (
-    <div className='my-24'>
-      <div className=' text-center text-3xl py-2'>
-        <Title text1={'RELATED'} text2={'PRODUCTS'} />
+    <section className='mt-20 border-t border-rule pt-10'>
+      {/* The rule-flanked heading the catalog and the specifications panel use,
+          rather than `<Title>` — the grey-word-plus-dark-word-plus-little-line
+          treatment out of every React storefront tutorial. It is still used
+          elsewhere in the app; what it cannot do is sit directly under a
+          specification sheet set in Michroma and look like the same page. */}
+      <div className='flex items-center gap-3'>
+        <h2 className='font-michroma text-[10px] uppercase tracking-[0.2em] text-ink'>
+          Related products
+        </h2>
+        <span className='h-px flex-1 bg-rule' />
       </div>
 
-      <div className='grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 gap-y-6'>
+      <div className='grid grid-cols-2 gap-x-5 gap-y-10 pt-10 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'>
         {related.map((product) => (
           <ProductCard key={product._id} product={product} variant="minimal" />
         ))}
       </div>
-    </div>
+    </section>
   )
 }
 

@@ -100,7 +100,10 @@ describe('lossless customer variant selections', () => {
             context,
         )
 
-        await user.click(screen.getByRole('button', { name: /add to cart/i }))
+        // The button's accessible name carries the product: a catalog grid
+        // renders twenty of these, and twenty buttons all named "Add to cart"
+        // are twenty targets a screen-reader user cannot tell apart.
+        await user.click(screen.getByRole('button', { name: /add .* to cart/i }))
         expect(context.addToCart).toHaveBeenCalledWith(
             PRODUCT_ID,
             { variantOptions: AMBIGUOUS_OPTIONS },
@@ -118,7 +121,7 @@ describe('lossless customer variant selections', () => {
         }
         renderWithContext(<ProductCard product={variantless} variant="showcase" showQuickAdd />, context)
 
-        await user.click(screen.getByRole('button', { name: /add to cart/i }))
+        await user.click(screen.getByRole('button', { name: /add .* to cart/i }))
         expect(context.addToCart).toHaveBeenCalledWith(
             PRODUCT_ID,
             { variantOptions: {} },

@@ -12,9 +12,29 @@ export default {
       animation: {
         'marquee-left': 'marquee-left 25s linear infinite',
         'marquee-right': 'marquee-right 25s linear infinite',
+        'plate-sheen': 'plate-sheen 1.4s ease-in-out infinite',
       },
       colors:{
         statepurp: '#6a5acd',
+        // The catalog's editorial palette. The homepage is white-on-white with
+        // #f9f9f9 plates; these are the same idea pitched a shade warmer, so a
+        // product photograph sits on a surface rather than on a void. Named by
+        // role rather than by hue, because the whole point of the redesign is
+        // that the accent is used once and everything else is paper and ink.
+        ink: {
+          DEFAULT: '#121214',   // headings, prices, product names — 18.1:1 on paper
+          60: '#5b5b61',        // secondary copy — 6.5:1
+          // Eyebrows, meta and spec labels. This was `#8e8e95`, which is the
+          // grey the design wants and measures 3.1:1 on paper — axe flagged
+          // twelve nodes on the product page alone. Everything it is used for
+          // is small text, so 4.5:1 is the bar, not 3:1. `#6c6c73` clears it on
+          // all three surfaces the catalog paints (paper 5.0, plate 4.6,
+          // white 5.2) and is the lightest value that does.
+          40: '#6c6c73',
+        },
+        paper: '#fbfbfa',       // the page canvas. NOT gray-50, which is blue.
+        plate: '#f2f1ee',       // the product plate
+        rule: '#e5e3de',        // hairlines — the only "border" the catalog has
       },
       keyframes: {
         'marquee-left': {
@@ -24,6 +44,13 @@ export default {
         'marquee-right': {
           '0%': { transform: 'translateX(-50%)' },
           '100%': { transform: 'translateX(0)' },
+        },
+        // The skeleton's breath. Opacity only: a moving gradient on twelve
+        // tiles at once is a compositing cost paid while the page is still
+        // waiting on the network, which is the worst possible moment for it.
+        'plate-sheen': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.55' },
         },
       },
     },

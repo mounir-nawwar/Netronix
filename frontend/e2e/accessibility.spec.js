@@ -221,8 +221,11 @@ test.describe('A11Y-005 — the whole purchase, without a mouse', () => {
         // No `click()` appears anywhere below this line. Everything is Tab,
         // Enter, Space, arrow keys and typing.
         await page.goto('/products')
-        // The page's own `<h1>` is "Products"; "All Products" is its <title>.
-        await expect(page.getByRole('heading', { name: /^products$/i }).first()).toBeVisible()
+        // The `<h1>` and the `<title>` used to disagree — the heading said
+        // "Products" and the title said "All Products" — and this asserted the
+        // heading's version. They are the same string now, so the regex accepts
+        // either rather than pinning the copy.
+        await expect(page.getByRole('heading', { name: /^(all )?products$/i }).first()).toBeVisible()
 
         // --- reach a product card and open it
         const card = await tabUntil(page, async (el) => el.href?.includes('/product/'))

@@ -102,10 +102,18 @@ test.describe('flow 4 — browse, filter, sort (FE-003, FE-010)', () => {
         const { highest, ceiling } = await catalogCeiling()
         expect(highest, 'the catalog has products above the old hardcoded ceiling').toBeGreaterThan(1000)
 
+        // Price and the variant axes live in the Refine drawer now. They were a
+        // permanent 16rem sidebar on every viewport — a quarter of the grid's
+        // width spent on controls most visits never touch. Where the control is
+        // presented is a design decision; what this test holds is that its
+        // ceiling comes from the catalog rather than from a literal 1000, and
+        // that is unchanged.
+        await page.getByRole('button', { name: /refine/i }).click()
+
         const sliders = page.getByRole('slider')
         await expect(sliders).toHaveCount(2)
-        // Polled: the sidebar animates in and the ceiling is derived from the
-        // catalog, so the attribute settles a moment after the grid does.
+        // Polled: the ceiling is derived from the catalog, so the attribute
+        // settles a moment after the grid does.
         for (let i = 0; i < 2; i += 1) {
             await expect
                 .poll(async () => sliders.nth(i).getAttribute('max'), { timeout: 30_000 })
@@ -119,9 +127,13 @@ test.describe('flow 4 — browse, filter, sort (FE-003, FE-010)', () => {
         await expect(page.getByText('Netronix Apex Battlestation')).toHaveCount(0)
     })
 
-    test('the filter sidebar offers only tags the catalog has', async ({ page }) => {
+    test('the tag filter offers only tags the catalog has', async ({ page }) => {
         await page.goto('/collections/all')
-        await expect(page.getByLabel('Laptops')).toBeVisible()
+        // The taxonomy is chips in the sticky bar rather than a sidebar column,
+        // but they are still real checkboxes with real labels — a
+        // `<button aria-pressed>` would have looked the same and been worse for
+        // a keyboard and a screen reader alike.
+        await expect(page.getByLabel('Laptops')).toBeAttached()
         // Three of the forty names `addMissingCategories` injected.
         await expect(page.getByLabel('Networking')).toHaveCount(0)
         await expect(page.getByLabel('Clearance')).toHaveCount(0)

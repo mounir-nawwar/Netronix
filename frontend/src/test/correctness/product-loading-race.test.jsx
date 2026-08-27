@@ -75,9 +75,12 @@ describe('Product catalog/single-request race', () => {
         const memory16 = await screen.findByRole('button', { name: '16 GB' })
         expect(screen.getByRole('button', { name: `Zoom in on ${product.name}` })).toHaveClass('aspect-square')
         expect(screen.getByRole('heading', { name: product.name })).not.toHaveStyle({ opacity: '0' })
-        const summary = screen.getAllByText(product.description)
-            .find((element) => element.classList.contains('line-clamp-3'))
-        expect(summary).not.toHaveStyle({ opacity: '0' })
+        // `getAllByText(...).find(el => el.classList.contains('line-clamp-3'))`
+        // was here, and it needed the `All` because the description was printed
+        // **twice** on this page — clamped to three lines under the price, and
+        // again in full under a one-item "Details" tab. There is one now, so
+        // there is one element to find.
+        expect(screen.getByText(product.description)).not.toHaveStyle({ opacity: '0' })
         expect(screen.getByText('$1250.00')).not.toHaveStyle({ opacity: '0' })
         await user.click(memory16)
         expect(memory16).toHaveAttribute('aria-pressed', 'true')

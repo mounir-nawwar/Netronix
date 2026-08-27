@@ -22,7 +22,7 @@
 // `src/test/lib/catalog.test.js` covers it directly. These tests drive the page.
 
 import { describe, it, expect } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 
 import ShopContextProvider from '../../context/ShopContext.jsx'
@@ -64,6 +64,18 @@ const renderCollections = (type = 'all') =>
         </MemoryRouter>,
     )
 
+/**
+ * Open the Refine drawer, where the price range and the variant axes live.
+ *
+ * They used to be a permanent 16rem sidebar on every viewport — a quarter of
+ * the grid's width, spent on controls most visits never touch. Behind a button
+ * is a presentation decision; what these tests are actually holding is that the
+ * ceiling is derived from the catalog and the taxonomy is never invented, and
+ * both of those are unchanged. The tag chips are still in the page itself, so
+ * only the price assertions need this.
+ */
+const openRefine = () => fireEvent.click(screen.getByRole('button', { name: /refine/i }))
+
 describe('flow 11 — the whole catalog reaches the grid (FE-003 — FIXED)', () => {
     it('shows a $50, a $500 and a $2,500 product at /collections/all', async () => {
         setCatalog([
@@ -83,9 +95,10 @@ describe('flow 11 — the whole catalog reaches the grid (FE-003 — FIXED)', ()
         renderCollections('all')
 
         await screen.findByText('Expensive Laptop')
+        openRefine()
 
         // $2,500 rounds up to $3,000; the ceiling is a property of the catalog,
-        // not a constant. Both range inputs and both number inputs agree on it.
+        // not a constant. Both range inputs agree on it.
         const sliders = screen.getAllByRole('slider')
         expect(sliders).toHaveLength(2)
         for (const slider of sliders) expect(slider).toHaveAttribute('max', '3000')

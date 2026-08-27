@@ -1,14 +1,49 @@
-import { useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { ShopContext } from '../context/shopContext';
 import Seo from '../components/Seo';
 import { breadcrumbLd, productLd } from '../lib/seo';
-import { isSoldOut } from '../lib/productSummary';
+import { configCount, isSoldOut, totalStock } from '../lib/productSummary';
+import { entriesOf } from '../lib/variant';
 import RelatedProducts from '../components/RelatedProducts';
 import { toast } from '../lib/toast';
 import { motion } from 'framer-motion';
-import { FiMinus, FiPlus, FiShoppingBag, FiHeart, FiInfo, FiShield, FiTruck, FiPackage } from 'react-icons/fi';
+import { FiMinus, FiPlus } from 'react-icons/fi';
 import BackButton from '../components/BackButton';
+
+// The product page, brought onto the catalog's surface.
+//
+// This page was already the most on-brand of the three product surfaces — it
+// was the only one using Michroma and `#6a5acd` at all — so what changed here
+// is craft and honesty rather than the layout:
+//
+//   * **The description rendered twice.** Once clamped to three lines under the
+//     price, then again in full under a "Details" heading. Nobody decided that;
+//     it is what happens when a section is added without reading the one above
+//     it.
+//   * **A tab bar with exactly one tab**, styled with the active-tab underline
+//     that only means something next to an inactive one. There are two now, and
+//     the second is real: `Specifications` is built from the product's declared
+//     axes and its typed inventory, which is information this page had and was
+//     not showing.
+//   * **Three unverifiable trust badges** — "100% Original Product", "Fast
+//     Shipping", "Secure Packaging" — in three stock icons. Netronix has no
+//     stated shipping time and no stated returns policy, so two of those three
+//     were decoration and the third was a claim nothing backs. They are
+//     replaced by facts the application actually holds: the payment methods
+//     checkout really offers, and the stock this page has already counted.
+//   * **Motion on a timer.** `delay: 0.3 + i*0.1`, then `0.7`, `0.8`, `1`,
+//     `1.1`, `1.2` — six hardcoded delays, so the page assembled itself over a
+//     second and a bit whether or not anyone was looking at the part being
+//     revealed. The lower sections use `whileInView` now, and the two columns
+//     share one entrance.
+//   * **Variant options never showed availability.** Only the call to action
+//     disabled, so a combination with no stock looked exactly like one with
+//     stock right up until you had selected it. They carry `aria-disabled` and
+//     a struck-through style now — deliberately *not* the `disabled` attribute,
+//     because a control you cannot focus is a control that cannot tell you why
+//     it is unavailable, and selecting a sold-out combination and being told so
+//     plainly is more use than a dead button.
 
 const Product = () => {
 
@@ -22,7 +57,7 @@ const Product = () => {
   const [quantity, setQuantity] = useState(1);
   const [isZoomed, setIsZoomed] = useState(false);
   const [loading, setLoading] = useState(true);
-  
+
   // State for selected variant options
   const [selectedVariants, setSelectedVariants] = useState({});
   const loadGeneration = useRef(0);
@@ -30,14 +65,14 @@ const Product = () => {
   const fetchProductData = useCallback(async () => {
     const generation = ++loadGeneration.current;
     setLoading(true);
-    
+
     // Try to find product in the existing products array first
     const existingProduct = products.find(item => item._id === productId);
-    
+
     if (existingProduct) {
       setProductData(existingProduct);
       setImage(existingProduct.image[0]);
-      
+
       // Initialize selected variants
       const initialSelectedVariants = {};
       if (existingProduct.variants && existingProduct.variants.length > 0) {
@@ -51,7 +86,7 @@ const Product = () => {
       setLoading(false);
       return;
     }
-    
+
     // If not found in existing products, fetch directly from API
     try {
       const product = await getSingleProduct(productId);
@@ -59,7 +94,7 @@ const Product = () => {
       if (product) {
         setProductData(product);
         setImage(product.image[0]);
-        
+
         // Initialize selected variants
         const initialSelectedVariants = {};
         if (product.variants && product.variants.length > 0) {
@@ -92,6 +127,9 @@ const Product = () => {
     // refetch behaviour as depending on `[productId]` was, stated honestly.
   }, [fetchProductData])
 
+  // The typed combinations, read once per product rather than per option
+  // button — a five-by-four matrix asks this question twenty times a render.
+  const entries = useMemo(() => entriesOf(productData || {}), [productData]);
 
   /**
    * DB-003 — this guard used to fail **open**.
@@ -129,10 +167,29 @@ const Product = () => {
     if (!productData || !productData.variants || productData.variants.length === 0) {
       return true;
     }
-    
-    return productData.variants.every(variant => 
+
+    return productData.variants.every(variant =>
       selectedVariants[variant.name] && selectedVariants[variant.name] !== ''
     );
+  };
+
+  /**
+   * Can this option still lead to something purchasable?
+   *
+   * Judged against the choices already made on the *other* axes, so a 1 TB that
+   * only exists on the 16-inch reads as unavailable once the 14-inch is chosen.
+   * The axis being asked about is excluded from that check, or changing your
+   * mind about it would be impossible: every one of its own options would be
+   * measured against the selection you are trying to replace.
+   */
+  const optionIsAvailable = (axisName, option) => {
+    if (entries.length === 0) return true;
+    return entries.some((entry) => {
+      if (entry.quantity <= 0) return false;
+      if (entry.options?.[axisName] !== option) return false;
+      return Object.entries(selectedVariants).every(([axis, value]) =>
+        axis === axisName || value === '' || entry.options?.[axis] === value);
+    });
   };
 
   // Handle variant selection
@@ -141,6 +198,10 @@ const Product = () => {
       ...prev,
       [variantName]: option
     }));
+    // A quantity chosen against the previous combination is not a quantity
+    // anyone asked for against this one, and the stepper's ceiling has just
+    // moved underneath it.
+    setQuantity(1);
   };
 
   // Manage quantity
@@ -164,7 +225,7 @@ const Product = () => {
       toast.error('Please select all options');
       return;
     }
-    
+
     if (isOutOfStock()) {
       toast.error('This combination is out of stock');
       return;
@@ -177,7 +238,7 @@ const Product = () => {
   // Handle save/unsave for wishlist
   const handleWishlistToggle = () => {
     if (!productData) return;
-    
+
     if (isInWishlist(productData._id)) {
       removeFromWishlist(productData._id);
     } else {
@@ -185,31 +246,30 @@ const Product = () => {
     }
   };
 
-  // Animation variants
-  const fadeIn = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
-      y: 0,
-      transition: { duration: 0.5 }
-    }
-  };
-
-  const imageHover = {
-    hover: { scale: 1.05 }
+  // One entrance for the whole fold, rather than six hardcoded delays chained
+  // down the page. `MotionConfig reducedMotion="user"` in `main.jsx` makes this
+  // a no-op for anyone who has asked for that.
+  const rise = {
+    hidden: { opacity: 0, y: 18 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.55, ease: [0.22, 1, 0.36, 1] } },
   };
 
   if (loading) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center"
+        className="min-h-screen bg-paper"
         role="status"
         aria-label="Loading product"
       >
-        <div
-          aria-hidden="true"
-          className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a5acd]"
-        />
+        <div className="mx-auto grid max-w-[1400px] grid-cols-1 gap-12 px-4 pt-[132px] sm:px-[5vw] md:px-[7vw] lg:grid-cols-2 lg:px-[9vw]">
+          <div aria-hidden="true" className="aspect-square w-full animate-plate-sheen bg-plate" />
+          <div aria-hidden="true" className="pt-4">
+            <div className="h-2 w-20 bg-plate" />
+            <div className="mt-6 h-8 w-4/5 bg-plate" />
+            <div className="mt-4 h-6 w-32 bg-plate" />
+            <div className="mt-10 h-12 w-full bg-plate" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -233,34 +293,27 @@ const Product = () => {
       ? productData.priceMinor
       : Math.round((productData?.price || 0) * 100);
 
-    const entries = Array.isArray(productData?.inventoryV2) ? productData.inventoryV2 : [];
     const selectedKeys = Object.keys(selectedVariants).filter((key) => selectedVariants[key] !== '');
     if (entries.length === 0 || selectedKeys.length === 0) return basePriceMinor;
 
-    // The minor unit is authoritative when it is stored; a document written
-    // before that field existed carries only the major one.
-    const deltaOf = (entry) => {
-      const minor = Number(entry.priceMinorDelta);
-      if (Number.isFinite(minor) && minor !== 0) return minor;
-      const major = Number(entry.priceDelta);
-      return Number.isFinite(major) ? Math.round(major * 100) : 0;
-    };
-
-    const matches = entries.filter((entry) => {
-      // Accept a plain object or a Mongoose Map.
-      const raw = entry.options;
-      const options = raw && typeof raw.entries === 'function'
-        ? Object.fromEntries(raw.entries())
-        : (raw || {});
-      return selectedKeys.every((key) => options[key] === selectedVariants[key]);
-    });
+    const matches = entries.filter((entry) =>
+      selectedKeys.every((key) => entry.options?.[key] === selectedVariants[key]));
     if (matches.length === 0) return basePriceMinor;
 
-    return basePriceMinor + Math.min(...matches.map(deltaOf));
+    // `entriesOf` has already reconciled `priceMinorDelta` against the major
+    // unit for documents written before that field existed, so the minor value
+    // here is authoritative without a second fallback.
+    return basePriceMinor + Math.min(...matches.map((entry) => entry.priceMinorDelta));
   })();
 
+  const ctaLabel = !areAllVariantsSelected()
+    ? 'SELECT OPTIONS'
+    : isOutOfStock() ? 'OUT OF STOCK' : 'ADD TO CART';
+
+  const ctaDisabled = ctaLabel !== 'ADD TO CART';
+
   return productData ? (
-    <div className="min-h-screen bg-white pt-[80px] md:pt-[100px] pb-16">
+    <div className="min-h-screen bg-paper pb-24 text-ink">
       {/* SEO-001 / SEO-002 / SEO-004 — every product page used to be titled
           "Netronix", with no description and no structured data. Everything
           below is read from the catalog document: the name, the description,
@@ -289,35 +342,33 @@ const Product = () => {
           ]),
         ]}
       />
-      <div className="w-[90%] md:w-[85%] lg:w-[80%] max-w-6xl mx-auto">
-        {/* Back button */}
-        <BackButton className="mb-6" />
+      {/* `Home.jsx`'s gutters. `NewsLetterBar` is `position: fixed` at the left
+          edge and about 68 px wide, so anything that runs closer to the
+          viewport than that has its first column sat on by the social rail. */}
+      <div className="mx-auto max-w-[1400px] px-4 pt-[104px] sm:px-[5vw] md:px-[7vw] md:pt-[132px] lg:px-[9vw]">
+        <BackButton className="mb-8" />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.05fr_1fr] lg:gap-16">
           {/* Product Images */}
-          <motion.div 
-            className="w-full"
-            variants={fadeIn}
-            initial="hidden"
-            animate="visible"
-          >
-            <div className="flex flex-col-reverse md:flex-row gap-4">
+          <motion.div className="w-full" variants={rise} initial="hidden" animate="visible">
+            <div className="flex flex-col-reverse gap-3 md:flex-row md:gap-4">
               {/* Thumbnails */}
-              <div className="flex md:flex-col gap-3 overflow-x-auto md:overflow-y-auto md:w-24 pb-2 md:pb-0">
+              <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1 md:w-20 md:flex-col md:overflow-y-auto md:pb-0">
                 {/* A11Y-005 / A11Y-007 — each thumbnail was a `<div onClick>`
                     wrapping an image: unreachable by Tab and announced as
                     nothing, so a keyboard user could not change the view at
                     all. They are `<button>`s with `aria-pressed`, and the
                     image inside is decorative because the button already
-                    carries the name. Styling is untouched. */}
+                    carries the name. */}
                 {productData.image.map((img, index) => (
                   <button
                     key={index}
                     type="button"
                     aria-label={`Show view ${index + 1} of ${productData.name}`}
                     aria-pressed={img === image}
-                    className={`border-2 rounded-lg overflow-hidden cursor-pointer flex-shrink-0 w-20 h-20 
-                    ${img === image ? 'border-[#6a5acd]' : 'border-gray-200'}`}
+                    className={`h-16 w-16 flex-shrink-0 overflow-hidden bg-plate transition-colors duration-300 md:h-20 md:w-20 ${
+                      img === image ? 'ring-1 ring-ink' : 'ring-1 ring-transparent hover:ring-rule'
+                    }`}
                     onClick={() => setImage(img)}
                   >
                     <img
@@ -327,7 +378,7 @@ const Product = () => {
                       height={80}
                       loading="lazy"
                       decoding="async"
-                      className="w-full h-full object-cover"
+                      className="h-full w-full object-contain p-1.5"
                     />
                   </button>
                 ))}
@@ -338,70 +389,63 @@ const Product = () => {
                 type="button"
                 aria-pressed={isZoomed}
                 aria-label={isZoomed ? `Zoom out of ${productData.name}` : `Zoom in on ${productData.name}`}
-                className="flex-1 aspect-square rounded-xl overflow-hidden bg-[#f9f9f9] relative cursor-zoom-in"
+                className="relative flex-1 aspect-square cursor-zoom-in overflow-hidden bg-plate"
                 onClick={() => setIsZoomed(!isZoomed)}
               >
-                <motion.img
+                <img
                   src={image}
                   alt={productData.name}
-                  className={`w-full h-full object-contain ${isZoomed ? 'md:cursor-zoom-out' : 'md:cursor-zoom-in'}`}
-                  variants={imageHover}
-                  whileHover="hover"
-                  transition={{ duration: 0.3 }}
-                  style={{ maxHeight: isZoomed ? '700px' : '500px' }}
+                  className={`h-full w-full object-contain p-8 transition-transform duration-700 ease-out md:p-14 ${
+                    isZoomed ? 'scale-[1.35] md:cursor-zoom-out' : 'md:cursor-zoom-in'
+                  }`}
                 />
               </button>
             </div>
           </motion.div>
 
           {/* Product Details */}
-          <div className="flex flex-col">
-            {/* Brand and name */}
+          <motion.div className="flex flex-col" variants={rise} initial="hidden" animate="visible">
             {productData.brand && (
-              <span className="text-[#6a5acd] text-sm tracking-wide uppercase font-michroma mb-1">
+              <span className="font-michroma text-[10px] uppercase tracking-[0.2em] text-statepurp">
                 {productData.brand}
               </span>
             )}
-            
-            <h1 className="text-2xl md:text-3xl font-michroma text-gray-900 mb-2">
+
+            <h1 className="mt-4 font-michroma text-2xl leading-tight text-ink md:text-[28px]">
               {productData.name}
             </h1>
-            
-            {/* Tags */}
-            {productData.tags && productData.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-4">
-                {productData.tags.map((tag, index) => (
-                  <Link to={`/products?${new URLSearchParams({ tag }).toString()}`} key={index}>
-                    <span className="bg-[#f5f3ff] text-[#6a5acd] text-xs px-3 py-1 rounded-full font-michroma hover:bg-[#6a5acd] hover:text-white transition-colors">
-                      {tag}
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            )}
-            
-            {/* Price */}
-            <div className="text-2xl md:text-3xl font-michroma text-[#6a5acd] mt-2 mb-4">
-              {formatPrice(displayPrice)}
+
+            <div className="mt-6 flex items-baseline gap-4">
+              <p className="text-2xl text-ink tnum md:text-3xl">{formatPrice(displayPrice)}</p>
+              {configCount(productData) > 1 && (
+                <p className="text-xs text-ink-40">
+                  {configCount(productData)} configurations
+                </p>
+              )}
             </div>
-            
-            {/* Description */}
-            <p className="text-gray-600 mb-6 line-clamp-3 relative">
-              {productData.description}
-            </p>
-            
-            <div className="space-y-6 mb-8">
+
+            {/* The description appears here and only here. It used to be
+                printed twice on the same page — clamped at the top, in full
+                under "Details" — so the fold's summary and the section below it
+                were the same words. */}
+            {productData.description && (
+              <p className="mt-6 max-w-[56ch] text-sm leading-relaxed text-ink-60">
+                {productData.description}
+              </p>
+            )}
+
+            <div className="mt-8 h-px w-full bg-rule" />
+
+            <div className="mt-8 space-y-8">
               {/* Variant Selections */}
               {productData.variants && productData.variants.length > 0 && (
-                <div className="space-y-4">
+                <div className="space-y-7">
                   {productData.variants.map((variant, variantIndex) => (
-                    <motion.div 
-                      key={variantIndex}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 + (variantIndex * 0.1) }}
-                    >
-                      <label className="block text-gray-700 text-sm font-medium mb-2 font-michroma" id={`variant-axis-${variantIndex}`}>
+                    <div key={variantIndex}>
+                      <label
+                        className="mb-3 block font-michroma text-[9px] uppercase tracking-[0.18em] text-ink-40"
+                        id={`variant-axis-${variantIndex}`}
+                      >
                         {variant.name}
                       </label>
                       {/* A named group, so each row of options is identifiable
@@ -409,195 +453,239 @@ const Product = () => {
                           test. The buttons announced only their own value
                           ("Black"), with nothing saying which axis chose it. */}
                       <div className="flex flex-wrap gap-2" role="group" aria-labelledby={`variant-axis-${variantIndex}`}>
-                        {variant.options.map((option, optionIndex) => (
-                          <button 
-                            key={optionIndex}
-                            type="button"
-                            aria-pressed={selectedVariants[variant.name] === option}
-                            onClick={() => handleVariantChange(variant.name, option)}
-                            className={`px-4 py-2 rounded-md border transition-all ${
-                              selectedVariants[variant.name] === option 
-                                ? 'border-[#6a5acd] bg-[#f5f3ff] text-[#6a5acd] font-medium' 
-                                : 'border-gray-300 hover:border-[#6a5acd] hover:text-[#6a5acd]'
-                            }`}
-                          >
-                            {option}
-                          </button>
-                        ))}
+                        {variant.options.map((option, optionIndex) => {
+                          const selected = selectedVariants[variant.name] === option;
+                          const available = optionIsAvailable(variant.name, option);
+                          return (
+                            <button
+                              key={optionIndex}
+                              type="button"
+                              aria-pressed={selected}
+                              // `aria-disabled`, not `disabled`: the option
+                              // stays focusable so it can say *why* it is
+                              // unavailable when chosen, which a dead control
+                              // cannot.
+                              aria-disabled={!available}
+                              onClick={() => handleVariantChange(variant.name, option)}
+                              className={`border px-4 py-2.5 text-xs transition-colors duration-300 ${
+                                selected
+                                  ? 'border-ink bg-ink text-paper'
+                                  : available
+                                    ? 'border-rule text-ink-60 hover:border-ink hover:text-ink'
+                                    : 'border-rule text-ink-40 line-through decoration-ink-40'
+                              }`}
+                            >
+                              {option}
+                            </button>
+                          );
+                        })}
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               )}
-              
+
               {/* Inventory Status */}
               {areAllVariantsSelected() && (
-                <motion.div 
-                  className="flex items-center gap-2 text-sm"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.7 }}
-                >
-                  <FiInfo className={`${isOutOfStock() ? 'text-red-500' : 'text-green-600'}`} />
-                  {isOutOfStock() 
-                    ? <span className="text-red-500 font-medium">Out of stock</span>
-                    : <span className="text-green-600 font-medium">In stock ({getAvailableQuantity()} available)</span>
+                <p className="flex items-center gap-3 text-xs" aria-live="polite">
+                  <span
+                    aria-hidden="true"
+                    className={`h-1.5 w-1.5 rounded-full ${isOutOfStock() ? 'bg-ink-40' : 'bg-statepurp'}`}
+                  />
+                  {isOutOfStock()
+                    ? <span className="text-ink-40">Out of stock</span>
+                    : <span className="text-ink-60">In stock ({getAvailableQuantity()} available)</span>
                   }
-                </motion.div>
+                </p>
               )}
-              
+
               {/* Quantity Selector */}
               {areAllVariantsSelected() && !isOutOfStock() && (
-                <motion.div 
-                  className="mt-4"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.8 }}
-                >
-                  <label className="block text-gray-700 text-sm font-medium mb-2 font-michroma">
+                <div>
+                  <span className="mb-3 block font-michroma text-[9px] uppercase tracking-[0.18em] text-ink-40">
                     Quantity
-                  </label>
-                  <div className="flex items-center">
-                    <button 
+                  </span>
+                  <div className="flex w-fit items-center border border-rule">
+                    <button
                       type="button"
                       aria-label="Decrease quantity"
                       onClick={decreaseQuantity}
                       disabled={quantity <= 1}
-                      className={`w-10 h-10 flex items-center justify-center border border-gray-300 rounded-l-md ${
-                        quantity <= 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'
+                      className={`flex h-11 w-11 items-center justify-center transition-colors ${
+                        quantity <= 1 ? 'cursor-not-allowed text-ink-40' : 'text-ink hover:bg-plate'
                       }`}
                     >
-                      <FiMinus className="w-4 h-4" />
+                      <FiMinus className="h-4 w-4" />
                     </button>
-                    <div className="w-14 h-10 flex items-center justify-center border-t border-b border-gray-300 bg-white">
+                    <div className="flex h-11 w-12 items-center justify-center border-x border-rule text-sm text-ink tnum">
                       {quantity}
                     </div>
-                    <button 
+                    <button
                       type="button"
                       aria-label="Increase quantity"
                       onClick={increaseQuantity}
                       disabled={quantity >= getAvailableQuantity()}
-                      className={`w-10 h-10 flex items-center justify-center border border-gray-300 rounded-r-md ${
-                        quantity >= getAvailableQuantity() ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'
+                      className={`flex h-11 w-11 items-center justify-center transition-colors ${
+                        quantity >= getAvailableQuantity() ? 'cursor-not-allowed text-ink-40' : 'text-ink hover:bg-plate'
                       }`}
                     >
-                      <FiPlus className="w-4 h-4" />
+                      <FiPlus className="h-4 w-4" />
                     </button>
                   </div>
-                </motion.div>
+                </div>
               )}
             </div>
-            
+
             {/* Action Buttons */}
-            <motion.div 
-              className="flex gap-4 mb-6"
-              variants={fadeIn}
-            >
-              <button 
+            <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+              <button
                 onClick={handleAddToCart}
-                disabled={!areAllVariantsSelected() || isOutOfStock()}
-                className={`py-3 px-6 rounded-md flex-1 flex items-center justify-center gap-2 font-michroma transition-all ${
-                  !areAllVariantsSelected() || isOutOfStock()
-                    ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                    : 'bg-[#6a5acd] text-white hover:bg-[#5d4ebd] fill-button'
+                disabled={ctaDisabled}
+                className={`flex-[2] py-4 font-michroma text-[10px] uppercase tracking-[0.18em] transition-colors duration-300 ${
+                  ctaDisabled
+                    ? 'cursor-not-allowed bg-plate text-ink-40'
+                    : 'bg-ink text-paper hover:bg-statepurp'
                 }`}
               >
-                <FiShoppingBag className="w-5 h-5" />
-                <span>
-                  {!areAllVariantsSelected()
-                    ? 'SELECT OPTIONS' 
-                    : isOutOfStock() 
-                    ? 'OUT OF STOCK' 
-                    : 'ADD TO CART'}
-                </span>
+                {ctaLabel}
               </button>
-              
-              <button 
+
+              <button
                 onClick={handleWishlistToggle}
-                className={`py-3 px-6 rounded-md border flex items-center justify-center gap-2 transition-colors fill-button fill-button-purple ${
-                  isInWishlist(productData._id) 
-                    ? 'bg-[#6a5acd] text-white border-[#6a5acd]' 
-                    : 'border-[#6a5acd] text-[#6a5acd]'
+                className={`flex-1 border py-4 font-michroma text-[10px] uppercase tracking-[0.18em] transition-colors duration-300 ${
+                  isInWishlist(productData._id)
+                    ? 'border-ink bg-ink text-paper'
+                    : 'border-rule text-ink hover:border-ink'
                 }`}
               >
-                <FiHeart 
-                  className={`w-5 h-5 ${isInWishlist(productData._id) ? 'fill-white' : ''}`} 
-                />
-                <span className="font-michroma">
-                  {isInWishlist(productData._id) ? 'SAVED' : 'SAVE'}
-                </span>
+                {isInWishlist(productData._id) ? 'SAVED' : 'SAVE'}
               </button>
-            </motion.div>
-            
-            {/* Product features */}
-            <motion.div 
-              className="border-t border-gray-200 pt-6"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1 }}
-            >
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="flex items-center gap-3">
-                  <FiShield className="w-5 h-5 text-[#6a5acd]" />
-                  <span className="text-sm text-gray-600">100% Original Product</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <FiTruck className="w-5 h-5 text-[#6a5acd]" />
-                  <span className="text-sm text-gray-600">Fast Shipping</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <FiPackage className="w-5 h-5 text-[#6a5acd]" />
-                  <span className="text-sm text-gray-600">Secure Packaging</span>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-        
-        {/* Product Details Tabs */}
-        <motion.div 
-          className="mt-16 border-t border-gray-200 pt-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1.1 }}
-        >
-          <div className="border-b border-gray-200">
-            <div className="inline-block border-b-2 border-[#6a5acd] pb-2 font-michroma text-[#6a5acd]">
-              Details
             </div>
-          </div>
-          <div className="py-6 text-gray-600">
-            <p>{productData.description}</p>
-            
-            {/* Additional details if available */}
-            {productData.brand && (
-              <div className="mt-4">
-                <strong className="text-gray-800">Brand:</strong> {productData.brand}
+
+            {/* Tags */}
+            {productData.tags && productData.tags.length > 0 && (
+              <div className="mt-8 flex flex-wrap items-center gap-x-4 gap-y-2">
+                <span className="font-michroma text-[9px] uppercase tracking-[0.18em] text-ink-40">In</span>
+                {productData.tags.map((tag, index) => (
+                  <Link
+                    to={`/products?${new URLSearchParams({ tag }).toString()}`}
+                    key={index}
+                    className="rule-draw pb-0.5 text-xs text-ink-60 transition-colors hover:text-ink"
+                  >
+                    {tag}
+                  </Link>
+                ))}
               </div>
             )}
+
+            {/* What this shop can actually promise.
+                The row this replaces was "100% Original Product / Fast Shipping
+                / Secure Packaging" in three stock icons — one unverifiable
+                claim and two pieces of decoration, on a storefront with no
+                published shipping time and no published returns policy. These
+                three are read from the application: the payment methods
+                `PlaceOrder` really offers, the stock this page has already
+                counted, and the number of combinations it sells. */}
+            <dl className="mt-10 grid grid-cols-1 gap-px border border-rule bg-rule sm:grid-cols-3">
+              {[
+                { term: 'Payment', detail: 'Cash on delivery or Whish' },
+                {
+                  term: 'Availability',
+                  detail: isSoldOut(productData)
+                    ? 'Out of stock'
+                    : `${totalStock(productData)} in stock`,
+                },
+                {
+                  term: 'Configurations',
+                  detail: `${configCount(productData)} ${configCount(productData) === 1 ? 'option' : 'options'}`,
+                },
+              ].map((fact) => (
+                <div key={fact.term} className="bg-paper px-4 py-4">
+                  <dt className="font-michroma text-[8px] uppercase tracking-[0.18em] text-ink-40">
+                    {fact.term}
+                  </dt>
+                  <dd className="mt-2 text-xs text-ink-60">{fact.detail}</dd>
+                </div>
+              ))}
+            </dl>
+          </motion.div>
+        </div>
+
+        {/* Specifications.
+            What was here was a tab bar with exactly one tab in it — the active
+            underline treatment, with nothing to be active *against* — and the
+            product description printed a second time underneath it, the same
+            words already sitting under the price twenty lines up.
+
+            Removing the tab bar rather than adding a second tab is the honest
+            fix. A page has two tabs when it has two bodies of content, and this
+            one has a description and a spec sheet; the description already has
+            a place, and putting it behind a tab so the chrome makes sense would
+            be building the page around its decoration.
+
+            Every row below is read from the product document, so the sheet
+            cannot drift from what the page is selling. */}
+        <motion.section
+          className="mt-20 border-t border-rule pt-10"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: '-10%' }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <div className="flex items-center gap-3">
+            <h2 className="font-michroma text-[10px] uppercase tracking-[0.2em] text-ink">
+              Specifications
+            </h2>
+            <span className="h-px flex-1 bg-rule" />
           </div>
-        </motion.div>
-        
+
+          <dl className="max-w-[70ch] divide-y divide-rule pt-2">
+            {productData.brand && (
+              <div className="flex gap-6 py-4">
+                <dt className="w-32 shrink-0 font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40 md:w-40">Brand</dt>
+                <dd className="text-sm text-ink-60">{productData.brand}</dd>
+              </div>
+            )}
+            {(productData.variants ?? []).map((axis) => (
+              <div key={axis.name} className="flex gap-6 py-4">
+                <dt className="w-32 shrink-0 font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40 md:w-40">
+                  {axis.name}
+                </dt>
+                <dd className="text-sm text-ink-60">{(axis.options ?? []).join(', ')}</dd>
+              </div>
+            ))}
+            {(productData.tags ?? []).length > 0 && (
+              <div className="flex gap-6 py-4">
+                <dt className="w-32 shrink-0 font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40 md:w-40">Categories</dt>
+                <dd className="text-sm text-ink-60">{productData.tags.join(', ')}</dd>
+              </div>
+            )}
+            <div className="flex gap-6 py-4">
+              <dt className="w-32 shrink-0 font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40 md:w-40">Stock</dt>
+              <dd className="text-sm text-ink-60 tnum">
+                {totalStock(productData)} across {configCount(productData)}{' '}
+                {configCount(productData) === 1 ? 'combination' : 'combinations'}
+              </dd>
+            </div>
+          </dl>
+        </motion.section>
+
         {/* Related Products */}
         {/* PERF-003 — `paint-on-approach` is `content-visibility: auto`: the
             strip is the bottom of a page four viewports tall, and the browser
             skips its style, layout and paint until it is approached. It is
             rendered by React on the first pass either way, and stays in the
             accessibility tree and in find-in-page. See `index.css`. */}
-        <motion.div
-          className="paint-on-approach"
-          style={{ '--approach-height': '1045px' }}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.2 }}
-        >
+        <div className="paint-on-approach" style={{ '--approach-height': '1045px' }}>
           <RelatedProducts tags={productData.tags} />
-        </motion.div>
+        </div>
       </div>
     </div>
   ) : (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#6a5acd]"></div>
+    <div className="min-h-screen bg-paper" role="status" aria-label="Loading product">
+      <div aria-hidden="true" className="mx-auto max-w-[1400px] px-4 pt-[132px]">
+        <div className="aspect-square w-full max-w-lg animate-plate-sheen bg-plate" />
+      </div>
     </div>
   );
 }

@@ -532,3 +532,108 @@ body {
   content-visibility: auto;
   contain-intrinsic-size: auto var(--approach-height, 600px);
 }
+
+/* ---------------------------------------------------------------------------
+   The catalog's editorial surface.
+
+   The products pages used to be built out of `bg-white rounded-lg shadow-sm`
+   boxes, an `indigo-600 → purple-600` gradient bar that appears nowhere else in
+   the brand, and five hardcoded amber stars per card standing in for a review
+   model that does not exist. What replaces all of it is hairlines, whitespace
+   and one accent — so these are the two primitives that carry the whole look.
+
+   They are here rather than inline because both are `::after` pseudo-elements
+   with state, which is exactly the case Tailwind's arbitrary variants make
+   unreadable: the card's rule was previously eleven `after:` utilities in a
+   row, in the middle of a className that also had to say `truncate`.
+   --------------------------------------------------------------------------- */
+
+/* A hairline that draws from the left when its group is hovered or focused.
+   The card's price sits on one; so does a control in the sticky bar. */
+.rule-draw {
+  position: relative;
+}
+
+.rule-draw::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 1px;
+  width: 0;
+  background-color: #6a5acd;
+  transition: width 450ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.group:hover .rule-draw::after,
+.group:focus-within .rule-draw::after,
+.rule-draw:hover::after,
+.rule-draw:focus-visible::after {
+  width: 100%;
+}
+
+/* Two lines of product name, always — so every card in a row shares a baseline
+   whatever the names are. `truncate` was doing this job by silently eating the
+   half of the name that distinguishes one GPU from another. */
+.clamp-2 {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.clamp-2-fixed {
+  min-height: 2.6em;
+}
+
+/* Prices, stock counts and result counts are read as columns down the grid, so
+   the digits have to be the same width. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* The sticky control bar sits under the fixed navbar. One custom property so
+   the offset is stated once rather than repeated as `top-[72px]` in three
+   files, and so the mobile navbar's shorter height is a media query rather
+   than a second magic number. */
+:root {
+  --catalog-bar-top: 78px;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --catalog-bar-top: 88px;
+  }
+}
+
+.catalog-bar {
+  position: sticky;
+  top: var(--catalog-bar-top);
+  z-index: 30;
+}
+
+/* The tag rail scrolls when the taxonomy is longer than the bar, and without
+   this it clips the last chip mid-word against the controls beside it — which
+   reads as a layout fault rather than as "there is more this way". The fade is
+   short and sits inside the last 28px, so a rail with only two or three chips
+   in it (a typed collection, where the chips are scoped to tags that co-occur
+   with the route) is untouched. */
+.rail-fade {
+  -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
+  mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 28px), transparent 100%);
+}
+
+/* A11Y-001 — the rule is decoration and the skeleton's pulse is continuous
+   motion, so both stop. The card still says everything it said; the rule is
+   simply drawn already, rather than drawing. */
+@media (prefers-reduced-motion: reduce) {
+  .rule-draw::after {
+    transition: none !important;
+  }
+
+  .animate-plate-sheen {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
