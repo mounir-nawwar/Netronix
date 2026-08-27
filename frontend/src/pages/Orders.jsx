@@ -5,8 +5,39 @@ import { ApiError } from '../api/client'
 import { firstImage } from '../lib/catalog'
 import { toast } from '../lib/toast'
 import { motion } from 'framer-motion'
-import { FiPackage, FiCreditCard, FiCalendar } from 'react-icons/fi'
+import { FiPackage } from 'react-icons/fi'
+import DemoNotice from '../components/DemoNotice'
+import Panel from '../components/Panel'
 import Seo from '../components/Seo';
+
+/**
+ * How an order status is written on the storefront.
+ *
+ * `backend/models/orderModel.js` stores one of five values — `Order Placed`,
+ * `Packing`, `Shipped`, `Out for Delivery`, `Delivered` — and only an admin can
+ * advance one. Nothing else in the system ever will, because there is no
+ * warehouse and no courier, so in practice every order sits at `Order Placed`
+ * for ever underneath what used to be a five-stage delivery ladder in blue,
+ * yellow, purple, indigo and green.
+ *
+ * The enum is a data contract shared with the admin console; it is not this
+ * page's to change. What *is* this page's to change is the claim it makes about
+ * it. "Shipped" states that a parcel is in transit. "Marked shipped" states that
+ * a row in a database says so, which is the true and complete extent of it.
+ *
+ * The colour ladder is gone with it. One neutral marker for every recorded
+ * state, because a progression of colours is itself a promise that the
+ * progression happens.
+ */
+const STATUS_LABELS = {
+  'Order Placed': 'Recorded',
+  Packing: 'Marked packing',
+  Shipped: 'Marked shipped',
+  'Out for Delivery': 'Marked out for delivery',
+  Delivered: 'Marked delivered',
+}
+
+const statusLabel = (status) => STATUS_LABELS[status] ?? status ?? 'Recorded'
 
 const Orders = () => {
 
@@ -56,7 +87,7 @@ const Orders = () => {
               // A reconstructed line is an approximation, not a record. Say so.
               reconstructed: Boolean(item._reconstructed),
             };
-            
+
             allOrdersItem.push(enrichedItem);
           })
         })
@@ -90,187 +121,186 @@ const Orders = () => {
   // instead. Deleted rather than wired in, because deciding that order rows
   // should carry icons is a design change, not a lint fix.
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'Order Placed':
-        return 'bg-blue-500';
-      case 'Packing':
-        return 'bg-yellow-500';
-      case 'Shipped':
-        return 'bg-purple-500';
-      case 'Out for Delivery':
-        return 'bg-indigo-500';
-      case 'Delivered':
-        return 'bg-green-500';
-      default:
-        return 'bg-gray-500';
-    }
-  };
-
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
+      transition: { staggerChildren: 0.06 },
+    },
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0, y: 16 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 300,
-        damping: 24
-      }
-    }
+      transition: { duration: 0.45, ease: [0.22, 1, 0.36, 1] },
+    },
   };
 
   return (
+    <div className="min-h-screen bg-paper px-4 pb-24 text-ink sm:px-[5vw] md:px-[7vw] lg:px-[9vw]">
+      <Seo title="Your Orders" description="The orders recorded against your Netronix account." />
 
-      <div className="min-h-screen bg-gradient-to-b from-white to-gray-50 px-4 sm:px-6 lg:px-8 py-12 pt-[80px] md:pt-[100px]">
-
-        <Seo title="Your Orders" description="Track the status of your Netronix orders." />
-      <motion.div 
-        className="max-w-5xl mx-auto"
-        initial={{ opacity: 0, y: 20 }}
+      <motion.div
+        className="mx-auto max-w-[1200px]"
+        initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
       >
-        <motion.h1 
-          className="text-3xl font-bold text-gray-900 mb-2"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          My Orders
-        </motion.h1>
-        <motion.p 
-          className="text-gray-600 mb-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          Track and manage your purchases
-        </motion.p>
-
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
+        <header className="pt-[104px] md:pt-[132px]">
+          <div className="flex items-center gap-3">
+            <span className="font-michroma text-[9px] uppercase tracking-[0.22em] text-statepurp md:text-[10px]">
+              Netronix / Orders
+            </span>
+            <span className="h-px flex-1 bg-rule" />
           </div>
-        ) : orderData.length === 0 ? (
-          <motion.div 
-            className="bg-white rounded-xl shadow-md p-10 text-center"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            <FiPackage className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold text-gray-800 mb-2">No orders found</h2>
-            <p className="text-gray-600 mb-6">You haven&apos;t placed any orders yet.</p>
-            <button 
-              onClick={() => navigate('/collections/all')}
-              className="px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-800 transition-colors"
+
+          <div className="mt-5 flex flex-wrap items-end justify-between gap-6">
+            <h1
+              className="font-michroma uppercase leading-[0.95] tracking-tight text-ink"
+              style={{ fontSize: 'clamp(2rem, 6vw, 4rem)' }}
             >
-              Start Shopping
+              My Orders
+            </h1>
+
+            {/* This was labelled `Track Order`, once per row, and its handler
+                was `loadOrderData` — it re-fetched the list. No tracking number,
+                no carrier, no timeline: a refresh wearing a courier's coat, and
+                the same defect class as the dead controls taken off the product
+                card and Sign-in.
+
+                It is now named after what it does, and there is one of it rather
+                than one per line, because every copy did the same thing to the
+                whole page. */}
+            <button
+              type="button"
+              onClick={loadOrderData}
+              disabled={isLoading}
+              className="border border-rule px-6 py-3 font-michroma text-[9px] uppercase tracking-[0.16em] text-ink transition-colors duration-300 hover:border-ink hover:bg-ink hover:text-paper disabled:cursor-not-allowed disabled:border-rule disabled:text-ink-40 disabled:hover:bg-transparent"
+            >
+              {isLoading ? 'Refreshing…' : 'Refresh'}
             </button>
-          </motion.div>
-        ) : (
-          <motion.div 
-            className="space-y-6"
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-          >
-            {orderData.map((item, index) => (
-              <motion.div 
-                key={`${item.orderId}-${index}`}
-                className="bg-white rounded-xl shadow-md overflow-hidden transition-all hover:shadow-lg"
-                variants={itemVariants}
-              >
-                <div className="p-6">
-                  <div className="flex flex-col md:flex-row md:items-center gap-6">
-                    {/* Product Image */}
-                    <div className="relative w-24 h-24 md:w-28 md:h-28 rounded-lg overflow-hidden flex-shrink-0 bg-gray-100">
-                      {firstImage(item.image) ? (
-                        <img 
-                          className="w-full h-full object-cover" 
-                          src={firstImage(item.image)}
-                          alt={item.name || 'Product'} 
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                          <FiPackage className="w-10 h-10 text-gray-400" />
-                        </div>
-                      )}
-                    </div>
+          </div>
 
-                    {/* Product Details */}
-                    <div className="flex-grow">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">{item.name || 'Product'}</h3>
-                      <div className="flex flex-wrap gap-3 text-sm text-gray-600 mb-2">
-                        <span className="inline-flex items-center bg-gray-100 rounded-full px-3 py-1">
-                          Order {getOrderDisplay(item)}
-                        </span>
-                        <span className="inline-flex items-center bg-gray-100 rounded-full px-3 py-1">
-                          {formatPrice(item.unitPriceMinor || 0)}
-                        </span>
-                        <span className="inline-flex items-center bg-gray-100 rounded-full px-3 py-1">
-                          Qty: {item.quantity || 1}
-                        </span>
-                        {(item.variantLabel || item.variantKey || item.size) && (
-                          <span className="inline-flex items-center bg-gray-100 rounded-full px-3 py-1">
-                            {/* ARCH-003 — the label the order itself carries,
-                                rather than the hardcoded "Size:" prefix on a
-                                key that may name any axis at all. */}
-                            {item.variantLabel || item.variantKey || item.size}
-                          </span>
-                        )}
-                        {item.reconstructed && (
-                          <span
-                            className="inline-flex items-center bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-3 py-1"
-                            title="This order predates order snapshots. Its price and name were reconstructed from the catalogue and are an approximation, not a record of what was charged."
-                          >
-                            Reconstructed
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex flex-wrap gap-4 text-sm text-gray-500">
-                        <span className="inline-flex items-center gap-1">
-                          <FiCalendar className="w-4 h-4" />
-                          {item.date ? new Date(item.date).toLocaleDateString() : 'N/A'}
-                        </span>
-                        <span className="inline-flex items-center gap-1">
-                          <FiCreditCard className="w-4 h-4" />
-                          {item.paymentMethod || 'N/A'}
-                        </span>
-                      </div>
-                    </div>
+          <DemoNotice className="mt-8 max-w-[68ch]" />
+        </header>
 
-                    {/* Status */}
-                    <div className="flex flex-col items-center md:items-end gap-2 mt-4 md:mt-0">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${getStatusColor(item.status)}`}></div>
-                        <span className="font-medium text-gray-900">{item.status || 'Processing'}</span>
-                      </div>
-                      <button
-                        onClick={loadOrderData}
-                        className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 transition-colors"
-                      >
-                        Track Order
-                      </button>
+        <div className="pt-10">
+          {isLoading ? (
+            <div role="status" aria-live="polite">
+              <div aria-hidden="true" className="divide-y divide-rule border-y border-rule">
+                {[0, 1].map((row) => (
+                  <div key={row} className="flex gap-5 py-6">
+                    <div className="h-24 w-24 animate-plate-sheen bg-wash" />
+                    <div className="flex-1 pt-2">
+                      <div className="h-3 w-2/5 bg-wash" />
+                      <div className="mt-3 h-2 w-1/4 bg-wash" />
+                      <div className="mt-6 h-2 w-1/3 bg-wash" />
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        )}
+                ))}
+              </div>
+              <span className="sr-only">Loading your orders…</span>
+            </div>
+          ) : orderData.length === 0 ? (
+            <Panel
+              heading="No orders found"
+              body="You haven't placed any orders yet."
+              action={
+                <button
+                  type="button"
+                  onClick={() => navigate('/collections/all')}
+                  className="mt-8 border border-ink bg-ink px-8 py-3 font-michroma text-[9px] uppercase tracking-[0.16em] text-paper transition-colors duration-300 hover:border-statepurp hover:bg-statepurp"
+                >
+                  Start Shopping
+                </button>
+              }
+            />
+          ) : (
+            <motion.ul
+              className="divide-y divide-rule border-y border-rule"
+              variants={containerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {orderData.map((item, index) => (
+                <motion.li
+                  key={`${item.orderId}-${index}`}
+                  className="flex flex-col gap-5 py-7 md:flex-row md:items-start md:gap-8"
+                  variants={itemVariants}
+                >
+                  {/* The line's own image snapshot, falling back to the glyph
+                      rather than to a broken `<img>` (FE-017). */}
+                  <div className="h-24 w-24 shrink-0 overflow-hidden bg-white md:h-28 md:w-28">
+                    {firstImage(item.image) ? (
+                      <img
+                        className="h-full w-full object-cover"
+                        src={firstImage(item.image)}
+                        alt={item.name || 'Product'}
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center bg-wash">
+                        <FiPackage className="h-8 w-8 text-ink-40" aria-hidden="true" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex-1">
+                    <h2 className="text-base leading-snug text-ink md:text-lg">{item.name || 'Product'}</h2>
+
+                    <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink-60">
+                      <span className="tnum">Order {getOrderDisplay(item)}</span>
+                      <span aria-hidden="true" className="h-3 w-px bg-rule" />
+                      <span className="tnum">{formatPrice(item.unitPriceMinor || 0)}</span>
+                      <span aria-hidden="true" className="h-3 w-px bg-rule" />
+                      <span className="tnum">Qty: {item.quantity || 1}</span>
+                      {(item.variantLabel || item.variantKey || item.size) && (
+                        <>
+                          <span aria-hidden="true" className="h-3 w-px bg-rule" />
+                          {/* ARCH-003 — the label the order itself carries,
+                              rather than the hardcoded "Size:" prefix on a key
+                              that may name any axis at all. */}
+                          <span>{item.variantLabel || item.variantKey || item.size}</span>
+                        </>
+                      )}
+                    </p>
+
+                    <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-ink-40">
+                      <span className="tnum">
+                        {item.date ? new Date(item.date).toLocaleDateString() : 'N/A'}
+                      </span>
+                      <span aria-hidden="true" className="h-3 w-px bg-rule" />
+                      <span>{item.paymentMethod || 'N/A'}</span>
+                    </p>
+
+                    {item.reconstructed && (
+                      <p
+                        className="mt-3 border-l-2 border-rule pl-3 text-xs leading-relaxed text-ink-60"
+                        title="This order predates order snapshots. Its price and name were reconstructed from the catalogue and are an approximation, not a record of what was charged."
+                      >
+                        <span className="font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40">
+                          Reconstructed
+                        </span>
+                        <span className="mt-1 block">
+                          Placed before this shop kept order snapshots. The name and price above
+                          were read back from the catalog and are an approximation.
+                        </span>
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="shrink-0 md:w-52 md:text-right">
+                    <span className="font-michroma text-[9px] uppercase tracking-[0.16em] text-ink-40">
+                      Status
+                    </span>
+                    <span className="mt-1.5 block text-sm text-ink">{statusLabel(item.status)}</span>
+                  </div>
+                </motion.li>
+              ))}
+            </motion.ul>
+          )}
+        </div>
       </motion.div>
     </div>
   )

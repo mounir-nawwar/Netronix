@@ -1,40 +1,16 @@
 import { useContext, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom';
-import PropTypes from 'prop-types';
 import { ShopContext } from '../context/shopContext';
 import { lineIdOf } from '../lib/cartLines';
 import { toast } from '../lib/toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiShoppingCart, FiTrash2, FiMinus, FiPlus, FiAlertCircle, FiArrowRight } from 'react-icons/fi';
 import CartTotal from '../components/CartTotal';
+import Panel from '../components/Panel';
 import BackButton from '../components/BackButton';
 import Seo from '../components/Seo';
 
 const SOLID_BUTTON = 'border border-ink bg-ink px-8 py-3 font-michroma text-[9px] uppercase tracking-[0.16em] text-paper transition-colors duration-300 hover:border-statepurp hover:bg-statepurp'
-
-/**
- * The empty, failed and loading-failed states, which are the same shape.
- *
- * Declared at module scope rather than inside `Cart`. A component defined in a
- * render body is a *new component type* on every render, so React unmounts and
- * remounts the whole subtree each time — which throws away focus and restarts
- * any animation inside it. Harmless for a static panel today, and exactly the
- * kind of thing that stops being harmless the moment someone puts a field in one.
- */
-const Panel = ({ role, heading, body, action }) => (
-    <div className="border border-rule px-6 py-20 text-center" role={role}>
-        <h2 className="font-michroma text-sm uppercase tracking-[0.16em] text-ink">{heading}</h2>
-        <p className="mx-auto mt-4 max-w-[42ch] text-sm text-ink-60">{body}</p>
-        {action}
-    </div>
-)
-
-Panel.propTypes = {
-    role: PropTypes.string,
-    heading: PropTypes.node.isRequired,
-    body: PropTypes.node,
-    action: PropTypes.node,
-}
 
 // FE-012 — the cart said "empty" while it was still loading.
 //

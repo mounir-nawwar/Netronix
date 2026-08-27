@@ -5,10 +5,7 @@ import openMailto from '../lib/openMailto.js';
 import { openSupportChat } from '../lib/supportChat.js';
 import { MINN_SOCIAL_LINKS } from '../lib/minn.js';
 import {
-  PHONE_DISPLAY,
-  PHONE_HREF,
-  SALES_EMAIL,
-  SUPPORT_EMAIL,
+  CONTACT_EMAIL,
   buildContactMailto,
   buildMailto,
 } from '../lib/contact.js';
@@ -42,21 +39,26 @@ const PLATFORM_NAMES = {
 // fourth was a GitHub mark for an account that does not exist. The three that
 // do exist are MINN's, and they come from one module shared with the footer.
 
+// "Preferred drop-off date" was in this template, which implies premises to
+// drop a device off at. `lib/seo.js` states plainly that this project has no
+// postal address and claims none in its structured data, so the template asked
+// for something the shop could not receive.
 const REPAIR_MAILTO = buildMailto({
-  subject: 'Repair booking request',
+  subject: 'Repair enquiry',
   body: [
     'Device (make and model):',
     'What is wrong with it:',
-    'Preferred drop-off date:',
-    'Best number to reach you on:',
+    'Where you are:',
   ].join('\n'),
 });
 
+// "Returns & Warranty" was one of these. Offering it as a subject line asserts
+// that a returns process and a warranty programme exist to write to about, and
+// neither does — there is nothing in this codebase behind either word.
 const SUBJECTS = [
   'Sales Inquiry',
   'Technical Support',
   'Product Information',
-  'Returns & Warranty',
   'Partnership Opportunity',
   'Other',
 ];
@@ -130,7 +132,7 @@ const Contact = () => {
           </h1>
           <p className="mt-4 text-lg leading-relaxed text-ink-60">
             Say what you need below and this page assembles the email for you. If you would
-            rather go straight to a number or an address, they are further down the page.
+            rather go straight to the address, it is further down the page.
           </p>
         </header>
 
@@ -150,8 +152,8 @@ const Contact = () => {
           >
             Netronix has no message inbox on this website. Sending this form opens your own
             email app with the message already written and addressed to{' '}
-            <a href={`mailto:${SUPPORT_EMAIL}`} className="text-statepurp underline underline-offset-2">
-              {SUPPORT_EMAIL}
+            <a href={`mailto:${CONTACT_EMAIL}`} className="text-statepurp underline underline-offset-2">
+              {CONTACT_EMAIL}
             </a>
             {' '}— you still have to press send there.
           </p>
@@ -161,14 +163,10 @@ const Contact = () => {
               <div className="rounded-lg border border-rule bg-paper p-4">
                 <p className="font-medium">Your email app should now be open.</p>
                 <p className="mt-1 text-sm leading-relaxed text-ink-60">
-                  The message is waiting there as a draft to {SUPPORT_EMAIL}. If nothing
+                  The message is waiting there as a draft to {CONTACT_EMAIL}. If nothing
                   opened, copy what you wrote and email us directly at{' '}
-                  <a href={`mailto:${SUPPORT_EMAIL}`} className="text-statepurp underline underline-offset-2">
-                    {SUPPORT_EMAIL}
-                  </a>
-                  , or call{' '}
-                  <a href={PHONE_HREF} className="text-statepurp underline underline-offset-2">
-                    {PHONE_DISPLAY}
+                  <a href={`mailto:${CONTACT_EMAIL}`} className="text-statepurp underline underline-offset-2">
+                    {CONTACT_EMAIL}
                   </a>
                   .
                 </p>
@@ -245,7 +243,7 @@ const Contact = () => {
             >
               <div className="flex gap-3">
                 <dt className="w-16 shrink-0 text-ink-40">To</dt>
-                <dd className="min-w-0 break-words">{SUPPORT_EMAIL}</dd>
+                <dd className="min-w-0 break-words">{CONTACT_EMAIL}</dd>
               </div>
               <div className="mt-2 flex gap-3">
                 <dt className="w-16 shrink-0 text-ink-40">Subject</dt>
@@ -274,31 +272,29 @@ const Contact = () => {
           >
             <li data-testid="support-route" className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
               <div className="min-w-0">
-                <h3 className="text-base font-medium">Phone</h3>
-                <p className="mt-0.5 text-sm text-ink-40">Call Netronix directly.</p>
-              </div>
-              <a href={PHONE_HREF} data-testid="support-route-action" className={ACTION_CLASS}>
-                {PHONE_DISPLAY}
-              </a>
-            </li>
-
-            <li data-testid="support-route" className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
-              <div className="min-w-0">
                 <h3 className="text-base font-medium">Sales</h3>
-                <p className="mt-0.5 text-sm text-ink-40">Pricing, stock and delivery across Lebanon.</p>
+                <p className="mt-0.5 text-sm text-ink-40">Pricing and availability.</p>
               </div>
-              <a href={`mailto:${SALES_EMAIL}`} data-testid="support-route-action" className={ACTION_CLASS}>
-                {SALES_EMAIL}
+              <a
+                href={buildMailto({ to: CONTACT_EMAIL, subject: 'Netronix — sales' })}
+                data-testid="support-route-action"
+                className={ACTION_CLASS}
+              >
+                {CONTACT_EMAIL}
               </a>
             </li>
 
             <li data-testid="support-route" className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
               <div className="min-w-0">
                 <h3 className="text-base font-medium">Support</h3>
-                <p className="mt-0.5 text-sm text-ink-40">Orders, returns and anything already bought.</p>
+                <p className="mt-0.5 text-sm text-ink-40">Anything about an order already placed.</p>
               </div>
-              <a href={`mailto:${SUPPORT_EMAIL}`} data-testid="support-route-action" className={ACTION_CLASS}>
-                {SUPPORT_EMAIL}
+              <a
+                href={buildMailto({ to: CONTACT_EMAIL, subject: 'Netronix — support' })}
+                data-testid="support-route-action"
+                className={ACTION_CLASS}
+              >
+                {CONTACT_EMAIL}
               </a>
             </li>
 

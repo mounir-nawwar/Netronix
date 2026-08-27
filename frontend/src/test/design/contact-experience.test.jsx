@@ -30,10 +30,7 @@ import Contact from '../../pages/Contact.jsx'
 import ChatBotWidget from '../../components/Chatbot/ChatBotWidget.jsx'
 import { reset } from '../../lib/head.js'
 import {
-    PHONE_DISPLAY,
-    PHONE_HREF,
-    SALES_EMAIL,
-    SUPPORT_EMAIL,
+    CONTACT_EMAIL,
     buildContactMailto,
 } from '../../lib/contact.js'
 import {
@@ -89,7 +86,7 @@ describe('what the page still has to do', () => {
         // The configure surface shows the addressee and subject line the mail
         // client will receive — not a paraphrase of them.
         const summary = screen.getByTestId('draft-summary')
-        expect(summary.textContent).toContain(SUPPORT_EMAIL)
+        expect(summary.textContent).toContain(CONTACT_EMAIL)
         expect(summary.textContent).toContain('Technical Support — Rania Aoun')
 
         await userEvent.click(screen.getByRole('button', { name: /open email draft/i }))
@@ -118,13 +115,28 @@ describe('what the page still has to do', () => {
         expect(status).toHaveAttribute('aria-live', 'polite')
     })
 
-    it('keeps the phone, sales and support routes actionable', () => {
+    it('routes sales and support to the one address a person reads', () => {
         const { container } = withRouter()
 
-        expect(container.querySelector(`a[href="${PHONE_HREF}"]`)).not.toBeNull()
-        expect(container.textContent).toContain(PHONE_DISPLAY)
-        expect(container.querySelector(`a[href="mailto:${SALES_EMAIL}"]`)).not.toBeNull()
-        expect(container.querySelector(`a[href="mailto:${SUPPORT_EMAIL}"]`)).not.toBeNull()
+        // Both rows reach the same inbox with different `?subject=` lines. Two
+        // rows for one mailbox is the point: it is how a single inbox stays
+        // sortable, and both were previously `netronix.tech` addresses that
+        // nobody opens.
+        const mailtos = [...container.querySelectorAll('a[href^="mailto:"]')]
+            .map((anchor) => anchor.getAttribute('href'))
+
+        expect(mailtos.length).toBeGreaterThanOrEqual(2)
+        for (const href of mailtos) {
+            expect(href, 'a Contact route points somewhere unread').toContain(CONTACT_EMAIL)
+        }
+        expect(new Set(mailtos).size, 'the routes are indistinguishable in the inbox')
+            .toBeGreaterThanOrEqual(2)
+    })
+
+    it('publishes no telephone number, because none rings anywhere', () => {
+        const { container } = withRouter()
+        expect(container.querySelector('a[href^="tel:"]')).toBeNull()
+        expect(container.textContent).not.toMatch(/\+961/)
     })
 
     it('keeps the catalogue link, the support chat and the repair email', async () => {
@@ -141,7 +153,7 @@ describe('what the page still has to do', () => {
         off()
 
         const repair = screen.getByRole('link', { name: /book a repair/i })
-        expect(repair.getAttribute('href')).toContain(`mailto:${SUPPORT_EMAIL}`)
+        expect(repair.getAttribute('href')).toContain(`mailto:${CONTACT_EMAIL}`)
         expect(repair.getAttribute('href')).toMatch(/subject=/)
     })
 

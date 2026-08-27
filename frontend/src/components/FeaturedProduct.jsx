@@ -5,6 +5,7 @@ import { FiShoppingBag } from 'react-icons/fi';
 
 import { ShopContext } from '../context/shopContext';
 import { canonicalVariantId, entriesOf } from '../lib/variant';
+import { configCount } from '../lib/productSummary';
 
 // FE-004 / PORT-001 / PORT-005 — the section that invented a product.
 //
@@ -380,26 +381,47 @@ const FeaturedProduct = () => {
                             </Link>
                         </div>
 
-                        <div className="mt-6 sm:mt-8 grid grid-cols-3 gap-4">
-                            <div className="flex flex-col items-center border border-gray-200 rounded-lg p-3 sm:p-4">
-                                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                                </svg>
-                                <span className="text-[10px] sm:text-xs text-center text-gray-700 font-michroma">Free Shipping</span>
-                            </div>
-                            <div className="flex flex-col items-center border border-gray-200 rounded-lg p-3 sm:p-4">
-                                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                                </svg>
-                                <span className="text-[10px] sm:text-xs text-center text-gray-700 font-michroma">2 Year Warranty</span>
-                            </div>
-                            <div className="flex flex-col items-center border border-gray-200 rounded-lg p-3 sm:p-4">
-                                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                                </svg>
-                                <span className="text-[10px] sm:text-xs text-center text-gray-700 font-michroma">30-Day Returns</span>
-                            </div>
-                        </div>
+                        {/* This was **Free Shipping / 2 Year Warranty / 30-Day
+                            Returns**, in three stock icons, on the homepage.
+                            All three were false: there is a flat delivery fee,
+                            no warranty programme and no concept of a return
+                            anywhere in this codebase.
+
+                            It is the same row `Product.jsx` records having
+                            already removed from the product page, and it
+                            contradicted the line on About that says nothing here
+                            claims a delivery time it cannot keep. It survived
+                            the earlier sweep because the guard in
+                            `minn-attribution-and-dead-links.test.jsx` grepped
+                            for `free shipping` inside `<BusinessFeatures />`
+                            only, and this is two components away on the same
+                            page.
+
+                            Replaced with the product page's three: the payment
+                            methods `PlaceOrder` really offers, the stock of the
+                            option currently selected, and how many options there
+                            are. A description list, because that is what three
+                            labelled facts are. */}
+                        <dl className="mt-6 grid grid-cols-1 gap-px border border-gray-200 bg-gray-200 sm:mt-8 sm:grid-cols-3">
+                            {[
+                                { term: 'Payment', detail: 'Cash on delivery or Whish' },
+                                {
+                                    term: 'Availability',
+                                    detail: availableStock > 0 ? `${availableStock} in stock` : 'Out of stock',
+                                },
+                                {
+                                    term: 'Configurations',
+                                    detail: `${configCount(product)} ${configCount(product) === 1 ? 'option' : 'options'}`,
+                                },
+                            ].map(({ term, detail }) => (
+                                <div key={term} className="bg-white p-3 sm:p-4">
+                                    <dt className="font-michroma text-[9px] uppercase tracking-[0.14em] text-gray-500">
+                                        {term}
+                                    </dt>
+                                    <dd className="mt-1.5 text-xs text-gray-900 sm:text-sm">{detail}</dd>
+                                </div>
+                            ))}
+                        </dl>
                     </div>
                 </div>
             </div>

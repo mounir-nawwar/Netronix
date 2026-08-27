@@ -6,7 +6,7 @@ import codLogo from '../assets/all/cash-on-delivery.svg';
 import minnWordmark from '../assets/logos/minn-wordmark-light.svg';
 import BrandLogo from './BrandLogo';
 import { MINN_NAME, MINN_SOCIAL_LINKS, MINN_URL } from '../lib/minn.js';
-import { PHONE_DISPLAY, PHONE_HREF, SUPPORT_EMAIL } from '../lib/contact.js';
+import { CONTACT_EMAIL } from '../lib/contact.js';
 
 const SOCIAL_ICONS = {
     facebook: FaFacebookF,
@@ -75,12 +75,13 @@ const Footer = () => {
                                     </li>
                                 </ul>
 
-                                {/* The footer and Contact used different support
-                                    addresses. The Contact page's `.tech` address
-                                    is now the one shared source of truth. */}
+                                {/* One address, and it belongs to the agency that
+                                    exists. The two `netronix.tech` mailboxes this
+                                    used to advertise are read by nobody, and the
+                                    published telephone number rang nowhere — see
+                                    `lib/contact.js`. */}
                                 <div className="space-y-2">
-                                    <a href={PHONE_HREF} className="block text-base md:text-xl hover:text-gray-300 transition-colors">{PHONE_DISPLAY}</a>
-                                    <a href={`mailto:${SUPPORT_EMAIL}`} className="block text-base md:text-xl hover:text-gray-300 transition-colors underline">{SUPPORT_EMAIL}</a>
+                                    <a href={`mailto:${CONTACT_EMAIL}`} className="block text-base md:text-xl hover:text-gray-300 transition-colors underline">{CONTACT_EMAIL}</a>
                                 </div>
                             </div>
 

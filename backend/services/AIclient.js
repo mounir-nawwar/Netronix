@@ -221,7 +221,18 @@ export const SYSTEM_PROMPT =
   "data — for example [[product:0123456789abcdef01234567]]. The application turns that marker into a link for the " +
   "customer, so do not describe or format the link yourself. " +
   "Refer to at most three products in one reply. " +
-  "Delivery anywhere in Lebanon, which is the target market, is $3.";
+  "Delivery anywhere in Lebanon, which is the target market, is $3. " +
+  // The model is handed the catalog and nothing else, so the catalog is the
+  // only thing it can answer from. Without this it answered questions about
+  // returns, warranties and tracking the way any assistant does — plausibly,
+  // and entirely out of its own head. None of the three exists: there is no
+  // returns process, no warranty programme and no tracking anywhere in this
+  // API, the models or the admin console, and an invented policy is worse than
+  // a refusal because the customer cannot tell it apart from a real one.
+  "Netronix has no returns process, no warranty programme, and no order tracking or courier " +
+  "integration of any kind. If you are asked about any of them, say plainly that the shop does not " +
+  "offer it and suggest writing to contact@minnagency.com. Never invent a policy, a delivery date, " +
+  "a tracking number or a discount code.";
 
 /** The reply used whenever the model cannot be reached. Always structured. */
 const fallback = (message) => ({ success: false, message, text: message, links: [] })

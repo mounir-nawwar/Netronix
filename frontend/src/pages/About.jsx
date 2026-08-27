@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { ShopContext } from '../context/shopContext';
 import { tagsOf } from '../lib/catalog';
 import { MINN_NAME, MINN_URL } from '../lib/minn.js';
-import { SUPPORT_EMAIL, buildMailto } from '../lib/contact';
+import { CONTACT_EMAIL, buildMailto } from '../lib/contact';
 import Seo from '../components/Seo';
 
 // The About page, rebuilt — the same treatment Contact was given, for the same
@@ -179,12 +179,12 @@ const About = () => {
                         >
                             {MINN_NAME}
                         </a>
-                        , the agency behind this storefront. Questions about an order go to{' '}
+                        , the agency behind this storefront. Its address is{' '}
                         <a
-                            href={buildMailto({ to: SUPPORT_EMAIL, subject: 'Question about Netronix' })}
+                            href={buildMailto({ to: CONTACT_EMAIL, subject: 'Question about Netronix' })}
                             className="rule-draw pb-0.5 text-ink transition-colors hover:text-statepurp"
                         >
-                            {SUPPORT_EMAIL}
+                            {CONTACT_EMAIL}
                         </a>
                         .
                     </p>

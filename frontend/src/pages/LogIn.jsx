@@ -7,7 +7,7 @@ import * as authApi from '../api/auth';
 import { ApiError } from '../api/client';
 import { IoMailOutline, IoLockClosedOutline, IoPersonOutline, IoArrowForwardOutline } from "react-icons/io5";
 import Seo from '../components/Seo';
-import { SUPPORT_EMAIL, buildMailto } from '../lib/contact';
+import { CONTACT_EMAIL, buildMailto } from '../lib/contact';
 
 const LogIn = () => {
   const [currentState, setCurrentState] = useState('Login');
@@ -152,8 +152,13 @@ const LogIn = () => {
               built.
 
               There is no password-reset endpoint on this API, so the honest
-              version of "forgot password" is the support address that a person
-              actually reads. */}
+              version of "forgot password" is an address, offered as an address.
+
+              It said "and a person will help" until now, which was a promise
+              about someone else's behaviour that this page cannot make — the
+              same species of claim as the star ratings and the invented
+              shipping times other passes removed. Where the mail goes is a
+              fact; what happens next is not. */}
           <button
             type="submit"
             disabled={isLoading}
@@ -186,14 +191,14 @@ const LogIn = () => {
 
           {signingIn && (
             <p className="mt-4 text-xs text-ink-40">
-              Cannot get in? Email{' '}
+              Locked out? Write to{' '}
               <a
-                href={buildMailto({ to: SUPPORT_EMAIL, subject: 'Account access' })}
+                href={buildMailto({ to: CONTACT_EMAIL, subject: 'Account access' })}
                 className="rule-draw pb-0.5 text-ink-60 transition-colors hover:text-ink"
               >
-                {SUPPORT_EMAIL}
-              </a>{' '}
-              and a person will help.
+                {CONTACT_EMAIL}
+              </a>
+              .
             </p>
           )}
         </div>

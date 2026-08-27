@@ -4,6 +4,7 @@ import { toast } from '../lib/toast';
 import { motion } from 'framer-motion';
 import { FiCreditCard, FiHome, FiCheck, FiPackage } from 'react-icons/fi';
 import CartTotal from '../components/CartTotal'
+import DemoNotice from '../components/DemoNotice';
 import whishLogo from '../assets/all/whishLogo.png';
 import BackButton from '../components/BackButton';
 import * as ordersApi from '../api/orders';
@@ -138,7 +139,7 @@ const PlaceOrder = () => {
         setCartItems({});
         localStorage.removeItem('guestCart');
 
-        toast.success('Order placed successfully!');
+        toast.success('Order recorded. Nothing is dispatched — this is a demonstration build.');
 
         // FE-031 — router navigation. `window.location.href` discarded the whole
         // application and reloaded it from the network, throwing away the
@@ -419,7 +420,13 @@ const PlaceOrder = () => {
           <div className="lg:w-[38%]">
             <div className="sticky top-[132px] border border-rule p-7">
               <CartTotal heading="Order Summary" />
-              
+
+              {/* Above the button, not after it. A guest is redirected to `/`
+                  a second and a half after ordering and cannot reach
+                  `/orders`, so this is the only place they will ever be told
+                  what did and did not just happen. */}
+              <DemoNotice className="mt-8" />
+
               <button 
                 type="submit"
                 disabled={isSubmitting}

@@ -294,7 +294,7 @@ describe('an assistant that cannot answer says so (SEC/FE — degraded chat)', (
 
         expect(await screen.findByRole('status')).toHaveTextContent(/assistant is offline/i)
         // And it points at something that does work.
-        expect(screen.getByRole('link', { name: /support@/i })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: /contact@minnagency/i })).toHaveAttribute(
             'href', expect.stringContaining('mailto:'),
         )
 

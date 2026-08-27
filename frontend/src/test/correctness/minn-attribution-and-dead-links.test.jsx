@@ -13,6 +13,9 @@
 // scans below are deliberately blunt: no `#` targets, at all, in any of these
 // five surfaces.
 
+import { existsSync, readFileSync } from 'node:fs'
+import { join } from 'node:path'
+
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
@@ -24,7 +27,6 @@ import openMailto from '../../lib/openMailto.js'
 import Footer from '../../components/Footer.jsx'
 import Hero from '../../components/Hero.jsx'
 import NewsLetterBar from '../../components/NewsLetterBar.jsx'
-import Testimonials from '../../components/Testimonials.jsx'
 import Contact from '../../pages/Contact.jsx'
 import BusinessFeatures from '../../components/BusinessFeatures.jsx'
 import {
@@ -33,7 +35,7 @@ import {
     MINN_URL,
     MINN_X_URL,
 } from '../../lib/minn.js'
-import { SUPPORT_EMAIL } from '../../lib/contact.js'
+import { CONTACT_EMAIL } from '../../lib/contact.js'
 
 const withRouter = (ui) => render(<MemoryRouter>{ui}</MemoryRouter>)
 
@@ -111,14 +113,15 @@ describe('Footer', () => {
         }
     })
 
-    it('advertises the MX-backed support address and a diallable number', () => {
+    it('advertises one address that is actually read, and no telephone', () => {
         const { container } = withRouter(<Footer />)
 
-        expect(container.querySelector(`a[href="mailto:${SUPPORT_EMAIL}"]`)).not.toBeNull()
-        expect(container.textContent).not.toMatch(/netronix\.com/)
-
-        const phone = container.querySelector('a[href^="tel:"]')
-        expect(phone).toHaveAttribute('href', 'tel:+96181995653')
+        // Both `netronix.tech` mailboxes route to a place no person opens, and
+        // the published number rang nowhere. A contact detail that reaches
+        // nobody is worse than none: it costs the sender the wait.
+        expect(container.querySelector(`a[href="mailto:${CONTACT_EMAIL}"]`)).not.toBeNull()
+        expect(container.textContent).not.toMatch(/netronix\.(com|tech)/)
+        expect(container.querySelector('a[href^="tel:"]')).toBeNull()
     })
 
     it('does not offer a FAQ that does not exist', () => {
@@ -224,32 +227,135 @@ describe('Hero', () => {
 
 // ---------------------------------------------------------------------------
 describe('Testimonials', () => {
-    it('no longer offers a review archive that does not exist', () => {
-        const { container } = withRouter(<Testimonials />)
+    // The component is gone, not merely unmounted.
+    //
+    // An earlier phase took `<Testimonials />` off the homepage and pinned that
+    // with the assertion below, but left the file in the tree carrying two
+    // fabricated quotes — "delivery was faster than expected" and "had us back
+    // up and running the same day" — from two invented customers. A deleted
+    // import is one line away from being un-deleted, and the test suite was
+    // still rendering the quotes to check them, so they were also still being
+    // maintained. There is nothing to unmount now.
+    it('does not exist, and the homepage does not import it', () => {
+        expect(existsSync(join(process.cwd(), 'src/components/Testimonials.jsx'))).toBe(false)
 
-        expect(deadAnchors(container)).toEqual([])
-        expect(container.textContent).not.toMatch(/Read All/i)
-        expect(container.textContent).not.toMatch(/2,482/)
-    })
-
-    it('does not publish unverified testimonial claims on the homepage', async () => {
-        const { readFileSync } = await import('node:fs')
-        const { join } = await import('node:path')
         const home = readFileSync(join(process.cwd(), 'src/pages/Home.jsx'), 'utf8')
-
         expect(home).not.toMatch(/import Testimonials/)
         expect(home).not.toMatch(/<Testimonials\s*\/>/)
     })
 })
 
+describe('fulfilment claims across the homepage', () => {
+    // Why this scans every component the homepage mounts, and not one of them.
+    //
+    // The existing guard rendered `<BusinessFeatures />` and grepped its text
+    // for `free shipping`. It was green for four phases while `FeaturedProduct`
+    // — two components away, on the same page, above the fold once you scroll —
+    // rendered a row reading **Free Shipping · 2 Year Warranty · 30-Day
+    // Returns**. A guard scoped to one component only ever protects that
+    // component, and the claim moved next door.
+    //
+    // Reading the sources rather than rendering the tree is deliberate: `Home`
+    // needs the shop context, the router and a catalog to render at all, and a
+    // guard that expensive is a guard someone eventually deletes. The imports
+    // are resolved from `Home.jsx` itself, so a section added later is covered
+    // the day it is added without anyone remembering to list it here.
+    const homepageSources = () => {
+        const source = readFileSync(join(process.cwd(), 'src/pages/Home.jsx'), 'utf8')
+        const imports = [...source.matchAll(/^import\s+\w+\s+from\s+'(\.\.\/components\/[^']+)'/gm)]
+
+        return imports.map(([, specifier]) => {
+            const file = join(process.cwd(), 'src/pages', `${specifier}.jsx`)
+            const text = readFileSync(file, 'utf8')
+            return {
+                file: specifier.replace('../', ''),
+                // Comments describing a removed claim are not the claim. This is
+                // the same strip `product-card.test.jsx` and `metadata.test.jsx`
+                // use, and it is needed here because the component that carried
+                // this row now carries a note explaining what it used to say.
+                source: text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''),
+            }
+        })
+    }
+
+    // Every one of these is false of this build: `deliveryFeeMinor` is a flat
+    // charge, and no warranty or returns process exists in the API, the models
+    // or the admin console.
+    const FORBIDDEN = [
+        /free shipping/i,
+        /\d+[- ]year warranty/i,
+        /\d+[- ]day returns?/i,
+        /free (delivery|returns)/i,
+        /same[- ]day (shipping|delivery)/i,
+    ]
+
+    it('promises no free shipping, warranty or returns policy anywhere on the homepage', () => {
+        const sources = homepageSources()
+        expect(sources.length).toBeGreaterThan(5)
+
+        for (const { file, source } of sources) {
+            for (const claim of FORBIDDEN) {
+                expect(source, `${file} makes a claim this shop cannot keep: ${claim}`).not.toMatch(claim)
+            }
+        }
+    })
+})
+
 describe('footer feature claims', () => {
     it('does not advertise fake free-shipping or referral offers', () => {
-        const { container } = render(<BusinessFeatures />)
+        const { container } = withRouter(<BusinessFeatures />)
 
         expect(container.textContent).not.toMatch(/price it into the products/i)
         expect(container.textContent).not.toMatch(/free shipping/i)
         expect(container.textContent).not.toMatch(/15%/)
         expect(container.textContent).not.toMatch(/refer a friend/i)
+    })
+
+    // The negative assertions above are necessary and not sufficient: they were
+    // all green while the strip promised help with **returns** and offered to
+    // **confirm delivery timing**, neither of which this application can do.
+    // A claim that survives here has to be one the codebase can be checked
+    // against, so the replacements are pinned by name.
+    it('makes only claims this build can keep', () => {
+        const { container } = withRouter(<BusinessFeatures />)
+        const text = container.textContent
+
+        expect(text).toMatch(/stock by configuration/i)
+        expect(text).toMatch(/no account needed/i)
+        expect(text).toMatch(/cash on delivery or whish/i)
+        expect(text).toContain(CONTACT_EMAIL)
+
+        expect(text).not.toMatch(/returns?/i)
+        expect(text).not.toMatch(/warrant(y|ies)/i)
+        expect(text).not.toMatch(/delivery (availability|timing)/i)
+        expect(text).not.toMatch(/\btrack\b/i)
+    })
+
+    it('draws no divider against the outside edge of the strip', () => {
+        const { container } = withRouter(<BusinessFeatures />)
+        const cells = [...container.querySelectorAll('section > div > div')]
+
+        expect(cells).toHaveLength(4)
+
+        // `last:border-r-0` was correct in one row and wrong in two: at the
+        // two-column breakpoint the second cell kept a right-hand rule on the
+        // grid's outer edge. Nothing draws a right border now, at any width.
+        //
+        // Matched on whole class tokens rather than as a substring, because the
+        // *colour* token is `border-rule` and `/border-r/` finds it in every
+        // cell — which is how the first draft of this assertion failed against a
+        // component that was already correct.
+        const RIGHT_BORDER = /^(?:[a-z]+:)?border-r(?:-\d+)?$/
+        for (const cell of cells) {
+            const drawn = cell.className.split(/\s+/).filter((token) => RIGHT_BORDER.test(token))
+            expect(drawn, `${cell.className} draws a right-hand rule`).toEqual([])
+        }
+
+        // The first cell of each row opens no left edge: cell 1 at every width,
+        // and cell 3 once the grid is two columns wide.
+        expect(cells[0].className).not.toMatch(/border-l/)
+        expect(cells[2].className).toMatch(/lg:border-l/)
+        expect(cells[2].className).not.toMatch(/(^|\s)md:border-l/)
     })
 })
 
@@ -280,11 +386,12 @@ describe('Contact', () => {
         expect(screen.queryByRole('link', { name: /github/i })).toBeNull()
     })
 
-    it('makes the printed phone number and email addresses actionable', () => {
+    it('makes the printed address actionable, and prints no dead number', () => {
         const { container } = withRouter(<Contact />)
 
-        expect(container.querySelector('a[href="tel:+96181995653"]')).not.toBeNull()
-        expect(container.querySelector(`a[href="mailto:${SUPPORT_EMAIL}"]`)).not.toBeNull()
+        expect(container.querySelector('a[href^="mailto:"]')).not.toBeNull()
+        expect(container.textContent).toContain(CONTACT_EMAIL)
+        expect(container.querySelector('a[href^="tel:"]')).toBeNull()
     })
 
     it('opens a prefilled email instead of claiming the message was sent', async () => {
@@ -302,7 +409,7 @@ describe('Contact', () => {
 
         await waitFor(() => expect(openMailto).toHaveBeenCalledTimes(1))
         const href = openMailto.mock.calls[0][0]
-        expect(href.startsWith(`mailto:${SUPPORT_EMAIL}?`)).toBe(true)
+        expect(href.startsWith(`mailto:${CONTACT_EMAIL}?`)).toBe(true)
         expect(href).toContain(`subject=${encodeURIComponent('Technical Support — Rania Aoun')}`)
         expect(href).toContain(encodeURIComponent('rania@example.com'))
         expect(href).toContain(encodeURIComponent('My laptop will not boot.'))
@@ -323,7 +430,7 @@ describe('Contact', () => {
 
         // Repair booking: a prefilled email, since there is no booking system.
         const repair = screen.getByRole('link', { name: /book a repair/i })
-        expect(repair.getAttribute('href')).toContain(`mailto:${SUPPORT_EMAIL}`)
+        expect(repair.getAttribute('href')).toContain(`mailto:${CONTACT_EMAIL}`)
         expect(repair.getAttribute('href')).toMatch(/subject=/)
 
         expect(container.textContent).not.toMatch(/knowledge base/i)

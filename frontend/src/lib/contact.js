@@ -1,21 +1,32 @@
-// How a visitor actually reaches Netronix.
+// How a visitor actually reaches the people behind Netronix.
 //
-// The footer advertised `support@netronix.com` while Contact advertised
-// `support@netronix.tech`. Both domains publish MX records, but a storefront
-// must not present two different support addresses. The `.tech` address was
-// already the Contact page's canonical destination, so every surface reads it
-// from here now.
+// This module used to settle an argument between two Netronix domains — the
+// footer advertised `support@netronix.com`, Contact advertised
+// `support@netronix.tech` — and picked `.tech`. That was the wrong question.
+// **Nobody reads either of them.** Netronix is a portfolio build, not a trading
+// company; `support@netronix.tech` and `info@netronix.tech` route to a mailbox
+// no person opens, which is worse than a bounce, because a bounce at least
+// tells the sender their message went nowhere.
+//
+// So there is one address, and it belongs to the agency that actually exists:
+// `contact@minnagency.com`. Both names below resolve to it. Two names for one
+// mailbox is deliberate rather than redundant — the Contact page's Sales and
+// Support rows give their drafts different `?subject=` lines, which is how a
+// single inbox stays sortable.
+//
+// There is no telephone number here any more, for the same reason. A published
+// number that rings nowhere is a promise, and this project does not make ones
+// it cannot keep.
 //
 // The storefront has no message-sending backend. Everything that looks like it
 // sends a message is built on `mailto:` — see `buildMailto` — and the UI says
 // so rather than reporting a success that never happened.
 
-export const SUPPORT_EMAIL = 'support@netronix.tech'
-export const SALES_EMAIL = 'info@netronix.tech'
+/** The one address a person genuinely reads. */
+export const CONTACT_EMAIL = 'contact@minnagency.com'
 
-export const PHONE_DISPLAY = '+961 81 995 653'
-/** E.164, no spaces: a dialler cannot parse the display form. */
-export const PHONE_HREF = 'tel:+96181995653'
+export const SUPPORT_EMAIL = CONTACT_EMAIL
+export const SALES_EMAIL = CONTACT_EMAIL
 
 /**
  * A `mailto:` URL with the subject and body pre-filled.

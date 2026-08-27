@@ -7,7 +7,7 @@ import { FiX, FiMessageSquare } from "react-icons/fi";
 
 import * as chatApi from '../../api/chat';
 import useDialog from '../../lib/useDialog';
-import { SUPPORT_EMAIL, buildMailto } from '../../lib/contact';
+import { CONTACT_EMAIL, buildMailto } from '../../lib/contact';
 
 // SEC-004 — the XSS sink that used to live here is gone.
 //
@@ -258,12 +258,22 @@ const ChatInterface = ({ onClose }) => {
     }
   };
 
-  // Quick replies for common questions
+  // The four questions offered on opening — which are also four promises about
+  // what this assistant can do.
+  //
+  // They used to be "What are your shipping options?", "Do you offer warranty?",
+  // "How can I track my order?" and "Are there any ongoing promotions?". Three
+  // of the four are things the shop does not have, and the fourth is a thing it
+  // does not run; `AIclient.js` hands the model the product catalog and nothing
+  // else, so every one of those was an invitation to answer from thin air.
+  //
+  // These four are answerable from the catalog, plus the one logistics fact the
+  // system prompt genuinely carries: the flat $3 delivery charge.
   const quickReplies = [
-    "What are your shipping options?",
-    "Do you offer warranty?",
-    "How can I track my order?",
-    "Are there any ongoing promotions?"
+    "What laptops do you have in stock?",
+    "Compare your gaming laptops",
+    "Which MacBook has the most storage?",
+    "What does delivery cost?"
   ];
 
   // Format timestamp
@@ -427,14 +437,14 @@ const ChatInterface = ({ onClose }) => {
             className="mb-3 border-l-2 border-[#6a5acd] bg-gray-50 px-3 py-2 text-xs text-gray-700"
           >
             The assistant is offline right now, so it cannot answer questions.
-            Email{' '}
+            Written questions go to{' '}
             <a
-              href={buildMailto({ to: SUPPORT_EMAIL, subject: 'Support request' })}
+              href={buildMailto({ to: CONTACT_EMAIL, subject: 'Netronix enquiry' })}
               className="underline decoration-[#6a5acd]/40 underline-offset-2"
             >
-              {SUPPORT_EMAIL}
-            </a>{' '}
-            and a person will reply.
+              {CONTACT_EMAIL}
+            </a>
+            .
           </p>
         )}
 
