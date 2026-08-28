@@ -266,6 +266,18 @@ export function resetGroqClient() {
     groqClient = undefined
 }
 
+/**
+ * Whether a chat turn would actually reach the model, without making one.
+ *
+ * `getClient()` only constructs the SDK object and checks the key's shape —
+ * no network call — so this answers "is the assistant configured" in local
+ * time, which is what `initializeChat` needs to decide whether to show the
+ * offline notice on open, before a customer has typed anything.
+ */
+export function isConfigured() {
+    return Boolean(getClient())
+}
+
 // ---------------------------------------------------------------------------
 // Catalog
 // ---------------------------------------------------------------------------
