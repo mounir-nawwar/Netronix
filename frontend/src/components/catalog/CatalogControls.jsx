@@ -159,9 +159,22 @@ const CatalogControls = ({
                 the sort and Refine controls off the end of the bar rather than
                 scrolling under them.
 
-                Measured at 390 px: the rail is 366 px wide over 1089 px of
-                chips and scrolls, and the page's own `scrollX` stays 0. */}
-            <div className="scrollbar-hide rail-fade -mx-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto px-1">
+                `w-full` is the part that actually matters below `lg`. The
+                parent is `flex-col` on mobile, and `flex-1`/`min-w-0` only
+                constrain width along a *row* main axis — in a column layout
+                they govern the vertical dimension instead, and this element
+                (itself `display: flex`, holding `whitespace-nowrap` chips) is
+                free to grow to fit its content on the horizontal axis with
+                nothing capping it. It did, to 999px on an 18-product catalog
+                at a 390px viewport — wide enough that the *page* scrolled
+                instead of the rail, dragging the fixed navbar above it along
+                with it and making the whole header read as shoved off-centre.
+                `w-full` forces the box back to the container's width so
+                `overflow-x-auto` has something to actually contain; at `lg:`,
+                `flex: 1 1 0%` already ignores any set `width` in favour of its
+                own `flex-basis`, so this changes nothing about the row layout
+                the comment above was written for. */}
+            <div className="scrollbar-hide rail-fade -mx-1 flex w-full min-w-0 flex-1 items-center gap-1 overflow-x-auto px-1">
                 <button
                     type="button"
                     onClick={onClearTags}

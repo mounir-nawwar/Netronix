@@ -147,6 +147,31 @@ test.describe('flow 4 — browse, filter, sort (FE-003, FE-010)', () => {
         await expect(page.getByLabel('Webcam')).toHaveCount(0)
     })
 
+    // The tag rail's own comment used to claim "Measured at 390 px: the rail
+    // is 366 px wide over 1089 px of chips and scrolls, and the page's own
+    // scrollX stays 0" — a real measurement, taken once by hand, that was
+    // never captured as a test. It silently regressed: the rail is `flex-1
+    // min-w-0` inside a parent that is `flex-col` below `lg`, and neither
+    // property constrains width along a *column* main axis, so nothing
+    // stopped the rail growing to fit its content once the seeded catalog
+    // carried enough tags to make that content wider than a phone screen. The
+    // whole page ended up wider than the viewport as a result — on a real
+    // phone this is a browser deciding it needs to zoom out to show the
+    // overflow, which drags every `position: fixed` element on the page
+    // (the navbar among them) into the same widened, no-longer-centred layout.
+    test('the tag rail scrolls its own overflow rather than widening the page', async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 })
+        await page.goto('/products')
+        await revealAllProducts(page)
+        // The seeded catalog's tag list is what made the rail wide enough to
+        // expose this — assert it actually has more chips than fit before
+        // trusting a `scrollWidth` reading that could otherwise pass by luck.
+        await expect(page.getByRole('checkbox').first()).toBeAttached()
+
+        const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth)
+        expect(scrollWidth, 'the page scrolled horizontally instead of the tag rail').toBeLessThanOrEqual(390)
+    })
+
     test('search narrows the product list', async ({ page }) => {
         await page.goto('/products?search=MacBook')
         await revealAllProducts(page)
