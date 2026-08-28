@@ -144,6 +144,32 @@ export function parseModelReply(raw, catalogIndex = new Map()) {
     // something other than an id in the slot. It is removed, never relayed.
     text = text.replace(ANY_PRODUCT_MARKER, '')
 
+    // A model that names a real product in plain prose without ever emitting
+    // its marker is not a rule violation `SYSTEM_PROMPT` can be tightened
+    // away — a real reply named three laptops in a sentence and used the
+    // marker for none of them, so the customer read three product names with
+    // no way to click through to any of them. Same shape as the duplicate-name
+    // fix above, the other side of the same instruction: a prompt is a
+    // request, not a guarantee, so the guarantee is enforced here instead.
+    // When a product the model was actually shown is named verbatim in the
+    // surviving text and was not already linked by a marker, it is linked
+    // anyway — the visible words do not change, only whether they are
+    // clickable. Matched only against `catalogIndex`, the exact set of
+    // products supplied to this turn's prompt, so this cannot surface a
+    // product the model was never shown (SEC-004's own boundary).
+    if (links.length < MAX_LINKS_PER_REPLY) {
+        const lowerText = text.toLowerCase()
+        for (const entry of catalogIndex.values()) {
+            if (links.length >= MAX_LINKS_PER_REPLY) break
+            if (seen.has(entry.productId)) continue
+            if (!entry.label || entry.label === 'this product') continue
+            if (lowerText.includes(entry.label.toLowerCase())) {
+                seen.add(entry.productId)
+                links.push({ productId: entry.productId, label: entry.label })
+            }
+        }
+    }
+
     return { text: toInertText(text).slice(0, MAX_REPLY_LENGTH), links }
 }
 
