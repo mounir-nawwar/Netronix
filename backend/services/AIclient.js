@@ -48,6 +48,18 @@ export const PRODUCT_MARKER_PATTERN = /\[\[product:([0-9a-fA-F]{24})\]\]/g
 /** Any `[[product:…]]` marker at all, so an unresolvable one can be removed. */
 const ANY_PRODUCT_MARKER = /\[\[\s*product\s*:[^\]]*\]\]/g
 
+/**
+ * A marker opened but never closed — the literal tail a `finish_reason:
+ * "length"` completion can leave, e.g. `"…the MSI Cyborg [[product:6a89ab11
+ * 6111a5cf6e19"` with generation cut off before the closing `]]`. Neither
+ * `PRODUCT_MARKER_PATTERN` nor `ANY_PRODUCT_MARKER` matches this — both
+ * require the closing brackets to be present — so without this the raw
+ * bracket-and-hex fragment reached the customer verbatim. Anchored to the end
+ * of the string, so it only strips a genuine cutoff, never a marker that
+ * happens to be followed by more prose.
+ */
+const DANGLING_MARKER_TAIL = /\[\[\s*product\s*:[^\]]*$/i
+
 /** A reply may name at most this many products. */
 export const MAX_LINKS_PER_REPLY = 5
 
@@ -104,7 +116,18 @@ export function parseModelReply(raw, catalogIndex = new Map()) {
 
     // Resolve well-formed markers first: each becomes the product's own name in
     // the running text, plus one entry in `links`.
-    let text = String(raw ?? '').replace(PRODUCT_MARKER_PATTERN, (_match, id) => {
+    //
+    // SYSTEM_PROMPT asks the model to write the marker in place of describing
+    // the link, never to name the product *and then* place the marker right
+    // after — but a real reply still did: "the MSI Cyborg Gaming Laptop
+    // [[product:…]]" became "the MSI Cyborg Gaming Laptop MSI Cyborg Gaming
+    // Laptop" once the marker expanded to that same name. A prompt is a
+    // request, not a guarantee, and smaller models follow this kind of
+    // formatting instruction unreliably. When the text immediately before the
+    // marker already ends with the product's own name, the substitution is
+    // dropped rather than doubled — the name is already there.
+    const source = String(raw ?? '')
+    let text = source.replace(PRODUCT_MARKER_PATTERN, (_match, id, offset) => {
         const entry = catalogIndex.get(String(id).toLowerCase())
         if (!entry) return ''
         if (!seen.has(entry.productId)) {
@@ -112,7 +135,9 @@ export function parseModelReply(raw, catalogIndex = new Map()) {
             seen.add(entry.productId)
             links.push({ productId: entry.productId, label: entry.label })
         }
-        return entry.label
+        const precedingText = source.slice(0, offset).trimEnd()
+        const alreadyNamed = precedingText.toLowerCase().endsWith(entry.label.toLowerCase())
+        return alreadyNamed ? '' : entry.label
     })
 
     // Anything still marker-shaped was malformed, unknown, or an attempt to put
@@ -260,8 +285,11 @@ export const SYSTEM_PROMPT =
   "Reply in PLAIN TEXT only. Never write HTML, never write markdown, never write a URL. " +
   "To refer to a specific product, write the marker [[product:PRODUCT_ID]] using the exact id field from the product " +
   "data — for example [[product:0123456789abcdef01234567]]. The application turns that marker into a link for the " +
-  "customer, so do not describe or format the link yourself. " +
-  "Refer to at most three products in one reply. " +
+  "customer, and that link's text is already the product's name — so never also write the product's name in your own " +
+  "sentence next to its marker. Write \"Consider [[product:0123456789abcdef01234567]], which has...\", never " +
+  "\"Consider the ThinkPad X1 [[product:0123456789abcdef01234567]]\". " +
+  "Refer to at most three products in one reply, and keep the whole reply to two or three sentences unless the " +
+  "customer has asked for a detailed comparison. " +
   "Delivery anywhere in Lebanon, which is the target market, is $3. " +
   // The model is handed the catalog and nothing else, so the catalog is the
   // only thing it can answer from. Without this it answered questions about
@@ -323,10 +351,18 @@ async function processChatMessage(message, { history = [] } = {}) {
     const completion = await openai.chat.completions.create({
       messages: apiMessages,
       model: process.env.GROQ_MODEL || DEFAULT_MODEL,
-      max_tokens: 200
+      // Was 200. A three-product answer in flowing prose — exactly what the
+      // system prompt asks for — runs past 200 tokens on its own, and the
+      // generation was cut off mid-token: a real reply ended
+      // "…[[product:6a89ab116111a5cf6e19", an *opened* marker with no closing
+      // brackets, shown to a customer verbatim (`DANGLING_MARKER_TAIL` below
+      // is the other half of this fix — belt and suspenders, since the prompt
+      // asking for brevity does not guarantee the model complies).
+      max_tokens: 350
     });
 
     const rawContent = completion.choices[0].message.content
+    const finishReason = completion.choices[0].finish_reason
 
     // A reasoning model's failure mode, found while switching this file onto
     // Groq (see `DEFAULT_MODEL`'s own comment). `openai/gpt-oss-20b` spent its
@@ -353,7 +389,15 @@ async function processChatMessage(message, { history = [] } = {}) {
       return fallback("Our AI service is temporarily unavailable. Please try again later.");
     }
 
-    const { text, links } = parseModelReply(rawContent, catalogIndex);
+    // Drop a marker the generation was cut off in the middle of writing,
+    // rather than relay the raw bracket-and-hex fragment. Only applied when
+    // `finish_reason` actually says the model was truncated, so a marker that
+    // is merely the last thing in a *complete* reply is never touched.
+    const cleanedContent = finishReason === 'length'
+      ? rawContent.replace(DANGLING_MARKER_TAIL, '').trimEnd()
+      : rawContent
+
+    const { text, links } = parseModelReply(cleanedContent, catalogIndex);
 
     return { success: true, message: text, text, links };
   } catch (error) {
